@@ -1,9 +1,11 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(prometheus_control)
 
-## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+# Compile as C++11, supported in ROS Kinetic and newer
+ add_compile_options(-std=c++11)
 
+## System dependencies are found with CMake's conventions
+find_package(Boost REQUIRED COMPONENTS system)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -22,10 +24,6 @@ find_package(catkin REQUIRED COMPONENTS
   mavros_msgs
   prometheus_msgs
 )
-
-## System dependencies are found with CMake's conventions
-find_package(Boost REQUIRED COMPONENTS system)
-
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -82,20 +80,6 @@ add_executable(px4_pos_estimator src/px4_pos_estimator.cpp)
 add_dependencies(px4_pos_estimator prometheus_control_gencpp)
 target_link_libraries(px4_pos_estimator ${catkin_LIBRARIES})
 target_link_libraries(px4_pos_estimator OptiTrackFeedbackRigidBody)
-
-##
-#add_executable(swarm_estimator src/swarm_control/swarm_estimator.cpp)
-#add_dependencies(swarm_estimator prometheus_control_gencpp)
-#target_link_libraries(swarm_estimator ${catkin_LIBRARIES})
-
-#add_executable(swarm_controller src/swarm_control/swarm_controller.cpp)
-#add_dependencies(swarm_controller prometheus_control_gencpp)
-#target_link_libraries(swarm_controller ${catkin_LIBRARIES})
-
-#add_executable(swarm_ground_station src/swarm_control/swarm_ground_station.cpp)
-#add_dependencies(swarm_ground_station prometheus_control_gencpp)
-#target_link_libraries(swarm_ground_station ${catkin_LIBRARIES})
-
 
 ###### Test File ##########
 #add_executable(px4_fw_controller src/Test/px4_fw_controller.cpp)
