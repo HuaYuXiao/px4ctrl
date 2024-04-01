@@ -20,6 +20,7 @@
 #include <geometry_msgs/TransformStamped.h>
 #include <iostream>
 #include <Eigen/Eigen>
+#include <Eigen/Dense>
 #include "state_from_mavros.h"
 #include "math_utils.h"
 #include "prometheus_control_utils.h"
@@ -32,8 +33,12 @@ using namespace std;
 //---------------------------------------相关参数-----------------------------------------------
 int input_source;
 float rate_hz;
+
 Eigen::Vector3f pos_offset;
 float yaw_offset;
+float pitch_offset;
+float roll_offset;
+
 string object_name;
 std::string subject_name;
 std::string segment_name;
@@ -44,10 +49,12 @@ ros::Time last_timestamp;
 Eigen::Vector3d pos_drone_mocap; //无人机当前位置 (optitrack)
 Eigen::Quaterniond q_mocap;
 Eigen::Vector3d Euler_mocap; //无人机当前姿态 (optitrack)
-//vicon定位相关------------------------------------------
-Eigen::Vector3d pos_drone_vicon; //无人机当前位置 (vicon)
+// -------- vicon定位相关 --------
+//无人机当前位置 (vicon)
+Eigen::Vector3d pos_drone_vicon;
 Eigen::Quaterniond q_vicon;
-Eigen::Vector3d Euler_vicon; //无人机当前姿态 (vicon)
+//无人机当前姿态 (vicon)
+Eigen::Vector3d Euler_vicon;
 //---------------------------------------laser定位相关------------------------------------------
 Eigen::Vector3d pos_drone_laser; //无人机当前位置 (laser)
 Eigen::Quaterniond q_laser;
@@ -74,7 +81,7 @@ ros::Publisher trajectory_pub;
 
 prometheus_msgs::Message message;
 prometheus_msgs::DroneState Drone_State;
-nav_msgs::Odometry Drone_odom;
+//nav_msgs::Odometry Drone_odom;
 std::vector<geometry_msgs::PoseStamped> posehistory_vector_;
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>函数声明<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -118,13 +125,13 @@ void optitrack_cb(const geometry_msgs::PoseStamped::ConstPtr &msg){
     int optitrack_frame = 0;
     if (optitrack_frame == 0){
         // Read the Drone Position from the Vrpn Package [Frame: Vicon]  (Vicon to ENU frame)
-        pos_drone_mocap = Eigen::Vector3d(msg->pose.position.x,
-                                          msg->pose.position.y,
-                                          msg->pose.position.z);
+        pos_drone_mocap = Eigen::Vector3d(msg->pose.position.x - pos_offset[0],
+                                          msg->pose.position.y - pos_offset[1],
+                                          msg->pose.position.z - pos_offset[2]);
 
-        pos_drone_mocap[0] = pos_drone_mocap[0] - pos_offset[0];
-        pos_drone_mocap[1] = pos_drone_mocap[1] - pos_offset[1];
-        pos_drone_mocap[2] = pos_drone_mocap[2] - pos_offset[2];
+//        pos_drone_mocap[0] = pos_drone_mocap[0];
+//        pos_drone_mocap[1] = pos_drone_mocap[1];
+//        pos_drone_mocap[2] = pos_drone_mocap[2];
         // Read the Quaternion from the Vrpn Package [Frame: Vicon[ENU]]
         q_mocap = Eigen::Quaterniond(msg->pose.orientation.w,
                                      msg->pose.orientation.x,
@@ -153,27 +160,20 @@ void optitrack_cb(const geometry_msgs::PoseStamped::ConstPtr &msg){
 
 
 void vicon_cb(const geometry_msgs::TransformStamped::ConstPtr& msg){
-    Drone_odom.child_frame_id = child_frame_id;
-    Drone_odom.header.frame_id = frame_id;
-    Drone_odom.header.stamp = msg->header.stamp;
-    Drone_odom.pose.pose.position.x = msg->transform.translation.x;
-    Drone_odom.pose.pose.position.y = msg->transform.translation.y;
-    Drone_odom.pose.pose.position.z = msg->transform.translation.z;
-    Drone_odom.pose.pose.orientation.w = msg->transform.rotation.w;
-    Drone_odom.pose.pose.orientation.x = msg->transform.rotation.x;
-    Drone_odom.pose.pose.orientation.y = msg->transform.rotation.y;
-    Drone_odom.pose.pose.orientation.z = msg->transform.rotation.z;
+    pos_drone_vicon = Eigen::Vector3d(msg->transform.translation.x - pos_offset[0],
+                                      msg->transform.translation.y - pos_offset[1],
+                                      msg->transform.translation.z - pos_offset[2]);
 
-    pos_drone_vicon = Eigen::Vector3d(msg->transform.translation.x,
-                                      msg->transform.translation.y,
-                                      msg->transform.translation.z);
     q_vicon = Eigen::Quaterniond(msg->transform.rotation.w,
                                  msg->transform.rotation.x,
                                  msg->transform.rotation.y,
                                  msg->transform.rotation.z);
-    Euler_vicon = quaternion_to_euler(q_vicon);
 
-//    odom_pub.publish(Drone_odom);
+    Euler_vicon = quaternion_to_euler(q_vicon);
+    // 将偏移量添加到欧拉角中
+    Euler_vicon[0] -= yaw_offset;    // 偏航
+    Euler_vicon[1] -= pitch_offset;  // 俯仰
+    Euler_vicon[2] -= roll_offset;   // 横滚
 }
 
 
@@ -214,6 +214,7 @@ void slam_cb(const geometry_msgs::PoseStamped::ConstPtr &msg){
         pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "wrong slam frame id.");
     }
 }
+
 
 void t265_cb(const nav_msgs::Odometry::ConstPtr &msg){
     if (msg->header.frame_id == "t265_odom_frame"){
@@ -258,19 +259,26 @@ int main(int argc, char **argv){
      */
 
     nh.param<int>("input_source", input_source, 6);
-    // 动作捕捉设备中设定的刚体名字
-    nh.param<string>("object_name", object_name, "p450");
+
     //　程序执行频率
     nh.param<float>("rate_hz", rate_hz, 100);
-    //　定位设备偏移量
-    nh.param<float>("offset_x", pos_offset[0], 0);
-    nh.param<float>("offset_y", pos_offset[1], 0);
-    nh.param<float>("offset_z", pos_offset[2], 0);
-    nh.param<float>("offset_yaw", yaw_offset, 0);
-    nh.param<string>("subject_name",subject_name, "p450");
-    nh.param<string>("segment_name",segment_name, "p450");
+
+    // TODO: redefined in pub_tp_fcu???
     nh.param<string>("child_frame_id",child_frame_id, "base_link");
     nh.param<string>("frame_id",frame_id, "odom");
+
+    // 动作捕捉设备中设定的刚体名字
+    nh.param<string>("object_name", object_name, "p450");
+    nh.param<string>("subject_name",subject_name, "p450");
+    nh.param<string>("segment_name",segment_name, "p450");
+
+    //　定位设备偏移量
+    nh.param<float>("offset_x", pos_offset[0], 0.0);
+    nh.param<float>("offset_y", pos_offset[1], 0.0);
+    nh.param<float>("offset_z", pos_offset[2], 0.0);
+    nh.param<float>("offset_yaw", yaw_offset, 0.0);
+    nh.param<float>("offset_pitch", pitch_offset, 0.0);
+    nh.param<float>("offset_roll", roll_offset, 0.0);
 
     // 【订阅】optitrack估计位置
     ros::Subscriber optitrack_sub = nh.subscribe<geometry_msgs::PoseStamped>("/vrpn_client_node/"+ object_name + "/pose", 100, optitrack_cb);
@@ -349,6 +357,14 @@ void send_to_fcu(){
         vision.pose.orientation.y = q_vicon.y();
         vision.pose.orientation.z = q_vicon.z();
         vision.pose.orientation.w = q_vicon.w();
+    }else if (input_source == 3){
+        vision.pose.position.x = pos_drone_t265[0];
+        vision.pose.position.y = pos_drone_t265[1];
+        vision.pose.position.z = pos_drone_t265[2];
+        vision.pose.orientation.x = q_t265.x();
+        vision.pose.orientation.y = q_t265.y();
+        vision.pose.orientation.z = q_t265.z();
+        vision.pose.orientation.w = q_t265.w();
     }else if (input_source == 1){
         // laser
         vision.pose.position.x = pos_drone_laser[0];
@@ -356,7 +372,6 @@ void send_to_fcu(){
         vision.pose.position.z = pos_drone_laser[2];
         //目前为二维雷达仿真情况，故z轴使用其他来源
         vision.pose.position.z = pos_drone_gazebo[2];
-
         vision.pose.orientation.x = q_laser.x();
         vision.pose.orientation.y = q_laser.y();
         vision.pose.orientation.z = q_laser.z();
@@ -365,25 +380,14 @@ void send_to_fcu(){
         vision.pose.position.x = pos_drone_gazebo[0];
         vision.pose.position.y = pos_drone_gazebo[1];
         vision.pose.position.z = pos_drone_gazebo[2];
-
         vision.pose.orientation.x = q_gazebo.x();
         vision.pose.orientation.y = q_gazebo.y();
         vision.pose.orientation.z = q_gazebo.z();
         vision.pose.orientation.w = q_gazebo.w();
-    }else if (input_source == 3){
-        vision.pose.position.x = pos_drone_t265[0];
-        vision.pose.position.y = pos_drone_t265[1];
-        vision.pose.position.z = pos_drone_t265[2];
-
-        vision.pose.orientation.x = q_t265.x();
-        vision.pose.orientation.y = q_t265.y();
-        vision.pose.orientation.z = q_t265.z();
-        vision.pose.orientation.w = q_t265.w();
     }else if (input_source == 4){
         vision.pose.position.x = pos_drone_slam[0];
         vision.pose.position.y = pos_drone_slam[1];
         vision.pose.position.z = pos_drone_slam[2];
-
         vision.pose.orientation.x = q_slam.x();
         vision.pose.orientation.y = q_slam.y();
         vision.pose.orientation.z = q_slam.z();
@@ -408,6 +412,7 @@ void pub_to_nodes(prometheus_msgs::DroneState State_from_fcu){
     // 发布无人机当前odometry,用于导航及rviz显示
     nav_msgs::Odometry Drone_odom;
     Drone_odom.header.stamp = ros::Time::now();
+    // TODO: what the hell???
     Drone_odom.header.frame_id = "world";
     Drone_odom.child_frame_id = "base_link";
 

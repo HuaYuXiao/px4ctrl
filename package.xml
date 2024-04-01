@@ -1,12 +1,12 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>prometheus_control</name>
-  <version>0.0.0</version>
+  <version>1.1.0</version>
   <description>The prometheus_control package</description>
 
-  <maintainer email="fatmoonqyp@126.com">Yuhua Qi</maintainer>
+  <maintainer email="hyx020222@gmail.com">Eason Hua</maintainer>
   <author email="fatmoonqyp@126.com">Yuhua Qi</author>
-  <license>TODO</license>
+  <license>MIT</license>
 
   <url type="website">http://www.amovauto.com/</url>
   <url type="repository">https://github.com/potato77/prometheus_control.git</url>
@@ -18,9 +18,6 @@
   <build_depend>std_msgs</build_depend>
   <build_export_depend>std_msgs</build_export_depend>
   <exec_depend>std_msgs</exec_depend>
-
-
-
 
   <export>
 
