@@ -1,15 +1,15 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>prometheus_control</name>
-  <version>1.1.0</version>
-  <description>The prometheus_control package</description>
+  <version>1.2.0</version>
+  <description>A ROS package for controlling Prometheus P450</description>
 
   <maintainer email="hyx020222@gmail.com">Eason Hua</maintainer>
   <author email="fatmoonqyp@126.com">Yuhua Qi</author>
   <license>MIT</license>
 
   <url type="website">http://www.amovauto.com/</url>
-  <url type="repository">https://github.com/potato77/prometheus_control.git</url>
+  <url type="repository">https://github.com/HuaYuXiao/uav_control.git</url>
 
   <build_depend>message_generation</build_depend>
   <exec_depend>message_runtime</exec_depend>
