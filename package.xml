@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>uav_control</name>
-  <version>2.0.0</version>
-  <description>A ROS package for controlling Prometheus P450</description>
+  <version>2.1.0</version>
+  <description>A ROS package for indoor controlling Prometheus P450</description>
 
   <maintainer email="hyx020222@gmail.com">Eason Hua</maintainer>
   <author email="fatmoonqyp@126.com">Yuhua Qi</author>
@@ -15,11 +15,13 @@
   <exec_depend>message_runtime</exec_depend>
 
   <buildtool_depend>catkin</buildtool_depend>
+
   <build_depend>std_msgs</build_depend>
+
   <build_export_depend>std_msgs</build_export_depend>
+
   <exec_depend>std_msgs</exec_depend>
 
   <export>
-
   </export>
 </package>
