@@ -1,6 +1,23 @@
 <launch>
     <!-- 启动Prometheus代码 -->
     <group ns="uav_control">
+        <arg name="uav_id" default="1"/>
+        <arg name="sim_mode" default="true"/>
+        <arg name="flag_printf" default="true"/>
+        <!-- 如果是matlab配置为ATT_CTRL_MODE，则此处要设置为True-->
+        <arg name="control/enable_external_control" default="true"/>
+        <arg name="launch_prefix" default="gnome-terminal --tab --"/>
+
+        <!-- 启动uav_control_main -->
+        <node pkg="uav_control" type="uav_control_main" name="uav_control_main_$(arg uav_id)" output="screen" launch-prefix="$(arg launch_prefix)">
+            <param name="uav_id" value="$(arg uav_id)" />
+            <param name="sim_mode" value="$(arg sim_mode)" />
+            <param name="flag_printf" value="$(arg flag_printf)"/>
+            <param name="control/enable_external_control" value="$(arg control/enable_external_control)" />
+            <rosparam command="load" file="$(find uav_control)/config/uav_control_indoor.yaml"/>
+            <rosparam command="load" file="$(find uav_control)/config/sensor_tf_offset.yaml" />
+        </node>
+
         <!-- run the px4_pos_estimator.cpp -->
         <node pkg="uav_control" type="px4_pos_estimator" name="px4_pos_estimator" output="screen">
             <!--
@@ -23,7 +40,7 @@
 
         <!-- run the px4_sender.cpp -->
         <node pkg="uav_control" type="px4_sender" name="px4_sender" output="screen">
-            <rosparam command="load" file="$(find uav_control)/config/px4_sender.yaml"/>
+            <rosparam command="load" file="$(find uav_control)/config/uav_control_indoor.yaml"/>
         </node>
 
         <!-- 启动虚拟摇杆驱动 -->
@@ -31,8 +48,8 @@
         </node>
 
         <!-- run the terminal_control.cpp -->
-        <node pkg="uav_control" type="terminal_control" name="terminal_control" output="screen" launch-prefix="gnome-terminal --">
-            <rosparam command="load" file="$(find uav_control)/config/px4_sender.yaml" />
+        <node pkg="uav_control" type="terminal_control" name="terminal_control" output="screen" launch-prefix="$(arg launch_prefix)">
+            <rosparam command="load" file="$(find uav_control)/config/uav_control_indoor.yaml"/>
         </node>
     </group>
 </launch>
