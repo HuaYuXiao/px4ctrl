@@ -130,10 +130,10 @@ int main(int argc, char **argv){
     // 10秒定时打印，以确保程序在正确运行
     ros::Timer timer = nh.createTimer(ros::Duration(10.0), timerCallback);
     // 参数读取
-    nh.param<float>("Takeoff_height", Takeoff_height, 0.4);
-    nh.param<float>("Disarm_height", Disarm_height, 0.15);
-    nh.param<float>("Land_speed", Land_speed, 0.2);
-    nh.param<int>("Land_mode",Land_mode,0);
+    nh.param<float>("control/Takeoff_height", Takeoff_height, 0.4);
+    nh.param<float>("control/Disarm_height", Disarm_height, 0.15);
+    nh.param<float>("control/Land_speed", Land_speed, 0.2);
+    nh.param<int>("control/Land_mode",Land_mode,0);
 
     nh.param<float>("geo_fence/x_min", geo_fence_x[0], -100.0);
     nh.param<float>("geo_fence/x_max", geo_fence_x[1], 100.0);
