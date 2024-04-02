@@ -1,5 +1,7 @@
 # UAV control
 
+针对阿木家的飞控[control](https://github.com/amov-lab/Prometheus/tree/v1.1/Modules/control)做了一些补充，加入VICON定位源。
+
 ![HitCount](https://img.shields.io/endpoint?url=https%3A%2F%2Fhits.dwyl.com%2FHuaYuXiao%2Fuav_control.json%3Fcolor%3Dpink)
 ![Static Badge](https://img.shields.io/badge/ROS-melodic-22314E?logo=ros)
 ![Static Badge](https://img.shields.io/badge/C%2B%2B-11-00599C?logo=cplusplus)
