@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(prometheus_control)
+project(uav_control)
 
 # Compile as C++11, supported in ROS Kinetic and newer
  add_compile_options(-std=c++11)
@@ -21,6 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   tf2_ros
   tf2_eigen
+        tf2_geometry_msgs
   mavros_msgs
   prometheus_msgs
 )
@@ -36,6 +37,7 @@ generate_messages(
   nav_msgs
   sensor_msgs
   std_msgs
+        prometheus_msgs
 )
 
 catkin_package(
@@ -51,24 +53,16 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-  include
-  ${catkin_INCLUDE_DIRS}
-  ../common/include
+        ${catkin_INCLUDE_DIRS}
+        include
+        include/Position_Controller
+        ../common/include
 )
 
 
 ###############################
 ##      声明可执行cpp文件     ##
 ###############################
-
-add_library(OptiTrackFeedbackRigidBody src/lib/OptiTrackFeedBackRigidBody.cpp)
-add_library(KeyboardEvent src/lib/KeyboardEvent.cpp)
-
-###### Main File ##########
-##rover_pos_controller.cpp
-add_executable(rover_pos_controller src/rover_control/rover_pos_controller.cpp)
-add_dependencies(rover_pos_controller prometheus_control_gencpp) 
-target_link_libraries(rover_pos_controller ${catkin_LIBRARIES})
 
 ##px4_pos_controller.cpp
 add_executable(px4_pos_controller src/px4_pos_controller.cpp)
@@ -81,15 +75,44 @@ add_dependencies(px4_pos_estimator prometheus_control_gencpp)
 target_link_libraries(px4_pos_estimator ${catkin_LIBRARIES})
 target_link_libraries(px4_pos_estimator OptiTrackFeedbackRigidBody)
 
+add_executable(px4_sender src/px4_sender.cpp)
+add_dependencies(px4_sender prometheus_control_gencpp)
+target_link_libraries(px4_sender ${catkin_LIBRARIES})
+
+add_executable(joy_node src/Utilities/joy_node.cpp)
+target_link_libraries(joy_node ${catkin_LIBRARIES})
+
+add_executable(terminal_control src/Utilities/terminal_control.cpp)
+add_dependencies(terminal_control prometheus_control_gencpp)
+target_link_libraries(terminal_control ${catkin_LIBRARIES})
+target_link_libraries(terminal_control KeyboardEvent)
+
+add_library(uav_controller src/uav_controller.cpp)
+add_library(uav_estimator src/uav_estimator.cpp)
+target_link_libraries(uav_estimator ${catkin_LIBRARIES})
+
+add_executable(uav_control_main src/uav_control_node.cpp)
+add_dependencies(uav_control_main prometheus_uav_control_gencpp)
+target_link_libraries(uav_control_main ${catkin_LIBRARIES})
+target_link_libraries(uav_control_main uav_controller)
+target_link_libraries(uav_control_main uav_estimator)
+
+
+# Below are not used in this project
+
 ###### Test File ##########
 #add_executable(px4_fw_controller src/Test/px4_fw_controller.cpp)
 #add_dependencies(px4_fw_controller prometheus_control_gencpp)
 #target_link_libraries(px4_fw_controller ${catkin_LIBRARIES})
 
-add_executable(px4_sender src/px4_sender.cpp)
-add_dependencies(px4_sender prometheus_control_gencpp)
-target_link_libraries(px4_sender ${catkin_LIBRARIES})
+add_library(OptiTrackFeedbackRigidBody src/lib/OptiTrackFeedBackRigidBody.cpp)
+add_library(KeyboardEvent src/lib/KeyboardEvent.cpp)
 
+###### Main File ##########
+##rover_pos_controller.cpp
+add_executable(rover_pos_controller src/rover_control/rover_pos_controller.cpp)
+add_dependencies(rover_pos_controller prometheus_control_gencpp)
+target_link_libraries(rover_pos_controller ${catkin_LIBRARIES})
 
 ###### Utilities File ##########
 #add_executable(keyboard_control src/Utilities/keyboard_control.cpp)
@@ -112,11 +135,6 @@ target_link_libraries(fake_vicon ${catkin_LIBRARIES})
 add_executable(rc_control src/Utilities/rc_control.cpp)
 add_dependencies(rc_control prometheus_control_gencpp)
 target_link_libraries(rc_control ${catkin_LIBRARIES})
-
-add_executable(terminal_control src/Utilities/terminal_control.cpp)
-add_dependencies(terminal_control prometheus_control_gencpp)
-target_link_libraries(terminal_control ${catkin_LIBRARIES})
-target_link_libraries(terminal_control KeyboardEvent)
 
 add_executable(terminal_control_rover src/Utilities/terminal_control_rover.cpp)
 add_dependencies(terminal_control_rover prometheus_control_gencpp)
