@@ -10,8 +10,15 @@
             1 for 激光SLAM,
             2 for gazebo ground truth(仿真用)
             -->
-            <!-- TODO 1. provide a choice for the user 2. mix source for odom -->
+            <!-- TODO: mix source for odom -->
             <param name="input_source" value="6"/>
+            <!-- offset -->
+            <param name="offset_x" value="0.0"/>
+            <param name="offset_y" value="0.0"/>
+            <param name="offset_z" value="0.0"/>
+            <param name="offset_yaw" value="0.73"/>
+            <param name="offset_pitch" value="0.73"/>
+            <param name="offset_roll" value="-0.09"/>
         </node>
 
         <!-- run the px4_sender.cpp -->
