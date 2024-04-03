@@ -135,12 +135,12 @@ int main(int argc, char **argv){
     nh.param<float>("control/Land_speed", Land_speed, 0.2);
     nh.param<int>("control/Land_mode",Land_mode,0);
 
-    nh.param<float>("geo_fence/x_min", geo_fence_x[0], -100.0);
-    nh.param<float>("geo_fence/x_max", geo_fence_x[1], 100.0);
-    nh.param<float>("geo_fence/y_min", geo_fence_y[0], -100.0);
-    nh.param<float>("geo_fence/y_max", geo_fence_y[1], 100.0);
-    nh.param<float>("geo_fence/z_min", geo_fence_z[0], -100.0);
-    nh.param<float>("geo_fence/z_max", geo_fence_z[1], 100.0);
+    nh.param<float>("geo_fence/x_min", geo_fence_x[0], -20.0);
+    nh.param<float>("geo_fence/x_max", geo_fence_x[1], 20.0);
+    nh.param<float>("geo_fence/y_min", geo_fence_y[0], -20.0);
+    nh.param<float>("geo_fence/y_max", geo_fence_y[1], 20.0);
+    nh.param<float>("geo_fence/z_min", geo_fence_z[0], -20.0);
+    nh.param<float>("geo_fence/z_max", geo_fence_z[1], 10.0);
 
     // 设定起飞位置
     Takeoff_position[0] = 0.0;
