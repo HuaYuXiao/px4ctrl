@@ -75,6 +75,7 @@ target_link_libraries(px4_pos_controller ${catkin_LIBRARIES})
 #target_link_libraries(px4_geometry_controller ${catkin_LIBRARIES})
 
 ##px4_pos_estimator.cpp
+add_library(OptiTrackFeedbackRigidBody src/lib/OptiTrackFeedBackRigidBody.cpp)
 add_executable(px4_pos_estimator src/px4_pos_estimator.cpp)
 add_dependencies(px4_pos_estimator prometheus_control_gencpp)
 target_link_libraries(px4_pos_estimator ${catkin_LIBRARIES})
@@ -87,6 +88,7 @@ target_link_libraries(px4_sender ${catkin_LIBRARIES})
 add_executable(joy_node src/Utilities/joy_node.cpp)
 target_link_libraries(joy_node ${catkin_LIBRARIES})
 
+add_library(KeyboardEvent src/lib/KeyboardEvent.cpp)
 add_executable(terminal_control src/Utilities/terminal_control.cpp)
 add_dependencies(terminal_control prometheus_control_gencpp)
 target_link_libraries(terminal_control ${catkin_LIBRARIES})
