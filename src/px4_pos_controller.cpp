@@ -66,12 +66,14 @@ ros::Publisher rivz_ref_pose_pub;
 ros::Publisher message_pub;
 ros::Publisher log_message_pub;
 Eigen::Vector3d throttle_sp;
+
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>函数声明<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 int check_failsafe();
 void printf_param();
 void Body_to_ENU();
 void add_disturbance();
 geometry_msgs::PoseStamped get_ref_pose_rviz(const prometheus_msgs::ControlCommand& cmd, const prometheus_msgs::AttitudeReference& att_ref);
+
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>回调函数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 void Command_cb(const prometheus_msgs::ControlCommand::ConstPtr& msg)
 {
@@ -90,6 +92,7 @@ void Command_cb(const prometheus_msgs::ControlCommand::ConstPtr& msg)
         Command_Now = Command_Last;
     }
 }
+
 void station_command_cb(const prometheus_msgs::ControlCommand::ConstPtr& msg)
 {
     Command_Now = *msg;
@@ -123,42 +126,37 @@ int main(int argc, char **argv)
     //【订阅】指令
     // 本话题为任务模块生成的控制指令
     ros::Subscriber Command_sub = nh.subscribe<prometheus_msgs::ControlCommand>("/prometheus/control_command", 10, Command_cb);
-
     //【订阅】指令
     // 本话题为Prometheus地面站发送的控制指令
     ros::Subscriber station_command_sub = nh.subscribe<prometheus_msgs::ControlCommand>("/prometheus/control_command_station", 10, station_command_cb);
-
     //【订阅】无人机状态
     // 本话题来自px4_pos_estimator.cpp
     ros::Subscriber drone_state_sub = nh.subscribe<prometheus_msgs::DroneState>("/prometheus/drone_state", 10, drone_state_cb);
 
     //【发布】位置控制器的输出量:期望姿态
     att_ref_pub = nh.advertise<prometheus_msgs::AttitudeReference>("/prometheus/control/attitude_reference", 10);
-
     //【发布】参考位姿 RVIZ显示用
     rivz_ref_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/prometheus/control/ref_pose_rviz", 10);
-
     // 【发布】用于地面站显示的提示消息
     message_pub = nh.advertise<prometheus_msgs::Message>("/prometheus/message/main", 10);
-
     // 【发布】用于log的消息
     log_message_pub = nh.advertise<prometheus_msgs::LogMessageControl>("/prometheus/log/control", 10);
 
     // 10秒定时打印，以确保程序在正确运行
-    ros::Timer timer = nh.createTimer(ros::Duration(10.0), timerCallback);
+    ros::Timer timer = nh.createTimer(ros::Duration(1.0), timerCallback);
 
     // 参数读取
-    nh.param<string>("controller_type", controller_type, "default");
-    nh.param<float>("Takeoff_height", Takeoff_height, 1.5);
-    nh.param<float>("Disarm_height", Disarm_height, 0.15);
-    nh.param<float>("Land_speed", Land_speed, 0.2);
+    nh.param<string>("control/controller_type", controller_type, "default");
+    nh.param<float>("control/Takeoff_height", Takeoff_height, 0.4);
+    nh.param<float>("control/Disarm_height", Disarm_height, 0.15);
+    nh.param<float>("control/Land_speed", Land_speed, 0.2);
 
-    nh.param<float>("geo_fence/x_min", geo_fence_x[0], -100.0);
-    nh.param<float>("geo_fence/x_max", geo_fence_x[1], 100.0);
-    nh.param<float>("geo_fence/y_min", geo_fence_y[0], -100.0);
-    nh.param<float>("geo_fence/y_max", geo_fence_y[1], 100.0);
-    nh.param<float>("geo_fence/z_min", geo_fence_z[0], -100.0);
-    nh.param<float>("geo_fence/z_max", geo_fence_z[1], 100.0);
+    nh.param<float>("geo_fence/x_min", geo_fence_x[0], -20.0);
+    nh.param<float>("geo_fence/x_max", geo_fence_x[1], 20.0);
+    nh.param<float>("geo_fence/y_min", geo_fence_y[0], -20.0);
+    nh.param<float>("geo_fence/y_max", geo_fence_y[1], 20.0);
+    nh.param<float>("geo_fence/z_min", geo_fence_z[0], -20.0);
+    nh.param<float>("geo_fence/z_max", geo_fence_z[1], 10.0);
 
     nh.param<float>("disturbance_a_xy", disturbance_a_xy, 0.5);
     nh.param<float>("disturbance_b_xy", disturbance_b_xy, 0.0);
