@@ -62,7 +62,6 @@ int main(int argc, char **argv)
 
     //　【发布】　控制指令
     move_pub = nh.advertise<prometheus_msgs::ControlCommand>("/prometheus/control_command", 10);
-
     //　【发布】　参考轨迹
     ref_trajectory_pub = nh.advertise<nav_msgs::Path>("/prometheus/reference_trajectory", 10);
     
@@ -131,7 +130,7 @@ void mainloop1()
     {
         // Waiting for input
         cout << ">>>>>>>>>>>>>>>> Welcome to use Prometheus Terminal Control <<<<<<<<<<<<<<<<"<< endl;
-        cout << "Please choose the Command.Mode: 0 for Idle, 1 for Takeoff, 2 for Hold, 3 for Land, 4 for Move, 5 for Disarm, 6 for User_Mode1, 7 for User_Mode2"<<endl;
+        cout << "Please choose the Command.Mode: 0 for Idle, 1 for Takeoff, 2 for Hold, 3 for Land, 4 for Move, 5 for Disarm"<<endl;
         cout << "Input 999 to switch to offboard mode and arm the drone (ONLY for simulation, please use RC in experiment!!!)"<<endl;
         cin  >> Control_Mode;
 

@@ -69,6 +69,11 @@ add_executable(px4_pos_controller src/px4_pos_controller.cpp)
 add_dependencies(px4_pos_controller prometheus_control_gencpp) 
 target_link_libraries(px4_pos_controller ${catkin_LIBRARIES})
 
+##px4_geometry_controller.cpp
+#add_executable(px4_geometry_controller src/px4_geometry_controller.cpp)
+#add_dependencies(px4_geometry_controller prometheus_control_gencpp)
+#target_link_libraries(px4_geometry_controller ${catkin_LIBRARIES})
+
 ##px4_pos_estimator.cpp
 add_executable(px4_pos_estimator src/px4_pos_estimator.cpp)
 add_dependencies(px4_pos_estimator prometheus_control_gencpp)
@@ -87,16 +92,6 @@ add_dependencies(terminal_control prometheus_control_gencpp)
 target_link_libraries(terminal_control ${catkin_LIBRARIES})
 target_link_libraries(terminal_control KeyboardEvent)
 
-add_library(uav_controller src/uav_controller.cpp)
-add_library(uav_estimator src/uav_estimator.cpp)
-target_link_libraries(uav_estimator ${catkin_LIBRARIES})
-
-add_executable(uav_control_main src/uav_control_node.cpp)
-add_dependencies(uav_control_main prometheus_uav_control_gencpp)
-target_link_libraries(uav_control_main ${catkin_LIBRARIES})
-target_link_libraries(uav_control_main uav_controller)
-target_link_libraries(uav_control_main uav_estimator)
-
 
 # Below are not used in this project
 
@@ -105,14 +100,14 @@ target_link_libraries(uav_control_main uav_estimator)
 #add_dependencies(px4_fw_controller prometheus_control_gencpp)
 #target_link_libraries(px4_fw_controller ${catkin_LIBRARIES})
 
-add_library(OptiTrackFeedbackRigidBody src/lib/OptiTrackFeedBackRigidBody.cpp)
-add_library(KeyboardEvent src/lib/KeyboardEvent.cpp)
+#add_library(OptiTrackFeedbackRigidBody src/lib/OptiTrackFeedBackRigidBody.cpp)
+#add_library(KeyboardEvent src/lib/KeyboardEvent.cpp)
 
 ###### Main File ##########
 ##rover_pos_controller.cpp
-add_executable(rover_pos_controller src/rover_control/rover_pos_controller.cpp)
-add_dependencies(rover_pos_controller prometheus_control_gencpp)
-target_link_libraries(rover_pos_controller ${catkin_LIBRARIES})
+#add_executable(rover_pos_controller src/rover_control/rover_pos_controller.cpp)
+#add_dependencies(rover_pos_controller prometheus_control_gencpp)
+#target_link_libraries(rover_pos_controller ${catkin_LIBRARIES})
 
 ###### Utilities File ##########
 #add_executable(keyboard_control src/Utilities/keyboard_control.cpp)
@@ -120,39 +115,39 @@ target_link_libraries(rover_pos_controller ${catkin_LIBRARIES})
 #target_link_libraries(keyboard_control ${catkin_LIBRARIES})
 #target_link_libraries(keyboard_control KeyboardEvent)
 
-add_executable(filter_tester src/Utilities/filter_tester.cpp)
-add_dependencies(filter_tester prometheus_control_gencpp)
-target_link_libraries(filter_tester ${catkin_LIBRARIES})
+#add_executable(filter_tester src/Utilities/filter_tester.cpp)
+#add_dependencies(filter_tester prometheus_control_gencpp)
+#target_link_libraries(filter_tester ${catkin_LIBRARIES})
 
-add_executable(TFmini src/Utilities/TFmini.cpp)
-add_dependencies(TFmini prometheus_control_gencpp)
-target_link_libraries(TFmini ${catkin_LIBRARIES})
+#add_executable(TFmini src/Utilities/TFmini.cpp)
+#add_dependencies(TFmini prometheus_control_gencpp)
+#target_link_libraries(TFmini ${catkin_LIBRARIES})
 
-add_executable(fake_vicon src/Utilities/fake_vicon.cpp)
-add_dependencies(fake_vicon prometheus_control_gencpp)
-target_link_libraries(fake_vicon ${catkin_LIBRARIES})
+#add_executable(fake_vicon src/Utilities/fake_vicon.cpp)
+#add_dependencies(fake_vicon prometheus_control_gencpp)
+#target_link_libraries(fake_vicon ${catkin_LIBRARIES})
 
-add_executable(rc_control src/Utilities/rc_control.cpp)
-add_dependencies(rc_control prometheus_control_gencpp)
-target_link_libraries(rc_control ${catkin_LIBRARIES})
+#add_executable(rc_control src/Utilities/rc_control.cpp)
+#add_dependencies(rc_control prometheus_control_gencpp)
+#target_link_libraries(rc_control ${catkin_LIBRARIES})
 
-add_executable(terminal_control_rover src/Utilities/terminal_control_rover.cpp)
-add_dependencies(terminal_control_rover prometheus_control_gencpp)
-target_link_libraries(terminal_control_rover ${catkin_LIBRARIES})
+#add_executable(terminal_control_rover src/Utilities/terminal_control_rover.cpp)
+#add_dependencies(terminal_control_rover prometheus_control_gencpp)
+#target_link_libraries(terminal_control_rover ${catkin_LIBRARIES})
 
-add_executable(OptiTrackTest src/Utilities/OptiTrackTest.cpp)
-add_dependencies(OptiTrackTest prometheus_control_gencpp)
-target_link_libraries(OptiTrackTest ${catkin_LIBRARIES})
-target_link_libraries(OptiTrackTest OptiTrackFeedbackRigidBody)
-target_link_libraries(OptiTrackTest KeyboardEvent)
+#add_executable(OptiTrackTest src/Utilities/OptiTrackTest.cpp)
+#add_dependencies(OptiTrackTest prometheus_control_gencpp)
+#target_link_libraries(OptiTrackTest ${catkin_LIBRARIES})
+#target_link_libraries(OptiTrackTest OptiTrackFeedbackRigidBody)
+#target_link_libraries(OptiTrackTest KeyboardEvent)
 
-add_executable(set_mode src/Utilities/set_mode.cpp)
-add_dependencies(set_mode prometheus_control_gencpp)
-target_link_libraries(set_mode ${catkin_LIBRARIES})
+#add_executable(set_mode src/Utilities/set_mode.cpp)
+#add_dependencies(set_mode prometheus_control_gencpp)
+#target_link_libraries(set_mode ${catkin_LIBRARIES})
 
-add_executable(eigen_test src/Utilities/eigen_test.cpp)
-add_dependencies(eigen_test prometheus_control_gencpp)
-target_link_libraries(eigen_test ${catkin_LIBRARIES})
+#add_executable(eigen_test src/Utilities/eigen_test.cpp)
+#add_dependencies(eigen_test prometheus_control_gencpp)
+#target_link_libraries(eigen_test ${catkin_LIBRARIES})
 #############
 ## Install ##
 #############
@@ -188,8 +183,8 @@ install(DIRECTORY include/${PROJECT_NAME}/
 )
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
-install(DIRECTORY launch/
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch/
+install(DIRECTORY launch
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
 )
 
 #############

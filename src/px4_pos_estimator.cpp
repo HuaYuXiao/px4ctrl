@@ -289,7 +289,7 @@ int main(int argc, char **argv){
     //  【订阅】t265估计位置
     ros::Subscriber t265_sub = nh.subscribe<nav_msgs::Odometry>("/t265/odom/sample", 100, t265_cb);
     // 【订阅】gazebo仿真真值
-    ros::Subscriber gazebo_sub = nh.subscribe<nav_msgs::Odometry>("/prometheus/ground_truth/p300_basic", 100, gazebo_cb);
+    ros::Subscriber gazebo_sub = nh.subscribe<nav_msgs::Odometry>("/prometheus/ground_truth/p450_basic", 100, gazebo_cb);
     // 【订阅】SLAM估计位姿
     ros::Subscriber slam_sub = nh.subscribe<geometry_msgs::PoseStamped>("/slam/pose", 100, slam_cb);
 
@@ -306,7 +306,7 @@ int main(int argc, char **argv){
     message_pub = nh.advertise<prometheus_msgs::Message>("/prometheus/message/main", 10);
 
     // 10秒定时打印，以确保程序在正确运行
-    ros::Timer timer = nh.createTimer(ros::Duration(10.0), timerCallback);
+    ros::Timer timer = nh.createTimer(ros::Duration(1.0), timerCallback);
 
     // 用于与mavros通讯的类，通过mavros接收来至飞控的消息【飞控->mavros->本程序】
     state_from_mavros _state_from_mavros;
