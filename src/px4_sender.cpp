@@ -161,16 +161,16 @@ int main(int argc, char **argv){
     Command_Now.Command_ID                          = 0;
     Command_Now.Reference_State.Move_mode           = prometheus_msgs::PositionReference::XYZ_POS;
     Command_Now.Reference_State.Move_frame          = prometheus_msgs::PositionReference::ENU_FRAME;
-    Command_Now.Reference_State.position_ref[0]     = 0;
-    Command_Now.Reference_State.position_ref[1]     = 0;
-    Command_Now.Reference_State.position_ref[2]     = 0;
-    Command_Now.Reference_State.velocity_ref[0]     = 0;
-    Command_Now.Reference_State.velocity_ref[1]     = 0;
-    Command_Now.Reference_State.velocity_ref[2]     = 0;
-    Command_Now.Reference_State.acceleration_ref[0] = 0;
-    Command_Now.Reference_State.acceleration_ref[1] = 0;
-    Command_Now.Reference_State.acceleration_ref[2] = 0;
-    Command_Now.Reference_State.yaw_ref             = 0;
+    Command_Now.Reference_State.position_ref[0]     = 0.0;
+    Command_Now.Reference_State.position_ref[1]     = 0.0;
+    Command_Now.Reference_State.position_ref[2]     = 0.0;
+    Command_Now.Reference_State.velocity_ref[0]     = 0.0;
+    Command_Now.Reference_State.velocity_ref[1]     = 0.0;
+    Command_Now.Reference_State.velocity_ref[2]     = 0.0;
+    Command_Now.Reference_State.acceleration_ref[0] = 0.0;
+    Command_Now.Reference_State.acceleration_ref[1] = 0.0;
+    Command_Now.Reference_State.acceleration_ref[2] = 0.0;
+    Command_Now.Reference_State.yaw_ref             = 0.0;
 
 
     // 记录启控时间
@@ -474,7 +474,6 @@ int main(int argc, char **argv){
             }
             break;
 
-
         // 【Disarm】 上锁
         case prometheus_msgs::ControlCommand::Disarm:
 
@@ -490,16 +489,6 @@ int main(int argc, char **argv){
                 _command_to_mavros.arm_cmd.request.value = false;
                 _command_to_mavros.arming_client.call(_command_to_mavros.arm_cmd);
             }
-            
-            break;
-
-        // 【User_Mode1】 暂空。可进行自定义
-        case prometheus_msgs::ControlCommand::User_Mode1:
-            
-            break;
-
-        // 【User_Mode2】 暂空。可进行自定义
-        case prometheus_msgs::ControlCommand::User_Mode2:
             
             break;
         }

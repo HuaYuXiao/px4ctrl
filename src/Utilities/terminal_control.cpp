@@ -46,8 +46,7 @@ void mainloop1();
 void mainloop2();
 void generate_com(int Move_mode, float state_desired[4]);
 void Draw_in_rviz(const prometheus_msgs::PositionReference& pos_ref, bool draw_trajectory);
-void timerCallback(const ros::TimerEvent& e)
-{
+void timerCallback(const ros::TimerEvent& e){
     cout << ">>>>>>>>>>>>>>>> Welcome to use Prometheus Terminal Control <<<<<<<<<<<<<<<<"<< endl;
     cout << "ENTER key to control the drone: " <<endl;
     cout << "1 for Arm, Space for Takeoff, L for Land, H for Hold, 0 for Disarm, 8/9 for Trajectory tracking" <<endl;
@@ -55,14 +54,12 @@ void timerCallback(const ros::TimerEvent& e)
     cout << "CTRL-C to quit." <<endl;
 }
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>　主函数　<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv){
     ros::init(argc, argv, "terminal_control");
     ros::NodeHandle nh;
 
     //　【发布】　控制指令
     move_pub = nh.advertise<prometheus_msgs::ControlCommand>("/prometheus/control_command", 10);
-
     //　【发布】　参考轨迹
     ref_trajectory_pub = nh.advertise<nav_msgs::Path>("/prometheus/reference_trajectory", 10);
 
@@ -76,16 +73,16 @@ int main(int argc, char **argv)
     Command_to_pub.source = NODE_NAME;
     Command_to_pub.Reference_State.Move_mode           = prometheus_msgs::PositionReference::XYZ_POS;
     Command_to_pub.Reference_State.Move_frame          = prometheus_msgs::PositionReference::ENU_FRAME;
-    Command_to_pub.Reference_State.position_ref[0]     = 0;
-    Command_to_pub.Reference_State.position_ref[1]     = 0;
-    Command_to_pub.Reference_State.position_ref[2]     = 0;
-    Command_to_pub.Reference_State.velocity_ref[0]     = 0;
-    Command_to_pub.Reference_State.velocity_ref[1]     = 0;
-    Command_to_pub.Reference_State.velocity_ref[2]     = 0;
-    Command_to_pub.Reference_State.acceleration_ref[0] = 0;
-    Command_to_pub.Reference_State.acceleration_ref[1] = 0;
-    Command_to_pub.Reference_State.acceleration_ref[2] = 0;
-    Command_to_pub.Reference_State.yaw_ref             = 0;
+    Command_to_pub.Reference_State.position_ref[0]     = 0.0;
+    Command_to_pub.Reference_State.position_ref[1]     = 0.0;
+    Command_to_pub.Reference_State.position_ref[2]     = 0.0;
+    Command_to_pub.Reference_State.velocity_ref[0]     = 0.0;
+    Command_to_pub.Reference_State.velocity_ref[1]     = 0.0;
+    Command_to_pub.Reference_State.velocity_ref[2]     = 0.0;
+    Command_to_pub.Reference_State.acceleration_ref[0] = 0.0;
+    Command_to_pub.Reference_State.acceleration_ref[1] = 0.0;
+    Command_to_pub.Reference_State.acceleration_ref[2] = 0.0;
+    Command_to_pub.Reference_State.yaw_ref             = 0.0;
 
     //固定的浮点显示
     cout.setf(ios::fixed);
@@ -104,12 +101,10 @@ int main(int argc, char **argv)
     cout << "Please choose the Remote Mode: 0 for command input control, 1 for keyboard input control"<<endl;
     cin >> Remote_Mode;
 
-    if (Remote_Mode == 0)
-    {
+    if (Remote_Mode == 0){
         cout << "Command input control mode"<<endl;
         mainloop1();
-    }else if(Remote_Mode == 1)
-    {
+    }else if(Remote_Mode == 1){
         ros::Timer timer = nh.createTimer(ros::Duration(30.0), timerCallback);
         cout << "Keyboard input control mode"<<endl;
         mainloop2();
@@ -118,8 +113,7 @@ int main(int argc, char **argv)
     return 0;
 }
 
-void mainloop1()
-{
+void mainloop1(){
     int Control_Mode = 0;
     int Move_mode = 0;
     int Move_frame = 0;
@@ -127,28 +121,24 @@ void mainloop1()
     float state_desired[4];
     Controller_Test Controller_Test;
 
-    while(ros::ok())
-    {
+    while(ros::ok()){
         // Waiting for input
         cout << ">>>>>>>>>>>>>>>> Welcome to use Prometheus Terminal Control <<<<<<<<<<<<<<<<"<< endl;
-        cout << "Please choose the Command.Mode: 0 for Idle, 1 for Takeoff, 2 for Hold, 3 for Land, 4 for Move, 5 for Disarm, 6 for User_Mode1, 7 for User_Mode2"<<endl;
+        cout << "Please choose the Command.Mode: 0 for Idle, 1 for Takeoff, 2 for Hold, 3 for Land, 4 for Move, 5 for Disarm"<<endl;
         cout << "Input 999 to switch to offboard mode and arm the drone (ONLY for simulation, please use RC in experiment!!!)"<<endl;
         cin  >> Control_Mode;
 
-        if(Control_Mode == prometheus_msgs::ControlCommand::Move)
-        {
+        if(Control_Mode == prometheus_msgs::ControlCommand::Move){
             cout << "Please choose the Command.Reference_State.Move_mode: 0 for XYZ_POS, 1 for XY_POS_Z_VEL, 2 for XY_VEL_Z_POS, 3 for XYZ_VEL, 5 for TRAJECTORY"<<endl;
             cin >> Move_mode;
 
-            if(Move_mode == prometheus_msgs::PositionReference::TRAJECTORY)
-            {
+            if(Move_mode == prometheus_msgs::PositionReference::TRAJECTORY){
                 cout << "For safety, please move the drone near to the trajectory start point firstly!!!"<<endl;
                 cout << "Please choose the trajectory type: 0 for Circle, 1 for Eight Shape, 2 for Step, 3 for Line"<<endl;
                 cin >> Trjectory_mode;
                 cout << "Input the trajectory_total_time:"<<endl;
                 cin >> trajectory_total_time;
-            }else
-            {
+            }else{
                 cout << "Please choose the Command.Reference_State.Move_frame: 0 for ENU_FRAME, 1 for BODY_FRAME"<<endl;
                 cin >> Move_frame;
                 cout << "Please input the reference state [x y z yaw]: "<< endl;
@@ -158,11 +148,10 @@ void mainloop1()
                 cin >> state_desired[1];
                 cout << "setpoint_t[2] --- z [m] : "<< endl;
                 cin >> state_desired[2];
-                cout << "setpoint_t[3] --- yaw [du] : "<< endl;
+                cout << "setpoint_t[3] --- yaw [deg] : "<< endl;
                 cin >> state_desired[3];
             }
-        }else if(Control_Mode == 999)
-        {
+        }else if(Control_Mode == 999){
             Command_to_pub.header.stamp = ros::Time::now();
             Command_to_pub.Mode = prometheus_msgs::ControlCommand::Idle;
             Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
@@ -172,11 +161,11 @@ void mainloop1()
             Command_to_pub.Reference_State.yaw_ref = 0.0;
         }
 
-        switch (Control_Mode)
-        {
+        switch (Control_Mode){
             case prometheus_msgs::ControlCommand::Idle:
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Idle;
+                // TODO: why unreachable?
                 Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
@@ -207,28 +196,22 @@ void mainloop1()
                 break;
 
             case prometheus_msgs::ControlCommand::Move:
-                if(Move_mode == prometheus_msgs::PositionReference::TRAJECTORY)
-                {
+                if(Move_mode == prometheus_msgs::PositionReference::TRAJECTORY){
                     time_trajectory = 0.0;
 
-                    while(time_trajectory < trajectory_total_time)
-                    {
+                    while(time_trajectory < trajectory_total_time){
                         Command_to_pub.header.stamp = ros::Time::now();
                         Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
                         Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
                         Command_to_pub.source = NODE_NAME;
 
-                        if(Trjectory_mode == 0)
-                        {
+                        if(Trjectory_mode == 0){
                             Command_to_pub.Reference_State = Controller_Test.Circle_trajectory_generation(time_trajectory);
-                        }else if(Trjectory_mode == 1)
-                        {
+                        }else if(Trjectory_mode == 1){
                             Command_to_pub.Reference_State = Controller_Test.Eight_trajectory_generation(time_trajectory);
-                        }else if(Trjectory_mode == 2)
-                        {
+                        }else if(Trjectory_mode == 2){
                             Command_to_pub.Reference_State = Controller_Test.Step_trajectory_generation(time_trajectory);
-                        }else if(Trjectory_mode == 3)
-                        {
+                        }else if(Trjectory_mode == 3){
                             Command_to_pub.Reference_State = Controller_Test.Line_trajectory_generation(time_trajectory);
                         }
 
@@ -242,8 +225,7 @@ void mainloop1()
                         ros::Duration(0.01).sleep();
                     }
 
-                }else
-                {
+                }else{
                     Command_to_pub.header.stamp = ros::Time::now();
                     Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
                     Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
@@ -295,8 +277,7 @@ void mainloop1()
     }
 }
 
-void mainloop2()
-{
+void mainloop2(){
     KeyboardEvent keyboardcontrol;
     Controller_Test Controller_Test;
 
@@ -309,18 +290,15 @@ void mainloop2()
     cout << "Move mode is fixed (XYZ_VEL,BODY_FRAME): w/s for body_x, a/d for body_y, k/m for z, q/e for body_yaw" <<endl;
     cout << "CTRL-C to quit." <<endl;
 
-    while (ros::ok())
-    {
+    while (ros::ok()){
         keyboardcontrol.RosWhileLoopRun();
         key_now = keyboardcontrol.GetPressedKey();
-        switch (key_now)
-        {
+        switch (key_now){
 
             //悬停, 应当只发送一次, 不需要循环发送
             case U_KEY_NONE:
 
-                if (key_last != U_KEY_NONE)
-                {
+                if (key_last != U_KEY_NONE){
                     //to be continued.
                 }
                 sleep(0.5);
@@ -407,15 +385,15 @@ void mainloop2()
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Hold;
                 Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
                 Command_to_pub.source = NODE_NAME;
-                Command_to_pub.Reference_State.position_ref[0]     = 0;
-                Command_to_pub.Reference_State.position_ref[1]     = 0;
-                Command_to_pub.Reference_State.position_ref[2]     = 0;
-                Command_to_pub.Reference_State.velocity_ref[0]     = 0;
-                Command_to_pub.Reference_State.velocity_ref[1]     = 0;
-                Command_to_pub.Reference_State.velocity_ref[2]     = 0;
-                Command_to_pub.Reference_State.acceleration_ref[0] = 0;
-                Command_to_pub.Reference_State.acceleration_ref[1] = 0;
-                Command_to_pub.Reference_State.acceleration_ref[2] = 0;
+                Command_to_pub.Reference_State.position_ref[0]     = 0.0;
+                Command_to_pub.Reference_State.position_ref[1]     = 0.0;
+                Command_to_pub.Reference_State.position_ref[2]     = 0.0;
+                Command_to_pub.Reference_State.velocity_ref[0]     = 0.0;
+                Command_to_pub.Reference_State.velocity_ref[1]     = 0.0;
+                Command_to_pub.Reference_State.velocity_ref[2]     = 0.0;
+                Command_to_pub.Reference_State.acceleration_ref[0] = 0.0;
+                Command_to_pub.Reference_State.acceleration_ref[1] = 0.0;
+                Command_to_pub.Reference_State.acceleration_ref[2] = 0.0;
                 move_pub.publish(Command_to_pub);
 
                 sleep(1.0);
@@ -583,8 +561,7 @@ void mainloop2()
                 time_trajectory = 0.0;
                 trajectory_total_time = 50.0;
                 // 需要设置
-                while(time_trajectory < trajectory_total_time)
-                {
+                while(time_trajectory < trajectory_total_time){
                     Command_to_pub.header.stamp = ros::Time::now();
                     Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
                     Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
@@ -608,8 +585,7 @@ void mainloop2()
                 time_trajectory = 0.0;
                 trajectory_total_time = 50.0;
                 // 需要设置
-                while(time_trajectory < trajectory_total_time)
-                {
+                while(time_trajectory < trajectory_total_time){
                     Command_to_pub.header.stamp = ros::Time::now();
                     Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
                     Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
@@ -636,16 +612,14 @@ void mainloop2()
 }
 
 
-void generate_com(int Move_mode, float state_desired[4])
-{
+void generate_com(int Move_mode, float state_desired[4]){
     //# Move_mode 2-bit value:
     //# 0 for position, 1 for vel, 1st for xy, 2nd for z.
     //#                   xy position     xy velocity
     //# z position       	0b00(0)       0b10(2)
     //# z velocity		0b01(1)       0b11(3)
 
-    if(Move_mode == prometheus_msgs::PositionReference::XYZ_ACC)
-    {
+    if(Move_mode == prometheus_msgs::PositionReference::XYZ_ACC){
         cout << "ACC control not support yet." <<endl;
     }
     if((Move_mode & 0b10) == 0) //xy channel
@@ -654,9 +628,7 @@ void generate_com(int Move_mode, float state_desired[4])
         Command_to_pub.Reference_State.position_ref[1] = state_desired[1];
         Command_to_pub.Reference_State.velocity_ref[0] = 0;
         Command_to_pub.Reference_State.velocity_ref[1] = 0;
-    }
-    else
-    {
+    }else{
         Command_to_pub.Reference_State.position_ref[0] = 0;
         Command_to_pub.Reference_State.position_ref[1] = 0;
         Command_to_pub.Reference_State.velocity_ref[0] = state_desired[0];
@@ -667,9 +639,7 @@ void generate_com(int Move_mode, float state_desired[4])
     {
         Command_to_pub.Reference_State.position_ref[2] = state_desired[2];
         Command_to_pub.Reference_State.velocity_ref[2] = 0;
-    }
-    else
-    {
+    }else{
         Command_to_pub.Reference_State.position_ref[2] = 0;
         Command_to_pub.Reference_State.velocity_ref[2] = state_desired[2];
     }
@@ -678,16 +648,14 @@ void generate_com(int Move_mode, float state_desired[4])
     Command_to_pub.Reference_State.acceleration_ref[1] = 0;
     Command_to_pub.Reference_State.acceleration_ref[2] = 0;
 
-    if(Command_to_pub.Reference_State.Yaw_Rate_Mode == 1)
-    {
+    if(Command_to_pub.Reference_State.Yaw_Rate_Mode == 1){
         Command_to_pub.Reference_State.yaw_rate_ref = state_desired[3];
     }else{
         Command_to_pub.Reference_State.yaw_ref = state_desired[3]/180.0*M_PI;
     }
 }
 
-void Draw_in_rviz(const prometheus_msgs::PositionReference& pos_ref, bool draw_trajectory)
-{
+void Draw_in_rviz(const prometheus_msgs::PositionReference& pos_ref, bool draw_trajectory){
     geometry_msgs::PoseStamped reference_pose;
 
     reference_pose.header.stamp = ros::Time::now();
@@ -697,8 +665,7 @@ void Draw_in_rviz(const prometheus_msgs::PositionReference& pos_ref, bool draw_t
     reference_pose.pose.position.y = pos_ref.position_ref[1];
     reference_pose.pose.position.z = pos_ref.position_ref[2];
 
-    if(draw_trajectory)
-    {
+    if(draw_trajectory){
         posehistory_vector_.insert(posehistory_vector_.begin(), reference_pose);
         if(posehistory_vector_.size() > TRA_WINDOW){
             posehistory_vector_.pop_back();
@@ -709,8 +676,7 @@ void Draw_in_rviz(const prometheus_msgs::PositionReference& pos_ref, bool draw_t
         reference_trajectory.header.frame_id = "world";
         reference_trajectory.poses = posehistory_vector_;
         ref_trajectory_pub.publish(reference_trajectory);
-    }else
-    {
+    }else{
         posehistory_vector_.clear();
 
         nav_msgs::Path reference_trajectory;

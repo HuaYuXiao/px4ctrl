@@ -562,7 +562,7 @@ public:
           }
 
           // upload the effect
-          if (update_feedback_ == true)
+          if (update_feedback_)
           {
             int ret = ioctl(ff_fd_, EVIOCSFF, &joy_effect_);
             update_feedback_ = false;
