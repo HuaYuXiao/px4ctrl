@@ -123,14 +123,6 @@ void printf_command_control(const prometheus_msgs::ControlCommand& _ControlComma
         case prometheus_msgs::ControlCommand::Disarm:
             cout << "Command: [ Disarm ] " <<endl;
             break;
-
-        case prometheus_msgs::ControlCommand::User_Mode1:
-            cout << "Command: [ User_Mode1 ] " <<endl;
-            break;
-        
-        case prometheus_msgs::ControlCommand::User_Mode2:
-            cout << "Command: [ User_Mode2 ] " <<endl;
-            break;
     }
 
 }

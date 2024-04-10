@@ -344,11 +344,6 @@ void printf_swarm_state(int swarm_num, int uav_id, string uav_name, const promet
             cout << "Yaw : "  << yaw * 180/M_PI << " [deg] " <<endl;
 
             break;
-
-        case prometheus_msgs::SwarmCommand::User_Mode1:
-            cout << "Command: [ User_Mode1 ] " <<endl;
-            break;
-
     }
 
 }
