@@ -32,14 +32,16 @@ prometheus_msgs::ControlCommand Command_to_pub;
 //轨迹容器
 std::vector<geometry_msgs::PoseStamped> posehistory_vector_;
 
-
 float time_trajectory = 0.0;
-
-
+//Geigraphical fence 地理围栏
+Eigen::Vector2f geo_fence_x;
+Eigen::Vector2f geo_fence_y;
+Eigen::Vector2f geo_fence_z;
 
 //发布
 ros::Publisher move_pub;
 ros::Publisher ref_trajectory_pub;
+
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>　函数声明　<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 void mainloop1();
 void mainloop2();
@@ -63,6 +65,13 @@ int main(int argc, char **argv){
     move_pub = nh.advertise<prometheus_msgs::ControlCommand>("/prometheus/control_command", 10);
     //　【发布】　参考轨迹
     ref_trajectory_pub = nh.advertise<nav_msgs::Path>("/prometheus/reference_trajectory", 10);
+
+    nh.param<float>("geo_fence/x_min", geo_fence_x[0], -20.0);
+    nh.param<float>("geo_fence/x_max", geo_fence_x[1], 20.0);
+    nh.param<float>("geo_fence/y_min", geo_fence_y[0], -20.0);
+    nh.param<float>("geo_fence/y_max", geo_fence_y[1], 20.0);
+    nh.param<float>("geo_fence/z_min", geo_fence_z[0], -0.3);
+    nh.param<float>("geo_fence/z_max", geo_fence_z[1], 10.0);
 
     // 初始化命令 - Idle模式 电机怠速旋转 等待来自上层的控制指令
     Command_to_pub.Mode                                = prometheus_msgs::ControlCommand::Idle;
@@ -137,6 +146,10 @@ void mainloop1(){
     float trajectory_total_time = 50.0;
     bool valid_total_time = false;
     float state_desired[4];
+    bool valid_x_input = false;
+    bool valid_y_input = false;
+    bool valid_z_input = false;
+    bool valid_yaw_input = false;
 
     //用于控制器测试的类，功能例如：生成圆形轨迹，８字轨迹等
     Controller_Test Controller_Test;    // 打印参数
@@ -312,14 +325,77 @@ void mainloop1(){
                         }
 
                         cout << "Please input the reference state [x y z yaw]: " << endl;
-                        cout << "setpoint_t[0] --- x [m] : " << endl;
-                        cin >> state_desired[0];
-                        cout << "setpoint_t[1] --- y [m] : " << endl;
-                        cin >> state_desired[1];
-                        cout << "setpoint_t[2] --- z [m] : " << endl;
-                        cin >> state_desired[2];
-                        cout << "setpoint_t[3] --- yaw [deg] : " << endl;
-                        cin >> state_desired[3];
+                        while (!valid_x_input) {
+                            cout << "setpoint_t[0] --- x [m] : " << endl;
+                            if (cin >> state_desired[0]) {
+                                // Check if x is within the range defined by geo_fence_x
+                                if (state_desired[0] >= geo_fence_x[0] && state_desired[0] <= geo_fence_x[1]) {
+                                    valid_x_input = true;
+                                } else {
+                                    cout << "Invalid input for x! Please enter a value between " << geo_fence_x[0] << " and " << geo_fence_x[1] << endl;
+                                }
+                            } else {
+                                // Clear error flags
+                                cin.clear();
+                                // Discard invalid input
+                                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                                cout << "Invalid input! Please enter a number." << endl;
+                            }
+                        }
+
+                        while (!valid_y_input) {
+                            cout << "setpoint_t[1] --- y [m] : " << endl;
+                            if (cin >> state_desired[1]) {
+                                // Check if y is within the range defined by geo_fence_y
+                                if (state_desired[1] >= geo_fence_y[0] && state_desired[1] <= geo_fence_y[1]) {
+                                    valid_y_input = true;
+                                } else {
+                                    cout << "Invalid input for y! Please enter a value between " << geo_fence_y[0] << " and " << geo_fence_y[1] << endl;
+                                }
+                            } else {
+                                // Clear error flags
+                                cin.clear();
+                                // Discard invalid input
+                                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                                cout << "Invalid input! Please enter a number." << endl;
+                            }
+                        }
+
+                        while (!valid_z_input) {
+                            cout << "setpoint_t[2] --- z [m] : " << endl;
+                            if (cin >> state_desired[2]) {
+                                // Check if z is within the range defined by geo_fence_z
+                                if (state_desired[2] >= geo_fence_z[0] && state_desired[2] <= geo_fence_z[1]) {
+                                    valid_z_input = true;
+                                } else {
+                                    cout << "Invalid input for z! Please enter a value between " << geo_fence_z[0] << " and " << geo_fence_z[1] << endl;
+                                }
+                            } else {
+                                // Clear error flags
+                                cin.clear();
+                                // Discard invalid input
+                                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                                cout << "Invalid input! Please enter a number." << endl;
+                            }
+                        }
+
+                        while (!valid_yaw_input) {
+                            cout << "setpoint_t[3] --- yaw [deg] : " << endl;
+                            if (cin >> state_desired[3]) {
+                                // Check if yaw is within the range
+                                if (state_desired[3] >= 0 && state_desired[3] < 360) {
+                                    valid_yaw_input = true;
+                                } else {
+                                    cout << "Invalid input for yaw! Please enter a value between 0 and 360" << endl;
+                                }
+                            } else {
+                                // Clear error flags
+                                cin.clear();
+                                // Discard invalid input
+                                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                                cout << "Invalid input! Please enter a number." << endl;
+                            }
+                        }
                     }
 
                     Command_to_pub.header.stamp = ros::Time::now();
