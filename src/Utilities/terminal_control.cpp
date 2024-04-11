@@ -88,7 +88,7 @@ int main(int argc, char **argv){
     //固定的浮点显示
     cout.setf(ios::fixed);
     //setprecision(n) 设显示小数精度为n位
-    cout<<setprecision(2);
+    cout << setprecision(2);
     //左对齐
     cout.setf(ios::left);
     // 强制显示小数点
@@ -98,21 +98,35 @@ int main(int argc, char **argv){
 
     // 选择通过终端输入控制或键盘控制
     int Remote_Mode;
-    cout << ">>>>>>>>>>>>>>>> Welcome to use Prometheus Terminal Control <<<<<<<<<<<<<<<<"<< endl;
-    cout << "Please choose the Remote Mode: 0 for command input control, 1 for keyboard input control"<<endl;
-    cin >> Remote_Mode;
+    bool valid_input = false;
 
-    if (Remote_Mode == 0){
-        cout << "Command input control mode"<<endl;
-        mainloop1();
-    }else if(Remote_Mode == 1){
-        ros::Timer timer = nh.createTimer(ros::Duration(30.0), timerCallback);
-        cout << "Keyboard input control mode"<<endl;
-        mainloop2();
+    while (!valid_input) {
+        cout << ">>>>>>>>>>>>>>>> Welcome to use Prometheus Terminal Control <<<<<<<<<<<<<<<<" << endl;
+        cout << "Please choose the Remote Mode: 0 for COMMAND input control, 1 for KEYBOARD input control" << endl;
+        if (cin >> Remote_Mode) {
+            if (Remote_Mode == 0) {
+                valid_input = true;
+                cout << "COMMAND input control mode" << endl;
+                mainloop1();
+            } else if (Remote_Mode == 1) {
+                valid_input = true;
+                ros::Timer timer = nh.createTimer(ros::Duration(30.0), timerCallback);
+                cout << "KEYBOARD input control mode" << endl;
+                mainloop2();
+            } else {
+                cout << "Invalid input. Please enter 0 or 1." << endl;
+            }
+        } else {
+            // Clear error flags
+            cin.clear();
+            // Discard invalid input
+            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            cout << "Invalid input. Please enter an integer." << endl;
+        }
     }
-
     return 0;
 }
+
 
 void mainloop1(){
     int Control_Mode = 0;
@@ -125,8 +139,8 @@ void mainloop1(){
     while(ros::ok()){
         // Waiting for input
         cout << ">>>>>>>>>>>>>>>> Welcome to use Prometheus Terminal Control <<<<<<<<<<<<<<<<"<< endl;
-        cout << "Please choose the Command.Mode: 0 for Idle, 1 for Takeoff, 2 for Hold, 3 for Land, 4 for Move, 5 for Disarm" << endl;
-        cout << "Input 999 to switch to offboard mode and arm the drone (ONLY for simulation, please use RC in experiment!!!)" << endl;
+        cout << "Please choose the Command.Mode: 0 for IDLE, 1 for TAKEOFF, 2 for HOLD, 3 for LAND, 4 for MOVE, 5 for DISARM" << endl;
+        cout << "Input 999 to switch to OFFBOARD mode and ARM the drone (ONLY for simulation, please use RC in experiment!!!)" << endl;
         cin  >> Control_Mode;
 
         switch (Control_Mode){
@@ -193,7 +207,6 @@ void mainloop1(){
 
                         ros::Duration(0.01).sleep();
                     }
-
                 }else{
                     cout << "Please choose the Command.Reference_State.Move_mode: 0 for XYZ_POS, 1 for XY_POS_Z_VEL, 2 for XY_VEL_Z_POS, 3 for XYZ_VEL, 5 for TRAJECTORY"<<endl;
                     cin >> Move_mode;
@@ -261,10 +274,9 @@ void mainloop1(){
         }
 
         cout << "....................................................." <<endl;
-
-//        sleep(1.0);
     }
 }
+
 
 void mainloop2(){
     KeyboardEvent keyboardcontrol;
