@@ -34,8 +34,7 @@ std::vector<geometry_msgs::PoseStamped> posehistory_vector_;
 
 
 float time_trajectory = 0.0;
-// 轨迹追踪总时长，键盘控制时固定时长，指令输入控制可调
-float trajectory_total_time = 50.0;
+
 
 
 //发布
@@ -133,6 +132,9 @@ void mainloop1(){
     int Move_frame = 0;
     int Trjectory_mode = 0;
     bool valid_trajectory_mode = false;
+    // 轨迹追踪总时长，键盘控制时固定时长，指令输入控制可调
+    float trajectory_total_time = 50.0;
+    bool valid_total_time = false;
     float state_desired[4];
 
     //用于控制器测试的类，功能例如：生成圆形轨迹，８字轨迹等
@@ -237,7 +239,11 @@ void mainloop1(){
                     while (!valid_move_mode) {
                         cout << "Please choose the Command.Reference_State.Move_mode: 0 for XYZ_POS, 1 for XY_POS_Z_VEL, 2 for XY_VEL_Z_POS, 3 for XYZ_VEL, 5 for TRAJECTORY" << endl;
                         if (cin >> Move_mode) {
-                            if (Move_mode == 0 || Move_mode == 1 || Move_mode == 2 || Move_mode == 3 || Move_mode == 5) {
+                            if (Move_mode == 0 ||
+                                Move_mode == 1 ||
+                                Move_mode == 2 ||
+                                Move_mode == 3 ||
+                                Move_mode == 5) {
                                 valid_move_mode = true;
                             } else {
                                 cout << "Invalid input! Please enter a valid move mode." << endl;
@@ -269,8 +275,23 @@ void mainloop1(){
                             }
                         }
 
-                        cout << "Input the trajectory_total_time:" << endl;
-                        cin >> trajectory_total_time;
+                        while (!valid_total_time) {
+                            cout << "Input the trajectory_total_time:" << endl;
+                            if (cin >> trajectory_total_time) {
+                                if (trajectory_total_time >= 1.0 && trajectory_total_time <= 100.0) {
+                                    valid_total_time = true;
+                                } else {
+                                    cout << "Invalid input! Please enter a float between 1 and 100." << endl;
+                                }
+                            } else {
+                                // Clear error flags
+                                cin.clear();
+                                // Discard invalid input
+                                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                                cout << "Invalid input! Please enter a float." << endl;
+                            }
+                        }
+
                     } else {
                         cout
                                 << "Please choose the Command.Reference_State.Move_frame: 0 for ENU_FRAME, 1 for BODY_FRAME"
@@ -337,6 +358,8 @@ void mainloop1(){
 
 void mainloop2(){
     KeyboardEvent keyboardcontrol;
+    // 轨迹追踪总时长，键盘控制时固定时长，指令输入控制可调
+    float trajectory_total_time = 50.0;
     Controller_Test Controller_Test;
 
     char key_now;
