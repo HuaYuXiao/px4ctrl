@@ -103,18 +103,18 @@ int main(int argc, char **argv){
 
     // 选择通过终端输入控制或键盘控制
     int Remote_Mode;
-    bool valid_input = false;
+    bool valid_Remote_Mode = false;
 
-    while (!valid_input) {
+    while (!valid_Remote_Mode) {
         cout << ">>>>>>>>>>>>>>>> Welcome to use Prometheus Terminal Control <<<<<<<<<<<<<<<<" << endl;
         cout << "Please choose the Remote Mode: 0 for COMMAND input control, 1 for KEYBOARD input control" << endl;
         if (cin >> Remote_Mode) {
             if (Remote_Mode == 0) {
-                valid_input = true;
+                valid_Remote_Mode = true;
                 cout << "COMMAND input control mode" << endl;
                 mainloop1();
             } else if (Remote_Mode == 1) {
-                valid_input = true;
+                valid_Remote_Mode = true;
                 ros::Timer timer = nh.createTimer(ros::Duration(30.0), timerCallback);
                 cout << "KEYBOARD input control mode" << endl;
                 mainloop2();
@@ -129,13 +129,14 @@ int main(int argc, char **argv){
             cout << "Invalid input! Please enter an integer." << endl;
         }
     }
+    
     return 0;
 }
 
 
 void mainloop1(){
     int Control_Mode = 0;
-    bool valid_input = false;
+    bool valid_Control_Mode = false;
     int Move_mode = 0;
     bool valid_move_mode = false;
     int Move_frame = 0;
@@ -156,7 +157,7 @@ void mainloop1(){
     Controller_Test.printf_param();
 
     while(ros::ok()){
-        while (!valid_input) {
+        while (!valid_Control_Mode) {
             cout << ">>>>>>>>>>>>>>>> Welcome to use Prometheus Terminal Control <<<<<<<<<<<<<<<<" << endl;
             cout << "Please choose the Command.Mode: 0 for IDLE, 1 for TAKEOFF, 2 for HOLD, 3 for LAND, 4 for MOVE, 5 for DISARM" << endl;
             cout << "Input 999 to switch to OFFBOARD mode and ARM the drone (ONLY for simulation, please use RC in experiment!!!)" << endl;
@@ -168,8 +169,8 @@ void mainloop1(){
                     Control_Mode == 4 ||
                     Control_Mode == 5 ||
                     Control_Mode == 999) {
-                    valid_input = true;
-                } else {
+                    valid_Control_Mode = true;
+                }else{
                     cout << "Invalid input! Please enter a valid command mode." << endl;
                 }
             } else {
@@ -180,9 +181,10 @@ void mainloop1(){
                 cout << "Invalid input! Please enter an integer." << endl;
             }
         }
+        valid_Control_Mode = false;
 
         switch (Control_Mode){
-            case prometheus_msgs::ControlCommand::Idle:{
+            case prometheus_msgs::ControlCommand::Idle:
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Idle;
                 // TODO: why unreachable?
@@ -190,32 +192,32 @@ void mainloop1(){
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
                 break;
-            }
-            case prometheus_msgs::ControlCommand::Takeoff:{
+
+            case prometheus_msgs::ControlCommand::Takeoff:
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Takeoff;
                 Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
                 break;
-            }
-            case prometheus_msgs::ControlCommand::Hold: {
+
+            case prometheus_msgs::ControlCommand::Hold:
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Hold;
                 Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
                 break;
-            }
-            case prometheus_msgs::ControlCommand::Land: {
+
+            case prometheus_msgs::ControlCommand::Land:
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Land;
                 Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
                 break;
-            }
-            case prometheus_msgs::ControlCommand::Move: {
+
+            case prometheus_msgs::ControlCommand::Move:
                 if (Move_mode == prometheus_msgs::PositionReference::TRAJECTORY) {
                     time_trajectory = 0.0;
 
@@ -270,6 +272,7 @@ void mainloop1(){
                             cout << "Invalid input! Please enter an integer." << endl;
                         }
                     }
+                    valid_move_mode = false;
 
                     if (Move_mode == prometheus_msgs::PositionReference::TRAJECTORY) {
                         while (!valid_trajectory_mode) {
@@ -288,6 +291,7 @@ void mainloop1(){
                                 cout << "Invalid input! Please enter an integer." << endl;
                             }
                         }
+                        valid_trajectory_mode = false;
 
                         while (!valid_total_time) {
                             cout << "Input the trajectory_total_time:" << endl;
@@ -305,6 +309,7 @@ void mainloop1(){
                                 cout << "Invalid input! Please enter a float." << endl;
                             }
                         }
+                        valid_total_time = false;
 
                     } else {
                         while (!valid_move_frame) {
@@ -323,6 +328,7 @@ void mainloop1(){
                                 cout << "Invalid input! Please enter an integer." << endl;
                             }
                         }
+                        valid_move_frame = false;
 
                         cout << "Please input the reference state [x y z yaw]: " << endl;
                         while (!valid_x_input) {
@@ -342,6 +348,7 @@ void mainloop1(){
                                 cout << "Invalid input! Please enter a number." << endl;
                             }
                         }
+                        valid_x_input = false;
 
                         while (!valid_y_input) {
                             cout << "setpoint_t[1] --- y [m] : " << endl;
@@ -360,6 +367,7 @@ void mainloop1(){
                                 cout << "Invalid input! Please enter a number." << endl;
                             }
                         }
+                        valid_y_input = false;
 
                         while (!valid_z_input) {
                             cout << "setpoint_t[2] --- z [m] : " << endl;
@@ -378,6 +386,7 @@ void mainloop1(){
                                 cout << "Invalid input! Please enter a number." << endl;
                             }
                         }
+                        valid_z_input = false;
 
                         while (!valid_yaw_input) {
                             cout << "setpoint_t[3] --- yaw [deg] : " << endl;
@@ -397,6 +406,7 @@ void mainloop1(){
                             }
                         }
                     }
+                    valid_yaw_input = false;
 
                     Command_to_pub.header.stamp = ros::Time::now();
                     Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
@@ -412,16 +422,16 @@ void mainloop1(){
                     move_pub.publish(Command_to_pub);
                 }
                 break;
-            }
-            case prometheus_msgs::ControlCommand::Disarm: {
+
+            case prometheus_msgs::ControlCommand::Disarm:
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Disarm;
                 Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
                 break;
-            }
-            case 999: {
+
+            case 999:
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Idle;
                 Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
@@ -430,18 +440,9 @@ void mainloop1(){
                 move_pub.publish(Command_to_pub);
                 Command_to_pub.Reference_State.yaw_ref = 0.0;
                 break;
-            }
-            default: {
-                Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Hold;
-                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
-                Command_to_pub.source = NODE_NAME;
-                move_pub.publish(Command_to_pub);
-                break;
-            }
         }
 
-        cout << "....................................................." <<endl;
+        cout << "....................................................." << endl;
     }
 }
 
