@@ -129,8 +129,10 @@ void mainloop1(){
     int Control_Mode = 0;
     bool valid_input = false;
     int Move_mode = 0;
+    bool valid_move_mode = false;
     int Move_frame = 0;
     int Trjectory_mode = 0;
+    bool valid_trajectory_mode = false;
     float state_desired[4];
 
     //用于控制器测试的类，功能例如：生成圆形轨迹，８字轨迹等
@@ -232,9 +234,6 @@ void mainloop1(){
                         ros::Duration(0.01).sleep();
                     }
                 } else {
-                    int Move_mode;
-                    bool valid_move_mode = false;
-
                     while (!valid_move_mode) {
                         cout << "Please choose the Command.Reference_State.Move_mode: 0 for XYZ_POS, 1 for XY_POS_Z_VEL, 2 for XY_VEL_Z_POS, 3 for XYZ_VEL, 5 for TRAJECTORY" << endl;
                         if (cin >> Move_mode) {
@@ -253,12 +252,23 @@ void mainloop1(){
                     }
 
                     if (Move_mode == prometheus_msgs::PositionReference::TRAJECTORY) {
-                        cout << "For safety, please move the drone near to the trajectory start point firstly!!!"
-                             << endl;
-                        cout
-                                << "Please choose the trajectory type: 0 for Circle, 1 for Eight Shape, 2 for Step, 3 for Line"
-                                << endl;
-                        cin >> Trjectory_mode;
+                        while (!valid_trajectory_mode) {
+                            cout << "Please choose the trajectory type: 0 for Circle, 1 for Eight Shape, 2 for Step, 3 for Line" << endl;
+                            if (cin >> Trjectory_mode) {
+                                if (Trjectory_mode >= 0 && Trjectory_mode <= 3) {
+                                    valid_trajectory_mode = true;
+                                } else {
+                                    cout << "Invalid input! Please enter a valid trajectory mode." << endl;
+                                }
+                            } else {
+                                // Clear error flags
+                                cin.clear();
+                                // Discard invalid input
+                                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                                cout << "Invalid input! Please enter an integer." << endl;
+                            }
+                        }
+
                         cout << "Input the trajectory_total_time:" << endl;
                         cin >> trajectory_total_time;
                     } else {
