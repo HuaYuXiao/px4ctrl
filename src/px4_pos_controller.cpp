@@ -75,51 +75,42 @@ void add_disturbance();
 geometry_msgs::PoseStamped get_ref_pose_rviz(const prometheus_msgs::ControlCommand& cmd, const prometheus_msgs::AttitudeReference& att_ref);
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>回调函数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-void Command_cb(const prometheus_msgs::ControlCommand::ConstPtr& msg)
-{
+void Command_cb(const prometheus_msgs::ControlCommand::ConstPtr& msg){
     // CommandID必须递增才会被记录
-    if( msg->Command_ID  >  Command_Now.Command_ID )
-    {
+    if( msg->Command_ID  >  Command_Now.Command_ID ){
         Command_Now = *msg;
-    }else
-    {
+    }else{
         pub_message(message_pub, prometheus_msgs::Message::WARN, NODE_NAME, "Wrong Command ID.");
     }
 
     // 无人机一旦接受到Disarm指令，则会屏蔽其他指令
-    if(Command_Last.Mode == prometheus_msgs::ControlCommand::Disarm)
-    {
+    if(Command_Last.Mode == prometheus_msgs::ControlCommand::Disarm){
         Command_Now = Command_Last;
     }
 }
 
-void station_command_cb(const prometheus_msgs::ControlCommand::ConstPtr& msg)
-{
+void station_command_cb(const prometheus_msgs::ControlCommand::ConstPtr& msg){
     Command_Now = *msg;
     pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "Get a command from Prometheus Station.");
 
     // 无人机一旦接受到Disarm指令，则会屏蔽其他指令
-    if(Command_Last.Mode == prometheus_msgs::ControlCommand::Disarm)
-    {
+    if(Command_Last.Mode == prometheus_msgs::ControlCommand::Disarm){
         Command_Now = Command_Last;
     }
 }
 
-void drone_state_cb(const prometheus_msgs::DroneState::ConstPtr& msg)
-{
+void drone_state_cb(const prometheus_msgs::DroneState::ConstPtr& msg){
     _DroneState = *msg;
 
     _DroneState.time_from_start = cur_time;
 }
 
-void timerCallback(const ros::TimerEvent& e)
-{
+void timerCallback(const ros::TimerEvent& e){
     pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "Program is running.");
 }
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主 函 数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv){
     ros::init(argc, argv, "px4_pos_controller");
     ros::NodeHandle nh("~");
 
@@ -227,28 +218,20 @@ int main(int argc, char **argv)
     float last_time = prometheus_control_utils::get_time_in_sec(begin_time);
     int printf_num = 0;
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主  循  环<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-    while(ros::ok())
-    {
+    while(ros::ok()){
         // 当前时间
         cur_time = prometheus_control_utils::get_time_in_sec(begin_time);
         dt = cur_time  - last_time;
         dt = constrain_function2(dt, 0.01, 0.03);
         last_time = cur_time;
         printf_num++;
-        if(printf_num > 100)
-        {
-            if(controller_type == "default")
-            {
-
-            }else if(controller_type == "pid")
-            {
-            }else if(controller_type == "passivity")
-            {
-            }else if(controller_type == "ude")
-            {
+        if(printf_num > 100){
+            if(controller_type == "default"){
+            }else if(controller_type == "pid"){
+            }else if(controller_type == "passivity"){
+            }else if(controller_type == "ude"){
                 pos_controller_UDE.printf_result();
-            }else if(controller_type == "ne")
-            {
+            }else if(controller_type == "ne"){
                 pos_controller_NE.printf_result();
             }
 
@@ -259,8 +242,7 @@ int main(int argc, char **argv)
         ros::spinOnce();
 
         // Check for geo fence: If drone is out of the geo fence, it will land now.
-        if(check_failsafe() == 1)
-        {
+        if(check_failsafe() == 1){
             Command_Now.Mode = prometheus_msgs::ControlCommand::Land;
         }
 
