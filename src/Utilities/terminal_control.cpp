@@ -32,20 +32,22 @@ prometheus_msgs::ControlCommand Command_to_pub;
 //轨迹容器
 std::vector<geometry_msgs::PoseStamped> posehistory_vector_;
 
-
 float time_trajectory = 0.0;
-// 轨迹追踪总时长，键盘控制时固定时长，指令输入控制可调
-float trajectory_total_time = 50.0;
-
+//Geigraphical fence 地理围栏
+Eigen::Vector2f geo_fence_x;
+Eigen::Vector2f geo_fence_y;
+Eigen::Vector2f geo_fence_z;
 
 //发布
 ros::Publisher move_pub;
 ros::Publisher ref_trajectory_pub;
+
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>　函数声明　<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 void mainloop1();
 void mainloop2();
 void generate_com(int Move_mode, float state_desired[4]);
 void Draw_in_rviz(const prometheus_msgs::PositionReference& pos_ref, bool draw_trajectory);
+
 void timerCallback(const ros::TimerEvent& e){
     cout << ">>>>>>>>>>>>>>>> Welcome to use Prometheus Terminal Control <<<<<<<<<<<<<<<<"<< endl;
     cout << "ENTER key to control the drone: " <<endl;
@@ -64,9 +66,12 @@ int main(int argc, char **argv){
     //　【发布】　参考轨迹
     ref_trajectory_pub = nh.advertise<nav_msgs::Path>("/prometheus/reference_trajectory", 10);
 
-    //用于控制器测试的类，功能例如：生成圆形轨迹，８字轨迹等
-    Controller_Test Controller_Test;    // 打印参数
-    Controller_Test.printf_param();
+    nh.param<float>("geo_fence/x_min", geo_fence_x[0], -20.0);
+    nh.param<float>("geo_fence/x_max", geo_fence_x[1], 20.0);
+    nh.param<float>("geo_fence/y_min", geo_fence_y[0], -20.0);
+    nh.param<float>("geo_fence/y_max", geo_fence_y[1], 20.0);
+    nh.param<float>("geo_fence/z_min", geo_fence_z[0], -0.3);
+    nh.param<float>("geo_fence/z_max", geo_fence_z[1], 10.0);
 
     // 初始化命令 - Idle模式 电机怠速旋转 等待来自上层的控制指令
     Command_to_pub.Mode                                = prometheus_msgs::ControlCommand::Idle;
@@ -114,14 +119,14 @@ int main(int argc, char **argv){
                 cout << "KEYBOARD input control mode" << endl;
                 mainloop2();
             } else {
-                cout << "Invalid input. Please enter 0 or 1." << endl;
+                cout << "Invalid input! Please enter 0 or 1." << endl;
             }
         } else {
             // Clear error flags
             cin.clear();
             // Discard invalid input
             cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            cout << "Invalid input. Please enter an integer." << endl;
+            cout << "Invalid input! Please enter an integer." << endl;
         }
     }
     return 0;
@@ -130,21 +135,54 @@ int main(int argc, char **argv){
 
 void mainloop1(){
     int Control_Mode = 0;
+    bool valid_input = false;
     int Move_mode = 0;
+    bool valid_move_mode = false;
     int Move_frame = 0;
+    bool valid_move_frame = false;
     int Trjectory_mode = 0;
+    bool valid_trajectory_mode = false;
+    // 轨迹追踪总时长，键盘控制时固定时长，指令输入控制可调
+    float trajectory_total_time = 50.0;
+    bool valid_total_time = false;
     float state_desired[4];
-    Controller_Test Controller_Test;
+    bool valid_x_input = false;
+    bool valid_y_input = false;
+    bool valid_z_input = false;
+    bool valid_yaw_input = false;
+
+    //用于控制器测试的类，功能例如：生成圆形轨迹，８字轨迹等
+    Controller_Test Controller_Test;    // 打印参数
+    Controller_Test.printf_param();
 
     while(ros::ok()){
-        // Waiting for input
-        cout << ">>>>>>>>>>>>>>>> Welcome to use Prometheus Terminal Control <<<<<<<<<<<<<<<<"<< endl;
-        cout << "Please choose the Command.Mode: 0 for IDLE, 1 for TAKEOFF, 2 for HOLD, 3 for LAND, 4 for MOVE, 5 for DISARM" << endl;
-        cout << "Input 999 to switch to OFFBOARD mode and ARM the drone (ONLY for simulation, please use RC in experiment!!!)" << endl;
-        cin  >> Control_Mode;
+        while (!valid_input) {
+            cout << ">>>>>>>>>>>>>>>> Welcome to use Prometheus Terminal Control <<<<<<<<<<<<<<<<" << endl;
+            cout << "Please choose the Command.Mode: 0 for IDLE, 1 for TAKEOFF, 2 for HOLD, 3 for LAND, 4 for MOVE, 5 for DISARM" << endl;
+            cout << "Input 999 to switch to OFFBOARD mode and ARM the drone (ONLY for simulation, please use RC in experiment!!!)" << endl;
+            if (cin >> Control_Mode) {
+                if (Control_Mode == 0 ||
+                    Control_Mode == 1 ||
+                    Control_Mode == 2 ||
+                    Control_Mode == 3 ||
+                    Control_Mode == 4 ||
+                    Control_Mode == 5 ||
+                    Control_Mode == 999) {
+                    valid_input = true;
+                } else {
+                    cout << "Invalid input! Please enter a valid command mode." << endl;
+                }
+            } else {
+                // Clear error flags
+                cin.clear();
+                // Discard invalid input
+                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                cout << "Invalid input! Please enter an integer." << endl;
+            }
+        }
 
         switch (Control_Mode){
-            case prometheus_msgs::ControlCommand::Idle:
+            case prometheus_msgs::ControlCommand::Idle:{
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Idle;
                 // TODO: why unreachable?
@@ -152,90 +190,219 @@ void mainloop1(){
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
                 break;
-
-            case prometheus_msgs::ControlCommand::Takeoff:
+            }
+            case prometheus_msgs::ControlCommand::Takeoff:{
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Takeoff;
                 Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
                 break;
-
-            case prometheus_msgs::ControlCommand::Hold:
+            }
+            case prometheus_msgs::ControlCommand::Hold: {
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Hold;
                 Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
                 break;
-
-            case prometheus_msgs::ControlCommand::Land:
+            }
+            case prometheus_msgs::ControlCommand::Land: {
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Land;
                 Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
                 break;
-
-            case prometheus_msgs::ControlCommand::Move:
-                if(Move_mode == prometheus_msgs::PositionReference::TRAJECTORY){
+            }
+            case prometheus_msgs::ControlCommand::Move: {
+                if (Move_mode == prometheus_msgs::PositionReference::TRAJECTORY) {
                     time_trajectory = 0.0;
 
-                    while(time_trajectory < trajectory_total_time){
+                    while (time_trajectory < trajectory_total_time) {
                         Command_to_pub.header.stamp = ros::Time::now();
                         Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
                         Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
                         Command_to_pub.source = NODE_NAME;
 
-                        if(Trjectory_mode == 0){
-                            Command_to_pub.Reference_State = Controller_Test.Circle_trajectory_generation(time_trajectory);
-                        }else if(Trjectory_mode == 1){
-                            Command_to_pub.Reference_State = Controller_Test.Eight_trajectory_generation(time_trajectory);
-                        }else if(Trjectory_mode == 2){
-                            Command_to_pub.Reference_State = Controller_Test.Step_trajectory_generation(time_trajectory);
-                        }else if(Trjectory_mode == 3){
-                            Command_to_pub.Reference_State = Controller_Test.Line_trajectory_generation(time_trajectory);
+                        if (Trjectory_mode == 0) {
+                            Command_to_pub.Reference_State = Controller_Test.Circle_trajectory_generation(
+                                    time_trajectory);
+                        } else if (Trjectory_mode == 1) {
+                            Command_to_pub.Reference_State = Controller_Test.Eight_trajectory_generation(
+                                    time_trajectory);
+                        } else if (Trjectory_mode == 2) {
+                            Command_to_pub.Reference_State = Controller_Test.Step_trajectory_generation(
+                                    time_trajectory);
+                        } else if (Trjectory_mode == 3) {
+                            Command_to_pub.Reference_State = Controller_Test.Line_trajectory_generation(
+                                    time_trajectory);
                         }
 
                         move_pub.publish(Command_to_pub);
                         // TODO: time not matching
                         time_trajectory = time_trajectory + 0.01;
 
-                        cout << "Trajectory tracking: "<< time_trajectory << " / " << trajectory_total_time  << " [ s ]" <<endl;
+                        cout << "Trajectory tracking: " << time_trajectory << " / " << trajectory_total_time << " [ s ]" << endl;
 
                         Draw_in_rviz(Command_to_pub.Reference_State, true);
 
                         ros::Duration(0.01).sleep();
                     }
-                }else{
-                    cout << "Please choose the Command.Reference_State.Move_mode: 0 for XYZ_POS, 1 for XY_POS_Z_VEL, 2 for XY_VEL_Z_POS, 3 for XYZ_VEL, 5 for TRAJECTORY"<<endl;
-                    cin >> Move_mode;
+                } else {
+                    while (!valid_move_mode) {
+                        cout << "Please choose the Command.Reference_State.Move_mode: 0 for XYZ_POS, 1 for XY_POS_Z_VEL, 2 for XY_VEL_Z_POS, 3 for XYZ_VEL, 5 for TRAJECTORY" << endl;
+                        if (cin >> Move_mode) {
+                            if (Move_mode == 0 ||
+                                Move_mode == 1 ||
+                                Move_mode == 2 ||
+                                Move_mode == 3 ||
+                                Move_mode == 5) {
+                                valid_move_mode = true;
+                            } else {
+                                cout << "Invalid input! Please enter a valid move mode." << endl;
+                            }
+                        } else {
+                            // Clear error flags
+                            cin.clear();
+                            // Discard invalid input
+                            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                            cout << "Invalid input! Please enter an integer." << endl;
+                        }
+                    }
 
-                    if(Move_mode == prometheus_msgs::PositionReference::TRAJECTORY){
-                        cout << "For safety, please move the drone near to the trajectory start point firstly!!!"<<endl;
-                        cout << "Please choose the trajectory type: 0 for Circle, 1 for Eight Shape, 2 for Step, 3 for Line"<<endl;
-                        cin >> Trjectory_mode;
-                        cout << "Input the trajectory_total_time:"<<endl;
-                        cin >> trajectory_total_time;
-                    }else{
-                        cout << "Please choose the Command.Reference_State.Move_frame: 0 for ENU_FRAME, 1 for BODY_FRAME"<<endl;
-                        cin >> Move_frame;
-                        cout << "Please input the reference state [x y z yaw]: "<< endl;
-                        cout << "setpoint_t[0] --- x [m] : "<< endl;
-                        cin >> state_desired[0];
-                        cout << "setpoint_t[1] --- y [m] : "<< endl;
-                        cin >> state_desired[1];
-                        cout << "setpoint_t[2] --- z [m] : "<< endl;
-                        cin >> state_desired[2];
-                        cout << "setpoint_t[3] --- yaw [deg] : "<< endl;
-                        cin >> state_desired[3];
+                    if (Move_mode == prometheus_msgs::PositionReference::TRAJECTORY) {
+                        while (!valid_trajectory_mode) {
+                            cout << "Please choose the trajectory type: 0 for Circle, 1 for Eight Shape, 2 for Step, 3 for Line" << endl;
+                            if (cin >> Trjectory_mode) {
+                                if (Trjectory_mode >= 0 && Trjectory_mode <= 3) {
+                                    valid_trajectory_mode = true;
+                                } else {
+                                    cout << "Invalid input! Please enter a valid trajectory mode." << endl;
+                                }
+                            } else {
+                                // Clear error flags
+                                cin.clear();
+                                // Discard invalid input
+                                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                                cout << "Invalid input! Please enter an integer." << endl;
+                            }
+                        }
+
+                        while (!valid_total_time) {
+                            cout << "Input the trajectory_total_time:" << endl;
+                            if (cin >> trajectory_total_time) {
+                                if (trajectory_total_time >= 1.0 && trajectory_total_time <= 100.0) {
+                                    valid_total_time = true;
+                                } else {
+                                    cout << "Invalid input! Please enter a float between 1 and 100." << endl;
+                                }
+                            } else {
+                                // Clear error flags
+                                cin.clear();
+                                // Discard invalid input
+                                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                                cout << "Invalid input! Please enter a float." << endl;
+                            }
+                        }
+
+                    } else {
+                        while (!valid_move_frame) {
+                            cout << "Please choose the Command.Reference_State.Move_frame: 0 for ENU_FRAME, 1 for BODY_FRAME" << endl;
+                            if (cin >> Move_frame) {
+                                if (Move_frame == 0 || Move_frame == 1) {
+                                    valid_move_frame = true;
+                                } else {
+                                    cout << "Invalid input! Please enter 0 or 1." << endl;
+                                }
+                            } else {
+                                // Clear error flags
+                                cin.clear();
+                                // Discard invalid input
+                                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                                cout << "Invalid input! Please enter an integer." << endl;
+                            }
+                        }
+
+                        cout << "Please input the reference state [x y z yaw]: " << endl;
+                        while (!valid_x_input) {
+                            cout << "setpoint_t[0] --- x [m] : " << endl;
+                            if (cin >> state_desired[0]) {
+                                // Check if x is within the range defined by geo_fence_x
+                                if (state_desired[0] >= geo_fence_x[0] && state_desired[0] <= geo_fence_x[1]) {
+                                    valid_x_input = true;
+                                } else {
+                                    cout << "Invalid input for x! Please enter a value between " << geo_fence_x[0] << " and " << geo_fence_x[1] << endl;
+                                }
+                            } else {
+                                // Clear error flags
+                                cin.clear();
+                                // Discard invalid input
+                                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                                cout << "Invalid input! Please enter a number." << endl;
+                            }
+                        }
+
+                        while (!valid_y_input) {
+                            cout << "setpoint_t[1] --- y [m] : " << endl;
+                            if (cin >> state_desired[1]) {
+                                // Check if y is within the range defined by geo_fence_y
+                                if (state_desired[1] >= geo_fence_y[0] && state_desired[1] <= geo_fence_y[1]) {
+                                    valid_y_input = true;
+                                } else {
+                                    cout << "Invalid input for y! Please enter a value between " << geo_fence_y[0] << " and " << geo_fence_y[1] << endl;
+                                }
+                            } else {
+                                // Clear error flags
+                                cin.clear();
+                                // Discard invalid input
+                                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                                cout << "Invalid input! Please enter a number." << endl;
+                            }
+                        }
+
+                        while (!valid_z_input) {
+                            cout << "setpoint_t[2] --- z [m] : " << endl;
+                            if (cin >> state_desired[2]) {
+                                // Check if z is within the range defined by geo_fence_z
+                                if (state_desired[2] >= geo_fence_z[0] && state_desired[2] <= geo_fence_z[1]) {
+                                    valid_z_input = true;
+                                } else {
+                                    cout << "Invalid input for z! Please enter a value between " << geo_fence_z[0] << " and " << geo_fence_z[1] << endl;
+                                }
+                            } else {
+                                // Clear error flags
+                                cin.clear();
+                                // Discard invalid input
+                                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                                cout << "Invalid input! Please enter a number." << endl;
+                            }
+                        }
+
+                        while (!valid_yaw_input) {
+                            cout << "setpoint_t[3] --- yaw [deg] : " << endl;
+                            if (cin >> state_desired[3]) {
+                                // Check if yaw is within the range
+                                if (state_desired[3] >= 0 && state_desired[3] < 360) {
+                                    valid_yaw_input = true;
+                                } else {
+                                    cout << "Invalid input for yaw! Please enter a value between 0 and 360" << endl;
+                                }
+                            } else {
+                                // Clear error flags
+                                cin.clear();
+                                // Discard invalid input
+                                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                                cout << "Invalid input! Please enter a number." << endl;
+                            }
+                        }
                     }
 
                     Command_to_pub.header.stamp = ros::Time::now();
                     Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
                     Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
                     Command_to_pub.source = NODE_NAME;
-                    Command_to_pub.Reference_State.Move_mode  = Move_mode;
+                    Command_to_pub.Reference_State.Move_mode = Move_mode;
                     Command_to_pub.Reference_State.Move_frame = Move_frame;
                     // yaw_rate control
                     // Command_to_pub.Reference_State.Yaw_Rate_Mode = 1;
@@ -245,16 +412,16 @@ void mainloop1(){
                     move_pub.publish(Command_to_pub);
                 }
                 break;
-
-            case prometheus_msgs::ControlCommand::Disarm:
+            }
+            case prometheus_msgs::ControlCommand::Disarm: {
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Disarm;
                 Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
                 break;
-
-            case 999:
+            }
+            case 999: {
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Idle;
                 Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
@@ -263,14 +430,15 @@ void mainloop1(){
                 move_pub.publish(Command_to_pub);
                 Command_to_pub.Reference_State.yaw_ref = 0.0;
                 break;
-
-            default:
+            }
+            default: {
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Hold;
                 Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
                 break;
+            }
         }
 
         cout << "....................................................." <<endl;
@@ -280,6 +448,8 @@ void mainloop1(){
 
 void mainloop2(){
     KeyboardEvent keyboardcontrol;
+    // 轨迹追踪总时长，键盘控制时固定时长，指令输入控制可调
+    float trajectory_total_time = 50.0;
     Controller_Test Controller_Test;
 
     char key_now;
@@ -655,6 +825,7 @@ void generate_com(int Move_mode, float state_desired[4]){
         Command_to_pub.Reference_State.yaw_ref = state_desired[3]/180.0*M_PI;
     }
 }
+
 
 void Draw_in_rviz(const prometheus_msgs::PositionReference& pos_ref, bool draw_trajectory){
     geometry_msgs::PoseStamped reference_pose;
