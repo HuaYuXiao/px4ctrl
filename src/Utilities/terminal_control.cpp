@@ -53,6 +53,7 @@ void timerCallback(const ros::TimerEvent& e){
     cout << "Move mode is fixed (XYZ_VEL,BODY_FRAME): w/s for body_x, a/d for body_y, k/m for z, q/e for body_yaw" <<endl;
     cout << "CTRL-C to quit." <<endl;
 }
+
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>　主函数　<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 int main(int argc, char **argv){
     ros::init(argc, argv, "terminal_control");
@@ -151,14 +152,6 @@ void mainloop1(){
                 cout << "setpoint_t[3] --- yaw [deg] : "<< endl;
                 cin >> state_desired[3];
             }
-        }else if(Control_Mode == 999){
-            Command_to_pub.header.stamp = ros::Time::now();
-            Command_to_pub.Mode = prometheus_msgs::ControlCommand::Idle;
-            Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
-            Command_to_pub.source = NODE_NAME;
-            Command_to_pub.Reference_State.yaw_ref = 999;
-            move_pub.publish(Command_to_pub);
-            Command_to_pub.Reference_State.yaw_ref = 0.0;
         }
 
         switch (Control_Mode){
@@ -216,6 +209,7 @@ void mainloop1(){
                         }
 
                         move_pub.publish(Command_to_pub);
+                        // TODO: time not matching
                         time_trajectory = time_trajectory + 0.01;
 
                         cout << "Trajectory tracking: "<< time_trajectory << " / " << trajectory_total_time  << " [ s ]" <<endl;
@@ -247,6 +241,16 @@ void mainloop1(){
                 Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
+                break;
+
+            case 999:
+                Command_to_pub.header.stamp = ros::Time::now();
+                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Idle;
+                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.source = NODE_NAME;
+                Command_to_pub.Reference_State.yaw_ref = 999;
+                move_pub.publish(Command_to_pub);
+                Command_to_pub.Reference_State.yaw_ref = 0.0;
                 break;
         }
 
