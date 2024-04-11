@@ -56,7 +56,7 @@ include_directories(
         ${catkin_INCLUDE_DIRS}
         include
         include/Position_Controller
-        ../common/include
+        $ENV{HOME}/Prometheus/Modules/common/include
 )
 
 
