@@ -130,6 +130,7 @@ void mainloop1(){
     int Move_mode = 0;
     bool valid_move_mode = false;
     int Move_frame = 0;
+    bool valid_move_frame = false;
     int Trjectory_mode = 0;
     bool valid_trajectory_mode = false;
     // 轨迹追踪总时长，键盘控制时固定时长，指令输入控制可调
@@ -293,10 +294,23 @@ void mainloop1(){
                         }
 
                     } else {
-                        cout
-                                << "Please choose the Command.Reference_State.Move_frame: 0 for ENU_FRAME, 1 for BODY_FRAME"
-                                << endl;
-                        cin >> Move_frame;
+                        while (!valid_move_frame) {
+                            cout << "Please choose the Command.Reference_State.Move_frame: 0 for ENU_FRAME, 1 for BODY_FRAME" << endl;
+                            if (cin >> Move_frame) {
+                                if (Move_frame == 0 || Move_frame == 1) {
+                                    valid_move_frame = true;
+                                } else {
+                                    cout << "Invalid input! Please enter 0 or 1." << endl;
+                                }
+                            } else {
+                                // Clear error flags
+                                cin.clear();
+                                // Discard invalid input
+                                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                                cout << "Invalid input! Please enter an integer." << endl;
+                            }
+                        }
+
                         cout << "Please input the reference state [x y z yaw]: " << endl;
                         cout << "setpoint_t[0] --- x [m] : " << endl;
                         cin >> state_desired[0];
