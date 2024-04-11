@@ -225,18 +225,32 @@ void mainloop1(){
                         // TODO: time not matching
                         time_trajectory = time_trajectory + 0.01;
 
-                        cout << "Trajectory tracking: " << time_trajectory << " / " << trajectory_total_time << " [ s ]"
-                             << endl;
+                        cout << "Trajectory tracking: " << time_trajectory << " / " << trajectory_total_time << " [ s ]" << endl;
 
                         Draw_in_rviz(Command_to_pub.Reference_State, true);
 
                         ros::Duration(0.01).sleep();
                     }
                 } else {
-                    cout
-                            << "Please choose the Command.Reference_State.Move_mode: 0 for XYZ_POS, 1 for XY_POS_Z_VEL, 2 for XY_VEL_Z_POS, 3 for XYZ_VEL, 5 for TRAJECTORY"
-                            << endl;
-                    cin >> Move_mode;
+                    int Move_mode;
+                    bool valid_move_mode = false;
+
+                    while (!valid_move_mode) {
+                        cout << "Please choose the Command.Reference_State.Move_mode: 0 for XYZ_POS, 1 for XY_POS_Z_VEL, 2 for XY_VEL_Z_POS, 3 for XYZ_VEL, 5 for TRAJECTORY" << endl;
+                        if (cin >> Move_mode) {
+                            if (Move_mode == 0 || Move_mode == 1 || Move_mode == 2 || Move_mode == 3 || Move_mode == 5) {
+                                valid_move_mode = true;
+                            } else {
+                                cout << "Invalid input! Please enter a valid move mode." << endl;
+                            }
+                        } else {
+                            // Clear error flags
+                            cin.clear();
+                            // Discard invalid input
+                            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                            cout << "Invalid input! Please enter an integer." << endl;
+                        }
+                    }
 
                     if (Move_mode == prometheus_msgs::PositionReference::TRAJECTORY) {
                         cout << "For safety, please move the drone near to the trajectory start point firstly!!!"
