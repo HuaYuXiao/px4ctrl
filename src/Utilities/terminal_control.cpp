@@ -2,8 +2,8 @@
 * terminal_control.cpp
 *
 * Author: Qyp
-*
-* Update Time: 2020.11.4
+* Edited by: Eason Hua
+* Update Time: 2024.04.10
 *
 * Introduction:  test function for sending ControlCommand.msg
 ***************************************************************************************************************************/
@@ -71,7 +71,7 @@ int main(int argc, char **argv){
     nh.param<float>("geo_fence/y_min", geo_fence_y[0], -20.0);
     nh.param<float>("geo_fence/y_max", geo_fence_y[1], 20.0);
     nh.param<float>("geo_fence/z_min", geo_fence_z[0], -0.3);
-    nh.param<float>("geo_fence/z_max", geo_fence_z[1], 10.0);
+    nh.param<float>("geo_fence/z_max", geo_fence_z[1], 5.0);
 
     // 初始化命令 - Idle模式 电机怠速旋转 等待来自上层的控制指令
     Command_to_pub.Mode                                = prometheus_msgs::ControlCommand::Idle;
@@ -218,7 +218,65 @@ void mainloop1(){
                 break;
 
             case prometheus_msgs::ControlCommand::Move:
+                while (!valid_move_mode) {
+                    cout << "Please choose the Command.Reference_State.Move_mode: 0 for XYZ_POS, 1 for XY_POS_Z_VEL, 2 for XY_VEL_Z_POS, 3 for XYZ_VEL, 5 for TRAJECTORY" << endl;
+                    if (cin >> Move_mode) {
+                        if (Move_mode == 0 ||
+                            Move_mode == 1 ||
+                            Move_mode == 2 ||
+                            Move_mode == 3 ||
+                            Move_mode == 5) {
+                            valid_move_mode = true;
+                        } else {
+                            cout << "Invalid input! Please enter a valid Move_mode." << endl;
+                        }
+                    } else {
+                        // Clear error flags
+                        cin.clear();
+                        // Discard invalid input
+                        cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        cout << "Invalid input! Please enter an integer." << endl;
+                    }
+                }
+                valid_move_mode = false;
+
                 if (Move_mode == prometheus_msgs::PositionReference::TRAJECTORY) {
+                    while (!valid_trajectory_mode) {
+                        cout << "Please choose the trajectory type: 0 for Circle, 1 for Eight Shape, 2 for Step, 3 for Line" << endl;
+                        if (cin >> Trjectory_mode) {
+                            if (Trjectory_mode >= 0 && Trjectory_mode <= 3) {
+                                valid_trajectory_mode = true;
+                            } else {
+                                cout << "Invalid input! Please enter a valid trajectory mode." << endl;
+                            }
+                        } else {
+                            // Clear error flags
+                            cin.clear();
+                            // Discard invalid input
+                            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                            cout << "Invalid input! Please enter an integer." << endl;
+                        }
+                    }
+                    valid_trajectory_mode = false;
+
+                    while (!valid_total_time) {
+                        cout << "Input the trajectory_total_time:" << endl;
+                        if (cin >> trajectory_total_time) {
+                            if (trajectory_total_time >= 1.0 && trajectory_total_time <= 100.0) {
+                                valid_total_time = true;
+                            } else {
+                                cout << "Invalid input! Please enter a float between 1 and 100." << endl;
+                            }
+                        } else {
+                            // Clear error flags
+                            cin.clear();
+                            // Discard invalid input
+                            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                            cout << "Invalid input! Please enter a float." << endl;
+                        }
+                    }
+                    valid_total_time = false;
+
                     time_trajectory = 0.0;
 
                     while (time_trajectory < trajectory_total_time) {
@@ -245,24 +303,21 @@ void mainloop1(){
                         // TODO: time not matching
                         time_trajectory = time_trajectory + 0.01;
 
-                        cout << "Trajectory tracking: " << time_trajectory << " / " << trajectory_total_time << " [ s ]" << endl;
+                        cout << "Trajectory tracking: " << time_trajectory << " / " << trajectory_total_time
+                             << " [ s ]" << endl;
 
                         Draw_in_rviz(Command_to_pub.Reference_State, true);
 
                         ros::Duration(0.01).sleep();
                     }
                 } else {
-                    while (!valid_move_mode) {
-                        cout << "Please choose the Command.Reference_State.Move_mode: 0 for XYZ_POS, 1 for XY_POS_Z_VEL, 2 for XY_VEL_Z_POS, 3 for XYZ_VEL, 5 for TRAJECTORY" << endl;
-                        if (cin >> Move_mode) {
-                            if (Move_mode == 0 ||
-                                Move_mode == 1 ||
-                                Move_mode == 2 ||
-                                Move_mode == 3 ||
-                                Move_mode == 5) {
-                                valid_move_mode = true;
+                    while (!valid_move_frame) {
+                        cout << "Please choose the Command.Reference_State.Move_frame: 0 for ENU_FRAME, 1 for BODY_FRAME" << endl;
+                        if (cin >> Move_frame) {
+                            if (Move_frame == 0 || Move_frame == 1) {
+                                valid_move_frame = true;
                             } else {
-                                cout << "Invalid input! Please enter a valid move mode." << endl;
+                                cout << "Invalid input! Please enter 0 or 1." << endl;
                             }
                         } else {
                             // Clear error flags
@@ -272,155 +327,100 @@ void mainloop1(){
                             cout << "Invalid input! Please enter an integer." << endl;
                         }
                     }
-                    valid_move_mode = false;
+                    valid_move_frame = false;
 
-                    if (Move_mode == prometheus_msgs::PositionReference::TRAJECTORY) {
-                        while (!valid_trajectory_mode) {
-                            cout << "Please choose the trajectory type: 0 for Circle, 1 for Eight Shape, 2 for Step, 3 for Line" << endl;
-                            if (cin >> Trjectory_mode) {
-                                if (Trjectory_mode >= 0 && Trjectory_mode <= 3) {
-                                    valid_trajectory_mode = true;
-                                } else {
-                                    cout << "Invalid input! Please enter a valid trajectory mode." << endl;
-                                }
+                    cout << "Please input the reference state [x y z yaw]: " << endl;
+
+                    while (!valid_x_input) {
+                        cout << "setpoint_t[0] --- x [m] : " << endl;
+                        if (cin >> state_desired[0]) {
+                            // Check if x is within the range defined by geo_fence_x
+                            if (state_desired[0] >= geo_fence_x[0] && state_desired[0] <= geo_fence_x[1]) {
+                                valid_x_input = true;
                             } else {
-                                // Clear error flags
-                                cin.clear();
-                                // Discard invalid input
-                                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                                cout << "Invalid input! Please enter an integer." << endl;
+                                cout << "Invalid input for x! Please enter a value between " << geo_fence_x[0] << " and " << geo_fence_x[1] << endl;
                             }
+                        } else {
+                            // Clear error flags
+                            cin.clear();
+                            // Discard invalid input
+                            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                            cout << "Invalid input! Please enter a number." << endl;
                         }
-                        valid_trajectory_mode = false;
+                    }
+                    valid_x_input = false;
 
-                        while (!valid_total_time) {
-                            cout << "Input the trajectory_total_time:" << endl;
-                            if (cin >> trajectory_total_time) {
-                                if (trajectory_total_time >= 1.0 && trajectory_total_time <= 100.0) {
-                                    valid_total_time = true;
-                                } else {
-                                    cout << "Invalid input! Please enter a float between 1 and 100." << endl;
-                                }
+                    while (!valid_y_input) {
+                        cout << "setpoint_t[1] --- y [m] : " << endl;
+                        if (cin >> state_desired[1]) {
+                            // Check if y is within the range defined by geo_fence_y
+                            if (state_desired[1] >= geo_fence_y[0] && state_desired[1] <= geo_fence_y[1]) {
+                                valid_y_input = true;
                             } else {
-                                // Clear error flags
-                                cin.clear();
-                                // Discard invalid input
-                                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                                cout << "Invalid input! Please enter a float." << endl;
+                                cout << "Invalid input for y! Please enter a value between " << geo_fence_y[0] << " and " << geo_fence_y[1] << endl;
                             }
+                        } else {
+                            // Clear error flags
+                            cin.clear();
+                            // Discard invalid input
+                            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                            cout << "Invalid input! Please enter a number." << endl;
                         }
-                        valid_total_time = false;
+                    }
+                    valid_y_input = false;
 
-                    } else {
-                        while (!valid_move_frame) {
-                            cout << "Please choose the Command.Reference_State.Move_frame: 0 for ENU_FRAME, 1 for BODY_FRAME" << endl;
-                            if (cin >> Move_frame) {
-                                if (Move_frame == 0 || Move_frame == 1) {
-                                    valid_move_frame = true;
-                                } else {
-                                    cout << "Invalid input! Please enter 0 or 1." << endl;
-                                }
+                    while (!valid_z_input) {
+                        cout << "setpoint_t[2] --- z [m] : " << endl;
+                        if (cin >> state_desired[2]) {
+                            // Check if z is within the range defined by geo_fence_z
+                            if (state_desired[2] >= geo_fence_z[0] && state_desired[2] <= geo_fence_z[1]) {
+                                valid_z_input = true;
                             } else {
-                                // Clear error flags
-                                cin.clear();
-                                // Discard invalid input
-                                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                                cout << "Invalid input! Please enter an integer." << endl;
+                                cout << "Invalid input for z! Please enter a value between " << geo_fence_z[0] << " and " << geo_fence_z[1] << endl;
                             }
+                        } else {
+                            // Clear error flags
+                            cin.clear();
+                            // Discard invalid input
+                            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                            cout << "Invalid input! Please enter a number." << endl;
                         }
-                        valid_move_frame = false;
+                    }
+                    valid_z_input = false;
 
-                        cout << "Please input the reference state [x y z yaw]: " << endl;
-                        while (!valid_x_input) {
-                            cout << "setpoint_t[0] --- x [m] : " << endl;
-                            if (cin >> state_desired[0]) {
-                                // Check if x is within the range defined by geo_fence_x
-                                if (state_desired[0] >= geo_fence_x[0] && state_desired[0] <= geo_fence_x[1]) {
-                                    valid_x_input = true;
-                                } else {
-                                    cout << "Invalid input for x! Please enter a value between " << geo_fence_x[0] << " and " << geo_fence_x[1] << endl;
-                                }
+                    while (!valid_yaw_input) {
+                        cout << "setpoint_t[3] --- yaw [deg] : " << endl;
+                        if (cin >> state_desired[3]) {
+                            // Check if yaw is within the range
+                            if (state_desired[3] >= 0 && state_desired[3] < 360) {
+                                valid_yaw_input = true;
                             } else {
-                                // Clear error flags
-                                cin.clear();
-                                // Discard invalid input
-                                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                                cout << "Invalid input! Please enter a number." << endl;
+                                cout << "Invalid input for yaw! Please enter a value between 0 and 360" << endl;
                             }
-                        }
-                        valid_x_input = false;
-
-                        while (!valid_y_input) {
-                            cout << "setpoint_t[1] --- y [m] : " << endl;
-                            if (cin >> state_desired[1]) {
-                                // Check if y is within the range defined by geo_fence_y
-                                if (state_desired[1] >= geo_fence_y[0] && state_desired[1] <= geo_fence_y[1]) {
-                                    valid_y_input = true;
-                                } else {
-                                    cout << "Invalid input for y! Please enter a value between " << geo_fence_y[0] << " and " << geo_fence_y[1] << endl;
-                                }
-                            } else {
-                                // Clear error flags
-                                cin.clear();
-                                // Discard invalid input
-                                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                                cout << "Invalid input! Please enter a number." << endl;
-                            }
-                        }
-                        valid_y_input = false;
-
-                        while (!valid_z_input) {
-                            cout << "setpoint_t[2] --- z [m] : " << endl;
-                            if (cin >> state_desired[2]) {
-                                // Check if z is within the range defined by geo_fence_z
-                                if (state_desired[2] >= geo_fence_z[0] && state_desired[2] <= geo_fence_z[1]) {
-                                    valid_z_input = true;
-                                } else {
-                                    cout << "Invalid input for z! Please enter a value between " << geo_fence_z[0] << " and " << geo_fence_z[1] << endl;
-                                }
-                            } else {
-                                // Clear error flags
-                                cin.clear();
-                                // Discard invalid input
-                                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                                cout << "Invalid input! Please enter a number." << endl;
-                            }
-                        }
-                        valid_z_input = false;
-
-                        while (!valid_yaw_input) {
-                            cout << "setpoint_t[3] --- yaw [deg] : " << endl;
-                            if (cin >> state_desired[3]) {
-                                // Check if yaw is within the range
-                                if (state_desired[3] >= 0 && state_desired[3] < 360) {
-                                    valid_yaw_input = true;
-                                } else {
-                                    cout << "Invalid input for yaw! Please enter a value between 0 and 360" << endl;
-                                }
-                            } else {
-                                // Clear error flags
-                                cin.clear();
-                                // Discard invalid input
-                                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                                cout << "Invalid input! Please enter a number." << endl;
-                            }
+                        } else {
+                            // Clear error flags
+                            cin.clear();
+                            // Discard invalid input
+                            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                            cout << "Invalid input! Please enter a number." << endl;
                         }
                     }
                     valid_yaw_input = false;
-
-                    Command_to_pub.header.stamp = ros::Time::now();
-                    Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
-                    Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
-                    Command_to_pub.source = NODE_NAME;
-                    Command_to_pub.Reference_State.Move_mode = Move_mode;
-                    Command_to_pub.Reference_State.Move_frame = Move_frame;
-                    // yaw_rate control
-                    // Command_to_pub.Reference_State.Yaw_Rate_Mode = 1;
-                    Command_to_pub.Reference_State.time_from_start = -1;
-                    generate_com(Move_mode, state_desired);
-
-                    move_pub.publish(Command_to_pub);
                 }
+
+                Command_to_pub.header.stamp = ros::Time::now();
+                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
+                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.source = NODE_NAME;
+                Command_to_pub.Reference_State.Move_mode = Move_mode;
+                Command_to_pub.Reference_State.Move_frame = Move_frame;
+                // yaw_rate control
+                // Command_to_pub.Reference_State.Yaw_Rate_Mode = 1;
+                Command_to_pub.Reference_State.time_from_start = -1;
+                generate_com(Move_mode, state_desired);
+
+                move_pub.publish(Command_to_pub);
+
                 break;
 
             case prometheus_msgs::ControlCommand::Disarm:
@@ -442,7 +442,7 @@ void mainloop1(){
                 break;
         }
 
-        cout << "....................................................." << endl;
+        cout << ">>>>>>>>> MISSION RECEIVED <<<<<<<<" << endl;
     }
 }
 
