@@ -335,7 +335,7 @@ void mainloop1(){
                         cout << "setpoint_t[0] --- x [m] : " << endl;
                         if (cin >> state_desired[0]) {
                             // Check if x is within the range defined by geo_fence_x
-                            if (state_desired[0] >= geo_fence_x[0] && state_desired[0] <= geo_fence_x[1]) {
+                            if (state_desired[0] > geo_fence_x[0] && state_desired[0] < geo_fence_x[1]) {
                                 valid_x_input = true;
                             } else {
                                 cout << "Invalid input for x! Please enter a value between " << geo_fence_x[0] << " and " << geo_fence_x[1] << endl;
@@ -354,7 +354,7 @@ void mainloop1(){
                         cout << "setpoint_t[1] --- y [m] : " << endl;
                         if (cin >> state_desired[1]) {
                             // Check if y is within the range defined by geo_fence_y
-                            if (state_desired[1] >= geo_fence_y[0] && state_desired[1] <= geo_fence_y[1]) {
+                            if (state_desired[1] > geo_fence_y[0] && state_desired[1] < geo_fence_y[1]) {
                                 valid_y_input = true;
                             } else {
                                 cout << "Invalid input for y! Please enter a value between " << geo_fence_y[0] << " and " << geo_fence_y[1] << endl;
@@ -373,10 +373,10 @@ void mainloop1(){
                         cout << "setpoint_t[2] --- z [m] : " << endl;
                         if (cin >> state_desired[2]) {
                             // Check if z is within the range defined by geo_fence_z
-                            if (state_desired[2] >= geo_fence_z[0] && state_desired[2] <= geo_fence_z[1]) {
+                            if (abs(state_desired[2]) < geo_fence_z[1]) {
                                 valid_z_input = true;
                             } else {
-                                cout << "Invalid input for z! Please enter a value between " << geo_fence_z[0] << " and " << geo_fence_z[1] << endl;
+                                cout << "Invalid input for z! Please enter a value between -" << geo_fence_z[1] << " and " << geo_fence_z[1] << endl;
                             }
                         } else {
                             // Clear error flags
@@ -392,10 +392,10 @@ void mainloop1(){
                         cout << "setpoint_t[3] --- yaw [deg] : " << endl;
                         if (cin >> state_desired[3]) {
                             // Check if yaw is within the range
-                            if (state_desired[3] >= 0 && state_desired[3] < 360) {
+                            if (state_desired[3] >= -360 && state_desired[3] < 360) {
                                 valid_yaw_input = true;
                             } else {
-                                cout << "Invalid input for yaw! Please enter a value between 0 and 360" << endl;
+                                cout << "Invalid input for yaw! Please enter a value between -360 and 360" << endl;
                             }
                         } else {
                             // Clear error flags
