@@ -36,10 +36,6 @@ cd ~/Prometheus
 ```
 
 ```bash
-catkin_make install -j1 -l1 --source Modules/uav_control --build build/uav_control
+catkin_make install -j1 -l1 --source src/uav_control --build build/uav_control
 ```
-
-
-
-
 
