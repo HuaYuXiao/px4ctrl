@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>uav_control</name>
-  <version>3.2.1</version>
+  <version>3.2.2</version>
   <description>A ROS package for controlling Prometheus P450</description>
 
   <maintainer email="hyx020222@gmail.com">Eason Hua</maintainer>

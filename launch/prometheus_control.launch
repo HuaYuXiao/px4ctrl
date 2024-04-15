@@ -1,6 +1,6 @@
 <launch>
     <arg name="input_source" default="2"/>
-    <arg name="launch_prefix" default="gnome-terminal --tab --"/>
+    <arg name="launch_prefix" default="gnome-terminal --"/>
 
     <!-- 启动Prometheus代码 -->
     <group ns="uav_control">
@@ -30,13 +30,4 @@
         -->
         <param name="input_source" value="$(arg input_source)"/>
     </node>
-
-    <!-- run the px4_sender.cpp -->
-    <node pkg="uav_control" type="px4_sender" name="px4_sender" output="screen">
-        <rosparam command="load" file="$(find uav_control)/config/uav_control_indoor.yaml"/>
-    </node>
-
-    <!-- STATION -->
-    <include file="$(find uav_control)/launch/prometheus_station.launch">
-    </include>
 </launch>
