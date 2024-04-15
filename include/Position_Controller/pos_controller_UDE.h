@@ -1,133 +1,146 @@
+/***************************************************************************************************************************
+* pos_controller_UDE.h
+*
+* Author: Qyp
+*
+* Update Time: 2019.4.12
+*
+* Introduction:  Position Controller using UDE method
+*         1. Ref to Zhongqingchang's paper:
+*     Uncertainty and Disturbance Estimator-Based Robust Trajectory Tracking Control for a Quadrotor in a Global Positioning System-Denied Environment
+*         2. Ref to : https://github.com/PX4/Firmware/blob/master/src/modules/mc_pos_control/PositionControl.cpp
+*         3. ThrottleToAttitude ref to https://github.com/PX4/Firmware/blob/master/src/modules/mc_pos_control/Utility/ControlMath.cpp
+*         4. 没有考虑积分器清零的情况，在降落时 或者突然换方向机动时，积分器需要清0
+*         5. 推力到欧拉角基本与PX4吻合，但是在极端情况下不吻合。如：z轴期望值为-100时。
+***************************************************************************************************************************/
 #ifndef POS_CONTROLLER_UDE_H
 #define POS_CONTROLLER_UDE_H
 
-#include <ros/ros.h>
-#include <math.h>
 #include <Eigen/Eigen>
-#include <bitset>
-#include <prometheus_msgs/UAVState.h>
+#include <math.h>
+#include <command_to_mavros.h>
+#include <prometheus_control_utils.h>
+#include <math_utils.h>
 
-#include "geometry_utils.h"
-#include "controller_utils.h"
-#include "printf_utils.h"
+
+#include <prometheus_msgs/DroneState.h>
+#include <prometheus_msgs/PositionReference.h>
+#include <prometheus_msgs/AttitudeReference.h>
+#include <prometheus_msgs/ControlOutput.h>
+
 
 using namespace std;
 
+
 class pos_controller_UDE
 {
-    public:
-        pos_controller_UDE(){};
+    //public表明该数据成员、成员函数是对全部用户开放的。全部用户都能够直接进行调用，在程序的不论什么其他地方訪问。
+public:
 
-        void init(ros::NodeHandle& nh);
+    //构造函数
+    pos_controller_UDE(void):
+            pos_UDE_nh("~")
+    {
+        pos_UDE_nh.param<float>("Quad/mass", Quad_MASS, 1.0);
 
-        void set_desired_state(const Desired_State& des)
-        {
-            desired_state = des;
-        }
+        pos_UDE_nh.param<float>("Pos_ude/Kp_xy", Kp[0], 1.0);
+        pos_UDE_nh.param<float>("Pos_ude/Kp_xy", Kp[1], 1.0);
+        pos_UDE_nh.param<float>("Pos_ude/Kp_z", Kp[2], 1.0);
+        pos_UDE_nh.param<float>("Pos_ude/Kd_xy", Kd[0], 2.0);
+        pos_UDE_nh.param<float>("Pos_ude/Kd_xy", Kd[1], 2.0);
+        pos_UDE_nh.param<float>("Pos_ude/Kd_z", Kd[2], 2.0);
+        pos_UDE_nh.param<float>("Pos_ude/T_ude_xy", T_ude[0], 1.0);
+        pos_UDE_nh.param<float>("Pos_ude/T_ude_xy", T_ude[1], 1.0);
+        pos_UDE_nh.param<float>("Pos_ude/T_ude_z", T_ude[2], 1.0);
 
-        void set_current_state(const prometheus_msgs::UAVState& state)
-        {
-            uav_state = state;
+        pos_UDE_nh.param<float>("Limit/pxy_error_max", pos_error_max[0], 0.6);
+        pos_UDE_nh.param<float>("Limit/pxy_error_max", pos_error_max[1], 0.6);
+        pos_UDE_nh.param<float>("Limit/pz_error_max" , pos_error_max[2], 1.0);
+        pos_UDE_nh.param<float>("Limit/vxy_error_max", vel_error_max[0], 0.3);
+        pos_UDE_nh.param<float>("Limit/vxy_error_max", vel_error_max[1], 0.3);
+        pos_UDE_nh.param<float>("Limit/vz_error_max" , vel_error_max[2], 1.0);
+        pos_UDE_nh.param<float>("Limit/pxy_int_max"  , int_max[0], 0.5);
+        pos_UDE_nh.param<float>("Limit/pxy_int_max"  , int_max[1], 0.5);
+        pos_UDE_nh.param<float>("Limit/pz_int_max"   , int_max[2], 0.5);
+        pos_UDE_nh.param<float>("Limit/tilt_max", tilt_max, 20.0);
+        pos_UDE_nh.param<float>("Limit/int_start_error"  , int_start_error, 0.3);
 
-            for(int i=0; i<3; i++)
-            {
-                current_state.pos(i) = uav_state.position[i];
-                current_state.vel(i) = uav_state.velocity[i];
-            }
+        u_l      = Eigen::Vector3f(0.0,0.0,0.0);
+        u_d      = Eigen::Vector3f(0.0,0.0,0.0);
+        integral = Eigen::Vector3f(0.0,0.0,0.0);
+    }
 
-            current_state.q.w() = uav_state.attitude_q.w;
-            current_state.q.x() = uav_state.attitude_q.x;
-            current_state.q.y() = uav_state.attitude_q.y;
-            current_state.q.z() = uav_state.attitude_q.z; 
+    //Quadrotor Parameter
+    float Quad_MASS;
 
-            current_state.yaw = geometry_utils::get_yaw_from_quaternion(current_state.q);
-        }
 
-        void printf_param();
-        void printf_result();
-        Eigen::Vector4d update(float controller_hz);
+    //UDE control parameter
+    Eigen::Vector3f Kp;
+    Eigen::Vector3f Kd;
+    Eigen::Vector3f T_ude;
 
-    private:
+    //Limitation
+    Eigen::Vector3f pos_error_max;
+    Eigen::Vector3f vel_error_max;
+    Eigen::Vector3f int_max;
 
-        Ctrl_Param_UDE ctrl_param;
-        Desired_State desired_state;
-        Current_State current_state;
-        prometheus_msgs::UAVState uav_state;
+    float tilt_max;
+    float int_start_error;
 
-        Tracking_Error_Evaluation tracking_error;
+    //u_l for nominal contorol(PD), u_d for ude control(disturbance estimator)
+    Eigen::Vector3f u_l,u_d;
 
-        //u_l for nominal contorol(PD), u_d for ude control(disturbance estimator)
-        Eigen::Vector3d u_l,u_d;
-        Eigen::Vector3d integral;
-        Eigen::Vector3d F_des;
-        Eigen::Vector4d u_att;                  // 期望姿态角（rad）+期望油门（0-1）
+    Eigen::Vector3f integral;
+
+    prometheus_msgs::ControlOutput _ControlOutput;
+
+
+    //Printf the UDE parameter
+    void printf_param();
+
+    //Printf the control result
+    void printf_result();
+
+    // Position control main function
+    // [Input: Current state, Reference state, sub_mode, dt; Output: AttitudeReference;]
+    prometheus_msgs::ControlOutput pos_controller(const prometheus_msgs::DroneState& _DroneState, const prometheus_msgs::PositionReference& _Reference_State, float dt);
+
+private:
+
+    ros::NodeHandle pos_UDE_nh;
+
 };
 
-
-void pos_controller_UDE::init(ros::NodeHandle& nh)
+prometheus_msgs::ControlOutput pos_controller_UDE::pos_controller(
+        const prometheus_msgs::DroneState& _DroneState,
+        const prometheus_msgs::PositionReference& _Reference_State, float dt)
 {
-    ctrl_param.Kp.setZero();
-    ctrl_param.Kd.setZero();
-    nh.param<float>("ude_gain/quad_mass"   , ctrl_param.quad_mass, 1.0f);
-    nh.param<float>("ude_gain/hov_percent" , ctrl_param.hov_percent, 0.5f);
-    nh.param<float>("ude_gain/pxy_int_max" , ctrl_param.int_max[0], 1.0);
-    nh.param<float>("ude_gain/pxy_int_max" , ctrl_param.int_max[1], 1.0);
-    nh.param<float>("ude_gain/pz_int_max"  , ctrl_param.int_max[2], 1.0);
-    ctrl_param.g << 0.0, 0.0, 9.8;
+    Eigen::Vector3d accel_sp;
 
-    nh.param<double>("ude_gain/Kp_xy", ctrl_param.Kp(0,0), 0.5f);
-    nh.param<double>("ude_gain/Kp_xy", ctrl_param.Kp(1,1), 0.5f);
-    nh.param<double>("ude_gain/Kp_z" , ctrl_param.Kp(2,2), 0.5f);
-    nh.param<double>("ude_gain/Kd_xy", ctrl_param.Kd(0,0), 2.0f);
-    nh.param<double>("ude_gain/Kd_xy", ctrl_param.Kd(1,1), 2.0f);
-    nh.param<double>("ude_gain/Kd_z" , ctrl_param.Kd(2,2), 2.0f);
-    nh.param<double>("ude_gain/T_ude", ctrl_param.T_ude, 1.0f);
-    nh.param<float>("ude_gain/tilt_angle_max" , ctrl_param.tilt_angle_max, 20.0f);
+    // 计算误差项
+    Eigen::Vector3f pos_error;
+    Eigen::Vector3f vel_error;
 
-    u_l.setZero();
-    u_d.setZero();
-    integral.setZero();
-    u_att.setZero();
+    pos_error = prometheus_control_utils::cal_pos_error(_DroneState, _Reference_State);
+    vel_error = prometheus_control_utils::cal_vel_error(_DroneState, _Reference_State);
 
-    printf_param();
-}
-
-Eigen::Vector4d pos_controller_UDE::update(float controller_hz)
-{
-    float dt = 1/controller_hz;
-    // 位置误差
-    Eigen::Vector3d pos_error = desired_state.pos - current_state.pos;
-    // 速度误差
-    Eigen::Vector3d vel_error = desired_state.vel - current_state.vel;
-    // 误差评估
-    tracking_error.input_error(pos_error,vel_error);
-    
-    // 限制最大误差
-    float max_pos_error = 3.0;
-    float max_vel_error = 3.0;
-
+    // 误差项限幅
     for (int i=0; i<3; i++)
     {
-        if(abs(pos_error[i]) > max_pos_error)
-        {            
-            pos_error[i] = (pos_error[i] > 0) ? max_pos_error : -max_pos_error;
-        }
-
-        if(abs(vel_error[i]) > max_vel_error)
-        {            
-            vel_error[i] = (vel_error[i] > 0) ? max_vel_error : -max_vel_error;
-        }
-
+        pos_error[i] = constrain_function(pos_error[i], pos_error_max[i]);
+        vel_error[i] = constrain_function(vel_error[i], vel_error_max[i]);
     }
 
     // UDE算法
-    u_l = desired_state.acc + ctrl_param.Kp * pos_error + ctrl_param.Kd * vel_error;
-    u_d = - 1.0 / ctrl_param.T_ude * (ctrl_param.Kp * integral + ctrl_param.Kd * pos_error + vel_error);
+    for (int i = 0; i < 3; i++)
+    {
+        u_l[i] = _Reference_State.acceleration_ref[i] + Kp[i] * pos_error[i] + Kd[i] * vel_error[i];
+        u_d[i] = - 1.0 / T_ude[i] * (Kd[i] * pos_error[i] + vel_error[i] + Kp[i] * integral[i]);
+    }
 
     // 更新积分项
     for (int i=0; i<3; i++)
     {
-        float int_start_error = 0.5;
         if(abs(pos_error[i]) < int_start_error)
         {
             integral[i] += pos_error[i] * dt;
@@ -136,86 +149,47 @@ Eigen::Vector4d pos_controller_UDE::update(float controller_hz)
             integral[i] = 0;
         }
 
-        if(abs(u_d[i]) > ctrl_param.int_max[i])
+        if(_DroneState.mode != "OFFBOARD")
         {
-            PCOUT(2, YELLOW, "u_d saturation!");
-            u_d[i] = (u_d[i] > 0) ? ctrl_param.int_max[i] : -ctrl_param.int_max[i];
+            integral[i] = 0;
         }
+
+        if(abs(u_d[i]) > int_max[i])
+        {
+            cout << "u_d saturation! " << " [0-1-2] "<< i <<endl;
+            cout << "[u_d]: "<< u_d[i]<<" [u_d_max]: "<<int_max[i]<<" [m/s] "<<endl;
+        }
+
+        u_d[i] = constrain_function(u_d[i], int_max[i]);
     }
 
     // 期望加速度
-    Eigen::Vector3d u_v = u_l - u_d;
+    accel_sp[0] = u_l[0] - u_d[0];
+    accel_sp[1] = u_l[1] - u_d[1];
+    accel_sp[2] = u_l[2] - u_d[2] + 9.8;
 
-	// 期望力 = 质量*控制量 + 重力抵消
-	F_des = u_v * ctrl_param.quad_mass + ctrl_param.quad_mass * ctrl_param.g;
-    
-	// 如果向上推力小于重力的一半
-	// 或者向上推力大于重力的两倍
-	if (F_des(2) < 0.5 * ctrl_param.quad_mass * ctrl_param.g(2))
-	{
-		F_des = F_des / F_des(2) * (0.5 * ctrl_param.quad_mass * ctrl_param.g(2));
-	}
-	else if (F_des(2) > 2 * ctrl_param.quad_mass * ctrl_param.g(2))
-	{
-		F_des = F_des / F_des(2) * (2 * ctrl_param.quad_mass * ctrl_param.g(2));
-	}
+    // 期望推力 = 期望加速度 × 质量
+    // 归一化推力 ： 根据电机模型，反解出归一化推力
+    Eigen::Vector3d thrust_sp;
+    Eigen::Vector3d throttle_sp;
+    thrust_sp =  prometheus_control_utils::accelToThrust(accel_sp, Quad_MASS, tilt_max);
+    throttle_sp = prometheus_control_utils::thrustToThrottle(thrust_sp);
 
-	// 角度限制幅度
-	if (std::fabs(F_des(0)/F_des(2)) > std::tan(geometry_utils::toRad(ctrl_param.tilt_angle_max)))
-	{
-		PCOUT(2, YELLOW, "pitch too tilt");
-		F_des(0) = F_des(0)/std::fabs(F_des(0)) * F_des(2) * std::tan(geometry_utils::toRad(ctrl_param.tilt_angle_max));
-	}
-
-	// 角度限制幅度
-	if (std::fabs(F_des(1)/F_des(2)) > std::tan(geometry_utils::toRad(ctrl_param.tilt_angle_max)))
-	{
-		PCOUT(2, YELLOW, "roll too tilt");
-		F_des(1) = F_des(1)/std::fabs(F_des(1)) * F_des(2) * std::tan(geometry_utils::toRad(ctrl_param.tilt_angle_max));	
-	}
-
-    // F_des是位于ENU坐标系的,F_c是FLU
-    Eigen::Matrix3d wRc = geometry_utils::rotz(current_state.yaw);
-    Eigen::Vector3d F_c = wRc.transpose() * F_des;
-    double fx = F_c(0);
-    double fy = F_c(1);
-    double fz = F_c(2);
-
-    // 期望roll, pitch
-    u_att(0)  = std::atan2(-fy, fz);
-    u_att(1)  = std::atan2( fx, fz);
-    u_att(2)  = desired_state.yaw; 
-
-    // 无人机姿态的矩阵形式
-    Eigen::Matrix3d wRb_odom = current_state.q.toRotationMatrix();
-    // 第三列
-    Eigen::Vector3d z_b_curr = wRb_odom.col(2);
-    // 机体系下的电机推力 相当于Rb * F_enu 惯性系到机体系
-    double u1 = F_des.dot(z_b_curr);
-    // 悬停油门与电机参数有关系,也取决于质量
-    double full_thrust = ctrl_param.quad_mass * ctrl_param.g(2) / ctrl_param.hov_percent;
-
-    // 油门 = 期望推力/最大推力
-    // 这里相当于认为油门是线性的,满足某种比例关系,即认为某个重量 = 悬停油门
-    u_att(3) = u1 / full_thrust;
-
-    if(u_att(3) < 0.1)
+    for (int i=0; i<3; i++)
     {
-        u_att(3) = 0.1;
-        PCOUT(2, YELLOW, "throttle too low");
+        _ControlOutput.u_l[i] = u_l[i];
+        _ControlOutput.u_d[i] = u_d[i];
+        _ControlOutput.Thrust[i] = thrust_sp[i];
+        _ControlOutput.Throttle[i] = throttle_sp[i];
     }
 
-    if(u_att(3) > 1.0)
-    {
-        u_att(3) = 1.0;
-        PCOUT(2, YELLOW, "throttle too high");
-    }
-
-    return u_att;
+    return _ControlOutput;
 }
 
 void pos_controller_UDE::printf_result()
 {
+    cout <<">>>>>>>>>>>>>>>>>>>>  PD+UDE Position Controller  <<<<<<<<<<<<<<<<<<<<<" <<endl;
+
     //固定的浮点显示
     cout.setf(ios::fixed);
     //左对齐
@@ -226,39 +200,40 @@ void pos_controller_UDE::printf_result()
     cout.setf(ios::showpos);
 
     cout<<setprecision(2);
-    cout << BLUE << "----> UDE Position Controller Debug Info      : " << TAIL << endl;
-    cout << BLUE << "----> pos_des         : " << desired_state.pos(0) << " [ m ] " << desired_state.pos(1) << " [ m ] " << desired_state.pos(2) << " [ m ] "<< TAIL << endl;
-    cout << BLUE << "----> vel_des         : " << desired_state.vel(0) << " [ m ] " << desired_state.vel(1) << " [ m ] " << desired_state.vel(2) << " [ m ] "<< TAIL << endl;
-    cout << BLUE << "----> acc_des         : " << desired_state.acc(0) << " [ m ] " << desired_state.acc(1) << " [ m ] " << desired_state.acc(2) << " [ m ] "<< TAIL << endl;
-    cout << BLUE << "----> pos_now         : " << current_state.pos(0) << " [ m ] " << current_state.pos(1) << " [ m ] " << current_state.pos(2) << " [ m ] "<< TAIL << endl;
-    cout << BLUE << "----> vel_now         : " << current_state.vel(0) << " [ m ] " << current_state.vel(1) << " [ m ] " << current_state.vel(2) << " [ m ] "<< TAIL << endl;
-    
-    cout << BLUE << "----> u_l [X Y Z]    : " << u_l[0] << " [N] "<< u_l[1]<<" [N] "<<u_l[2]<<" [N] "<< TAIL <<endl;
-    cout << BLUE << "----> int [X Y Z]    : " << integral[0] << " [N] "<< integral[1]<<" [N] "<<integral[2] <<" [N] " << TAIL <<endl;
-    cout << BLUE << "----> u_d [X Y Z]    : " << u_d[0] << " [N] "<< u_d[1]<<" [N] "<<u_d[2]<<" [N] "<< TAIL <<endl;
-    cout << BLUE << "----> F_des [X Y Z]  : " << F_des[0] << " [N] "<< F_des[1]<<" [N] "<<F_des[2]<<" [N] "<< TAIL <<endl;
-    cout << BLUE << "----> u_att [X Y Z]  : " << u_att[0] << " [rad] "<< u_att[1]<<" [rad] "<<u_att[2]<<" [rad] "<< TAIL <<endl;
-    cout << BLUE << "----> u_throttle  : " << u_att[3] << TAIL <<endl;
-    cout << BLUE << "----> pos_error_mean : " << tracking_error.pos_error_mean <<" [m] "<< TAIL <<endl;
-    cout << BLUE << "----> vel_error_mean : " << tracking_error.vel_error_mean <<" [m/s] "<< TAIL <<endl;
 
+    cout << "u_l [X Y Z] : " << u_l[0] << " [N] "<< u_l[1]<<" [N] "<<u_l[2]<<" [N] "<<endl;
+    cout << "int [X Y Z] : " << integral[0] << " [N] "<< integral[1]<<" [N] "<<integral[2]<<" [N] "<<endl;
+    cout << "u_d [X Y Z] : " << u_d[0] << " [N] "<< u_d[1]<<" [N] "<<u_d[2]<<" [N] "<<endl;
 }
 
 // 【打印参数函数】
 void pos_controller_UDE::printf_param()
 {
-    cout << GREEN <<">>>>>>>>>>>>>>>>>>>>>>>>>>UDE Parameter <<<<<<<<<<<<<<<<<<<<<<<<<" <<endl;
-    cout << GREEN << "ctrl_param.quad_mass   : "<< ctrl_param.quad_mass<< TAIL <<endl;
-    cout << GREEN << "ctrl_param.hov_percent   : "<< ctrl_param.hov_percent<< TAIL <<endl;
-    cout << GREEN << "pxy_int_max   : "<< ctrl_param.int_max[0]<< TAIL <<endl;
-    cout << GREEN << "pz_int_max   : "<< ctrl_param.int_max[2]<< TAIL <<endl;
+    cout <<">>>>>>>>>>>>>>>>>>>>>>>>>>UDE Parameter <<<<<<<<<<<<<<<<<<<<<<<<<" <<endl;
+    cout <<"Quad_MASS : "<< Quad_MASS << endl;
 
-    cout << GREEN << "ude_gain/Kp_xy   : "<< ctrl_param.Kp(0,0) << TAIL <<endl;
-    cout << GREEN << "ude_gain/Kp_z    : "<< ctrl_param.Kp(2,2) << TAIL <<endl;
-    cout << GREEN << "ude_gain/Kd_xy   : "<< ctrl_param.Kd(0,0) << TAIL <<endl;
-    cout << GREEN << "ude_gain/Kd_z    : "<< ctrl_param.Kd(2,2) << TAIL <<endl;
-    cout << GREEN << "ude_gain/T_ude   : "<< ctrl_param.T_ude << TAIL <<endl;
-    cout << GREEN << "ude_gain/tilt_angle_max    : "<< ctrl_param.tilt_angle_max << TAIL <<endl;
+
+    cout <<"Kp_x : "<< Kp[0] << endl;
+    cout <<"Kp_y : "<< Kp[1] << endl;
+    cout <<"Kp_z : "<< Kp[2] << endl;
+
+    cout <<"Kd_x : "<< Kd[0] << endl;
+    cout <<"Kd_y : "<< Kd[1] << endl;
+    cout <<"Kd_z : "<< Kd[2] << endl;
+
+    cout <<"T_ude_x : "<< T_ude[0] << endl;
+    cout <<"T_ude_y : "<< T_ude[1] << endl;
+    cout <<"T_ude_z : "<< T_ude[2] << endl;
+
+    cout <<"Limit:  " <<endl;
+    cout <<"pxy_error_max : "<< pos_error_max[0] << endl;
+    cout <<"pz_error_max :  "<< pos_error_max[2] << endl;
+    cout <<"vxy_error_max : "<< vel_error_max[0] << endl;
+    cout <<"vz_error_max :  "<< vel_error_max[2] << endl;
+    cout <<"pxy_int_max : "<< int_max[0] << endl;
+    cout <<"pz_int_max : "<< int_max[2] << endl;
+    cout <<"tilt_max : "<< tilt_max << endl;
+    cout <<"int_start_error : "<< int_start_error << endl;
 
 }
 

@@ -89,6 +89,64 @@ void send_to_fcu();
 void pub_to_nodes(prometheus_msgs::DroneState State_from_fcu);
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>回调函数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+void vicon_cb(const geometry_msgs::TransformStamped::ConstPtr& msg){
+    pos_drone_vicon = Eigen::Vector3d(msg->transform.translation.x - pos_offset[0],
+                                      msg->transform.translation.y - pos_offset[1],
+                                      msg->transform.translation.z - pos_offset[2]);
+
+    q_vicon = Eigen::Quaterniond(msg->transform.rotation.w,
+                                 msg->transform.rotation.x,
+                                 msg->transform.rotation.y,
+                                 msg->transform.rotation.z);
+
+    Euler_vicon = quaternion_to_euler(q_vicon);
+    // 将偏移量添加到欧拉角中
+    Euler_vicon[0] -= yaw_offset;    // 偏航
+    Euler_vicon[1] -= pitch_offset;  // 俯仰
+    Euler_vicon[2] -= roll_offset;   // 横滚
+}
+
+
+void gazebo_cb(const nav_msgs::Odometry::ConstPtr &msg){
+    if (msg->header.frame_id == "world"){
+        pos_drone_gazebo = Eigen::Vector3d(msg->pose.pose.position.x,
+                                           msg->pose.pose.position.y,
+                                           msg->pose.pose.position.z);
+        q_gazebo = Eigen::Quaterniond(msg->pose.pose.orientation.w,
+                                      msg->pose.pose.orientation.x,
+                                      msg->pose.pose.orientation.y,
+                                      msg->pose.pose.orientation.z);
+        Euler_gazebo = quaternion_to_euler(q_gazebo);
+        // Euler_gazebo[2] = Euler_gazebo[2] + yaw_offset;
+        // q_gazebo = quaternion_from_rpy(Euler_gazebo);
+    }else{
+        pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "wrong gazebo ground truth frame id.");
+    }
+}
+
+
+void t265_cb(const nav_msgs::Odometry::ConstPtr &msg){
+    if (msg->header.frame_id == "t265_odom_frame"){
+        pos_drone_t265 = Eigen::Vector3d(msg->pose.pose.position.x,
+                                         msg->pose.pose.position.y,
+                                         msg->pose.pose.position.z);
+        // pos_drone_t265[0] = msg->pose.pose.position.x + pos_offset[0];
+        // pos_drone_t265[1] = msg->pose.pose.position.y + pos_offset[1];
+        // pos_drone_t265[2] = msg->pose.pose.position.z + pos_offset[2];
+
+        q_t265 = Eigen::Quaterniond(msg->pose.pose.orientation.w,
+                                    msg->pose.pose.orientation.x,
+                                    msg->pose.pose.orientation.y,
+                                    msg->pose.pose.orientation.z);
+        Euler_t265 = quaternion_to_euler(q_gazebo);
+        // Euler_t265[2] = Euler_t265[2] + yaw_offset;
+        // q_t265 = quaternion_from_rpy(Euler_t265);
+    }else{
+        pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "wrong t265 frame id.");
+    }
+}
+
+
 void laser_cb(const tf2_msgs::TFMessage::ConstPtr &msg){
     //确定是cartographer发出来的/tf信息
     //有的时候/tf这个消息的发布者不止一个
@@ -101,20 +159,20 @@ void laser_cb(const tf2_msgs::TFMessage::ConstPtr &msg){
         //位置 xy  [将解算的位置从map坐标系转换至world坐标系]
         pos_drone_laser[0] = laser.transform.translation.x + pos_offset[0];
         pos_drone_laser[1] = laser.transform.translation.y + pos_offset[1];
-        pos_drone_laser[2] = laser.transform.translation.z + pos_offset[2]; 
+        pos_drone_laser[2] = laser.transform.translation.z + pos_offset[2];
 
-         // Read the Quaternion from the Carto Package [Frame: Laser[ENU]]
-         Eigen::Quaterniond q_laser_enu(laser.transform.rotation.w, laser.transform.rotation.x, laser.transform.rotation.y, laser.transform.rotation.z);
+        // Read the Quaternion from the Carto Package [Frame: Laser[ENU]]
+        Eigen::Quaterniond q_laser_enu(laser.transform.rotation.w, laser.transform.rotation.x, laser.transform.rotation.y, laser.transform.rotation.z);
 
-         q_laser = q_laser_enu;
+        q_laser = q_laser_enu;
 
-         // Transform the Quaternion to Euler Angles
-         Euler_laser = quaternion_to_euler(q_laser);
+        // Transform the Quaternion to Euler Angles
+        Euler_laser = quaternion_to_euler(q_laser);
 
         // pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "test.");
 
-            //cout << "Position [X Y Z] : " << pos_drone_laser[0] << " [ m ] "<< pos_drone_laser[1]<<" [ m ] "<< pos_drone_laser[2]<<" [ m ] "<<endl;
-            //cout << "Euler [X Y Z] : " << Euler_laser[0] << " [m/s] "<< Euler_laser[1]<<" [m/s] "<< Euler_laser[2]<<" [m/s] "<<endl;
+        //cout << "Position [X Y Z] : " << pos_drone_laser[0] << " [ m ] "<< pos_drone_laser[1]<<" [ m ] "<< pos_drone_laser[2]<<" [ m ] "<<endl;
+        //cout << "Euler [X Y Z] : " << Euler_laser[0] << " [m/s] "<< Euler_laser[1]<<" [m/s] "<< Euler_laser[2]<<" [m/s] "<<endl;
     }
 }
 
@@ -154,45 +212,10 @@ void optitrack_cb(const geometry_msgs::PoseStamped::ConstPtr &msg){
 
     // Transform the Quaternion to Euler Angles
     Euler_mocap = quaternion_to_euler(q_mocap);
-    
+
     last_timestamp = msg->header.stamp;
 }
 
-
-void vicon_cb(const geometry_msgs::TransformStamped::ConstPtr& msg){
-    pos_drone_vicon = Eigen::Vector3d(msg->transform.translation.x - pos_offset[0],
-                                      msg->transform.translation.y - pos_offset[1],
-                                      msg->transform.translation.z - pos_offset[2]);
-
-    q_vicon = Eigen::Quaterniond(msg->transform.rotation.w,
-                                 msg->transform.rotation.x,
-                                 msg->transform.rotation.y,
-                                 msg->transform.rotation.z);
-
-    Euler_vicon = quaternion_to_euler(q_vicon);
-    // 将偏移量添加到欧拉角中
-    Euler_vicon[0] -= yaw_offset;    // 偏航
-    Euler_vicon[1] -= pitch_offset;  // 俯仰
-    Euler_vicon[2] -= roll_offset;   // 横滚
-}
-
-
-void gazebo_cb(const nav_msgs::Odometry::ConstPtr &msg){
-    if (msg->header.frame_id == "world"){
-        pos_drone_gazebo = Eigen::Vector3d(msg->pose.pose.position.x,
-                                           msg->pose.pose.position.y,
-                                           msg->pose.pose.position.z);
-        q_gazebo = Eigen::Quaterniond(msg->pose.pose.orientation.w,
-                                      msg->pose.pose.orientation.x,
-                                      msg->pose.pose.orientation.y,
-                                      msg->pose.pose.orientation.z);
-        Euler_gazebo = quaternion_to_euler(q_gazebo);
-        // Euler_gazebo[2] = Euler_gazebo[2] + yaw_offset;
-        // q_gazebo = quaternion_from_rpy(Euler_gazebo);
-    }else{
-        pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "wrong gazebo ground truth frame id.");
-    }
-}
 
 void slam_cb(const geometry_msgs::PoseStamped::ConstPtr &msg){
     if (msg->header.frame_id == "map_slam"){
@@ -212,28 +235,6 @@ void slam_cb(const geometry_msgs::PoseStamped::ConstPtr &msg){
         // q_gazebo = quaternion_from_rpy(Euler_gazebo);
     }else{
         pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "wrong slam frame id.");
-    }
-}
-
-
-void t265_cb(const nav_msgs::Odometry::ConstPtr &msg){
-    if (msg->header.frame_id == "t265_odom_frame"){
-        pos_drone_t265 = Eigen::Vector3d(msg->pose.pose.position.x,
-                                         msg->pose.pose.position.y,
-                                         msg->pose.pose.position.z);
-        // pos_drone_t265[0] = msg->pose.pose.position.x + pos_offset[0];
-        // pos_drone_t265[1] = msg->pose.pose.position.y + pos_offset[1];
-        // pos_drone_t265[2] = msg->pose.pose.position.z + pos_offset[2];
-
-        q_t265 = Eigen::Quaterniond(msg->pose.pose.orientation.w,
-                                    msg->pose.pose.orientation.x,
-                                    msg->pose.pose.orientation.y,
-                                    msg->pose.pose.orientation.z);
-        Euler_t265 = quaternion_to_euler(q_gazebo);
-        // Euler_t265[2] = Euler_t265[2] + yaw_offset;
-        // q_t265 = quaternion_from_rpy(Euler_t265);
-    }else{
-        pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "wrong t265 frame id.");
     }
 }
 
@@ -280,25 +281,27 @@ int main(int argc, char **argv){
     nh.param<float>("offset_pitch", pitch_offset, 0.0);
     nh.param<float>("offset_roll", roll_offset, 0.0);
 
-    // 【订阅】optitrack估计位置
-    ros::Subscriber optitrack_sub = nh.subscribe<geometry_msgs::PoseStamped>("/vrpn_client_node/"+ object_name + "/pose", 100, optitrack_cb);
-    // TODO: VICON
+    // VICON
     ros::Subscriber vicon_sub = nh.subscribe<geometry_msgs::TransformStamped>("/vicon/" + subject_name + "/" + segment_name, 1000, vicon_cb);
-    // 【订阅】cartographer估计位置
-    ros::Subscriber laser_sub = nh.subscribe<tf2_msgs::TFMessage>("/tf", 100, laser_cb);
     //  【订阅】t265估计位置
     ros::Subscriber t265_sub = nh.subscribe<nav_msgs::Odometry>("/t265/odom/sample", 100, t265_cb);
-    // 【订阅】gazebo仿真真值
-    ros::Subscriber gazebo_sub = nh.subscribe<nav_msgs::Odometry>("/prometheus/ground_truth/p300_basic", 100, gazebo_cb);
+    // TODO:【订阅】gazebo仿真真值
+    ros::Subscriber gazebo_sub = nh.subscribe<nav_msgs::Odometry>("/uav1/prometheus/ground_truth", 100, gazebo_cb);
     // 【订阅】SLAM估计位姿
     ros::Subscriber slam_sub = nh.subscribe<geometry_msgs::PoseStamped>("/slam/pose", 100, slam_cb);
+    // 【订阅】cartographer估计位置
+    ros::Subscriber laser_sub = nh.subscribe<tf2_msgs::TFMessage>("/tf", 100, laser_cb);
+    // 【订阅】optitrack估计位置
+    ros::Subscriber optitrack_sub = nh.subscribe<geometry_msgs::PoseStamped>("/vrpn_client_node/"+ object_name + "/pose", 100, optitrack_cb);
 
     // 【发布】无人机位置和偏航角 坐标系 ENU系
-    //  TODO: 本话题要发送飞控(通过mavros_extras/src/plugins/vision_pose_estimate.cpp发送), 对应Mavlink消息为VISION_POSITION_ESTIMATE(#102), 对应的飞控中的uORB消息为vehicle_vision_position.msg 及 vehicle_vision_attitude.msg
+    //  本话题要发送飞控(通过mavros_extras/src/plugins/vision_pose_estimate.cpp发送),
+    //  对应Mavlink消息为VISION_POSITION_ESTIMATE(#102),
+    //  对应的飞控中的uORB消息为vehicle_vision_position.msg 及 vehicle_vision_attitude.msg
     vision_pub = nh.advertise<geometry_msgs::PoseStamped>("/mavros/vision_pose/pose", 10);
     // 【发布】无人机状态量
     drone_state_pub = nh.advertise<prometheus_msgs::DroneState>("/prometheus/drone_state", 10);
-    //　TODO:【发布】无人机odometry，用于RVIZ显示
+    //　发布】无人机odometry，用于RVIZ显示
     odom_pub = nh.advertise<nav_msgs::Odometry>("/prometheus/drone_odom", 10);
     // 【发布】无人机移动轨迹，用于RVIZ显示
     trajectory_pub = nh.advertise<nav_msgs::Path>("/prometheus/drone_trajectory", 10);
@@ -306,7 +309,7 @@ int main(int argc, char **argv){
     message_pub = nh.advertise<prometheus_msgs::Message>("/prometheus/message/main", 10);
 
     // 10秒定时打印，以确保程序在正确运行
-    ros::Timer timer = nh.createTimer(ros::Duration(10.0), timerCallback);
+    ros::Timer timer = nh.createTimer(ros::Duration(1.0), timerCallback);
 
     // 用于与mavros通讯的类，通过mavros接收来至飞控的消息【飞控->mavros->本程序】
     state_from_mavros _state_from_mavros;

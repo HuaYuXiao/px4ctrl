@@ -72,7 +72,7 @@ int main(int argc, char **argv)
     {
         // Waiting for input
         cout << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Control Test<<<<<<<<<<<<<<<<<<<<<<<<<<< "<< endl;
-        cout << "Input the Mode: 0 for Idle, 1 for Takeoff, 2 for Hold, 3 for Land, 4 for Move, 5 for Disarm, 6 for User_Mode1, 7 for User_Mode2"<<endl;
+        cout << "Input the Mode: 0 for Idle, 1 for Takeoff, 2 for Hold, 3 for Land, 4 for Move, 5 for Disarm"<<endl;
         cout << "Input 999 to switch to offboard mode and arm the drone"<<endl;
         cin >> Control_Mode;
 
@@ -151,22 +151,6 @@ int main(int argc, char **argv)
             case prometheus_msgs::ControlCommand::Disarm:
                 Command_Now.header.stamp = ros::Time::now();
                 Command_Now.Mode = prometheus_msgs::ControlCommand::Disarm;
-                Command_Now.Command_ID = Command_Now.Command_ID + 1;
-                Command_Now.source = NODE_NAME;
-                move_pub.publish(Command_Now);
-                break;
-
-            case prometheus_msgs::ControlCommand::User_Mode1:
-                Command_Now.header.stamp = ros::Time::now();
-                Command_Now.Mode = prometheus_msgs::ControlCommand::User_Mode1;
-                Command_Now.Command_ID = Command_Now.Command_ID + 1;
-                Command_Now.source = NODE_NAME;
-                move_pub.publish(Command_Now);
-                break;
-            
-            case prometheus_msgs::ControlCommand::User_Mode2:
-                Command_Now.header.stamp = ros::Time::now();
-                Command_Now.Mode = prometheus_msgs::ControlCommand::User_Mode2;
                 Command_Now.Command_ID = Command_Now.Command_ID + 1;
                 Command_Now.source = NODE_NAME;
                 move_pub.publish(Command_Now);

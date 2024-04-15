@@ -1,45 +1,11 @@
 <launch>
+    <arg name="input_source" default="2"/>
+    <arg name="launch_prefix" default="gnome-terminal --"/>
+
     <!-- 启动Prometheus代码 -->
     <group ns="uav_control">
-        <arg name="uav_id" default="1"/>
-        <arg name="sim_mode" default="true"/>
-        <arg name="flag_printf" default="true"/>
-        <!-- 如果是matlab配置为ATT_CTRL_MODE，则此处要设置为True-->
-        <arg name="control/enable_external_control" default="true"/>
-        <arg name="launch_prefix" default="gnome-terminal --tab --"/>
-
         <!-- 启动uav_control_main -->
-        <node pkg="uav_control" type="uav_control_main" name="uav_control_main_$(arg uav_id)" output="screen" launch-prefix="$(arg launch_prefix)">
-            <param name="uav_id" value="$(arg uav_id)" />
-            <param name="sim_mode" value="$(arg sim_mode)" />
-            <param name="flag_printf" value="$(arg flag_printf)"/>
-            <param name="control/enable_external_control" value="$(arg control/enable_external_control)" />
-            <rosparam command="load" file="$(find uav_control)/config/uav_control_indoor.yaml"/>
-            <rosparam command="load" file="$(find uav_control)/config/sensor_tf_offset.yaml" />
-        </node>
-
-        <!-- run the px4_pos_estimator.cpp -->
-        <node pkg="uav_control" type="px4_pos_estimator" name="px4_pos_estimator" output="screen">
-            <!--
-            6 for VICON
-            3 for t265
-            2 for gazebo ground truth(仿真用)
-            1 for 激光SLAM,
-            0 for optitrack，
-            -->
-            <!-- TODO: mix source for odom -->
-            <param name="input_source" value="6"/>
-            <!-- offset -->
-            <param name="offset_x" value="0.0"/>
-            <param name="offset_y" value="0.0"/>
-            <param name="offset_z" value="0.0"/>
-            <param name="offset_yaw" value="0.73"/>
-            <param name="offset_pitch" value="0.73"/>
-            <param name="offset_roll" value="-0.09"/>
-        </node>
-
-        <!-- run the px4_sender.cpp -->
-        <node pkg="uav_control" type="px4_sender" name="px4_sender" output="screen">
+        <node pkg="uav_control" type="px4_pos_controller" name="px4_pos_controller" output="screen">
             <rosparam command="load" file="$(find uav_control)/config/uav_control_indoor.yaml"/>
         </node>
 
@@ -52,4 +18,16 @@
             <rosparam command="load" file="$(find uav_control)/config/uav_control_indoor.yaml"/>
         </node>
     </group>
+
+    <!-- run the px4_pos_estimator.cpp -->
+    <node pkg="uav_control" type="px4_pos_estimator" name="px4_pos_estimator" output="screen">
+        <!--
+        6 for VICON
+        3 for t265
+        2 for gazebo ground truth(仿真用)
+        1 for 激光SLAM,
+        0 for optitrack，
+        -->
+        <param name="input_source" value="$(arg input_source)"/>
+    </node>
 </launch>

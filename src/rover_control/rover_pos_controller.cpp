@@ -318,16 +318,6 @@ int main(int argc, char **argv)
             }
             
             break;
-
-        // 【User_Mode1】 暂空。可进行自定义
-        case prometheus_msgs::ControlCommand::User_Mode1:
-            
-            break;
-
-        // 【User_Mode2】 暂空。可进行自定义
-        case prometheus_msgs::ControlCommand::User_Mode2:
-            
-            break;
         }
 
         //执行控制

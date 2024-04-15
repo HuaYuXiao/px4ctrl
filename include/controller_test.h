@@ -25,58 +25,60 @@ using namespace std;
 
 class Controller_Test
 {
-    public:
-        //构造函数
-        Controller_Test(void):
+public:
+    //构造函数
+    Controller_Test(void):
             Controller_Test_nh("~")
-        {
-            Controller_Test_nh.param<float>("Controller_Test/Circle/Center_x", circle_center[0], 0.0);
-            Controller_Test_nh.param<float>("Controller_Test/Circle/Center_y", circle_center[1], 0.0);
-            Controller_Test_nh.param<float>("Controller_Test/Circle/Center_z", circle_center[2], 1.0);
-            Controller_Test_nh.param<float>("Controller_Test/Circle/circle_radius", circle_radius, 2.0);
-            Controller_Test_nh.param<float>("Controller_Test/Circle/linear_vel", linear_vel, 0.5);
-            Controller_Test_nh.param<float>("Controller_Test/Circle/direction", direction, 1.0);
+    {
+        Controller_Test_nh.param<float>("Controller_Test/Circle/Center_x", circle_center[0], 0.0);
+        Controller_Test_nh.param<float>("Controller_Test/Circle/Center_y", circle_center[1], 0.0);
+        Controller_Test_nh.param<float>("Controller_Test/Circle/Center_z", circle_center[2], 1.0);
+        Controller_Test_nh.param<float>("Controller_Test/Circle/circle_radius", circle_radius, 2.0);
+        Controller_Test_nh.param<float>("Controller_Test/Circle/linear_vel", linear_vel, 0.5);
+        Controller_Test_nh.param<float>("Controller_Test/Circle/direction", direction, 1.0);
 
-            Controller_Test_nh.param<float>("Controller_Test/Eight/Center_x", eight_origin_[0], 0.0);
-            Controller_Test_nh.param<float>("Controller_Test/Eight/Center_y", eight_origin_[1], 0.0);
-            Controller_Test_nh.param<float>("Controller_Test/Eight/Center_z", eight_origin_[2], 1.0);
-            Controller_Test_nh.param<float>("Controller_Test/Eight/omega", eight_omega_, 0.5);
-            Controller_Test_nh.param<float>("Controller_Test/Eight/radial", radial, 2.0);
+        Controller_Test_nh.param<float>("Controller_Test/Eight/Center_x", eight_origin_[0], 0.0);
+        Controller_Test_nh.param<float>("Controller_Test/Eight/Center_y", eight_origin_[1], 0.0);
+        Controller_Test_nh.param<float>("Controller_Test/Eight/Center_z", eight_origin_[2], 1.0);
+        Controller_Test_nh.param<float>("Controller_Test/Eight/omega", eight_omega_, 0.5);
+        Controller_Test_nh.param<float>("Controller_Test/Eight/radial", radial, 2.0);
 
-            Controller_Test_nh.param<float>("Controller_Test/Step/step_length", step_length, 0.0);
-            Controller_Test_nh.param<float>("Controller_Test/Step/step_interval", step_interval, 0.0);
+        Controller_Test_nh.param<float>("Controller_Test/Step/step_length", step_length, 0.0);
+        Controller_Test_nh.param<float>("Controller_Test/Step/step_interval", step_interval, 0.0);
 
-        }
+    }
 
-        //Printf the Controller_Test parameter
-        void printf_param();
+    //Printf the Controller_Test parameter
+    void printf_param();
 
-        //Controller_Test Calculation [Input: time_from_start; Output: Circle_trajectory;]
-        prometheus_msgs::PositionReference Circle_trajectory_generation(float time_from_start);
+    //Controller_Test Calculation [Input: time_from_start; Output: Circle_trajectory;]
+    prometheus_msgs::PositionReference Circle_trajectory_generation(float time_from_start);
 
-        prometheus_msgs::PositionReference Eight_trajectory_generation(float time_from_start);
+    prometheus_msgs::PositionReference Eight_trajectory_generation(float time_from_start);
 
-        prometheus_msgs::PositionReference Step_trajectory_generation(float time_from_start);
+    prometheus_msgs::PositionReference Step_trajectory_generation(float time_from_start);
 
-    private:
+    prometheus_msgs::PositionReference Line_trajectory_generation(float time_from_start);
 
-        ros::NodeHandle Controller_Test_nh;
+private:
 
-        // Circle Parameter
-        Eigen::Vector3f circle_center;
-        float circle_radius;
-        float linear_vel;
-        float direction;         //direction = 1 for CCW 逆时针, direction = -1 for CW 顺时针
+    ros::NodeHandle Controller_Test_nh;
 
-        // Eight Shape Parameter
-        Eigen::Vector3f eight_origin_;
-        float radial;
-        float eight_omega_;
+    // Circle Parameter
+    Eigen::Vector3f circle_center;
+    float circle_radius;
+    float linear_vel;
+    float direction;         //direction = 1 for CCW 逆时针, direction = -1 for CW 顺时针
 
-        // Step
-        float step_length;
-        float step_interval;
-        
+    // Eight Shape Parameter
+    Eigen::Vector3f eight_origin_;
+    float radial;
+    float eight_omega_;
+
+    // Step
+    float step_length;
+    float step_interval;
+
 };
 
 
@@ -131,26 +133,76 @@ prometheus_msgs::PositionReference Controller_Test::Circle_trajectory_generation
     return Circle_trajectory;
 }
 
+prometheus_msgs::PositionReference Controller_Test::Line_trajectory_generation(float time_from_start)
+{
+    prometheus_msgs::PositionReference Line_trajectory;
+    float omega;
+    if( circle_radius != 0)
+    {
+        omega = direction * fabs(linear_vel / circle_radius);
+    }else
+    {
+        omega = 0.0;
+    }
+    const float angle = time_from_start * omega;
+    const float cos_angle = cos(angle);
+    const float sin_angle = sin(angle);
+
+
+    Line_trajectory.header.stamp = ros::Time::now();
+
+    Line_trajectory.time_from_start = time_from_start;
+
+    Line_trajectory.Move_mode = prometheus_msgs::PositionReference::TRAJECTORY;
+
+    Line_trajectory.position_ref[0] = 0.0;
+    Line_trajectory.position_ref[1] = circle_radius * sin_angle + circle_center[1];
+    Line_trajectory.position_ref[2] = circle_center[2];
+
+    Line_trajectory.velocity_ref[0] = 0.0;
+    Line_trajectory.velocity_ref[1] = circle_radius * omega * cos_angle;
+    Line_trajectory.velocity_ref[2] = 0;
+
+    Line_trajectory.acceleration_ref[0] = 0.0;
+    Line_trajectory.acceleration_ref[1] = - circle_radius * pow(omega, 2.0) * sin_angle;
+    Line_trajectory.acceleration_ref[2] = 0;
+
+    // Line_trajectory.jerk_ref[0] = circle_radius * pow(omega, 3.0) * sin_angle;
+    // Line_trajectory.jerk_ref[1] = - circle_radius * pow(omega, 3.0) * cos_angle;
+    // Line_trajectory.jerk_ref[2] = 0;
+
+    // Line_trajectory.snap_ref[0] = circle_radius * pow(omega, 4.0) * cos_angle;
+    // Line_trajectory.snap_ref[1] = circle_radius * pow(omega, 4.0) * sin_angle;
+    // Line_trajectory.snap_ref[2] = 0;
+
+    Line_trajectory.yaw_ref = 0;
+    // Line_trajectory.yaw_rate_ref = 0;
+    // Line_trajectory.yaw_acceleration_ref = 0;
+
+    return Line_trajectory;
+}
+
+
 prometheus_msgs::PositionReference Controller_Test::Eight_trajectory_generation(float time_from_start)
 {
     Eigen::Vector3f position;
     Eigen::Vector3f velocity;
     Eigen::Vector3f acceleration;
-    
+
     float angle = eight_omega_* time_from_start;
     const float cos_angle = cos(angle);
     const float sin_angle = sin(angle);
-    
+
     Eigen::Vector3f eight_radial_ ;
     Eigen::Vector3f eight_axis_ ;
     eight_radial_ << radial, 0.0, 0.0;
     eight_axis_ << 0.0, 0.0, 2.0;
 
     position = cos_angle * eight_radial_ + sin_angle * cos_angle * eight_axis_.cross(eight_radial_)
-                 + (1 - cos_angle) * eight_axis_.dot(eight_radial_) * eight_axis_ + eight_origin_;
+               + (1 - cos_angle) * eight_axis_.dot(eight_radial_) * eight_axis_ + eight_origin_;
 
     velocity = eight_omega_ * (-sin_angle * eight_radial_ + (pow(cos_angle, 2) - pow(sin_angle, 2)) * eight_axis_.cross(eight_radial_)
-                 + (sin_angle) * eight_axis_.dot(eight_radial_) * eight_axis_);
+                               + (sin_angle) * eight_axis_.dot(eight_radial_) * eight_axis_);
 
     acceleration << 0.0, 0.0, 0.0;
 
@@ -197,7 +249,7 @@ prometheus_msgs::PositionReference Controller_Test::Step_trajectory_generation(f
     if( i%2 == 0)
     {
         Step_trajectory.position_ref[0] = step_length;
-    }else 
+    }else
     {
         Step_trajectory.position_ref[0] = - step_length;
     }
