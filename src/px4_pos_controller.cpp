@@ -80,7 +80,7 @@ void Command_cb(const prometheus_msgs::ControlCommand::ConstPtr& msg){
     if( msg->Command_ID  >  Command_Now.Command_ID ){
         Command_Now = *msg;
     }else{
-        pub_message(message_pub, prometheus_msgs::Message::WARN, NODE_NAME, "Wrong Command ID.");
+        pub_message(message_pub, prometheus_msgs::Message::WARN, NODE_NAME, "[control] Wrong Command ID.");
     }
 
     // 无人机一旦接受到Disarm指令，则会屏蔽其他指令
@@ -91,7 +91,7 @@ void Command_cb(const prometheus_msgs::ControlCommand::ConstPtr& msg){
 
 void station_command_cb(const prometheus_msgs::ControlCommand::ConstPtr& msg){
     Command_Now = *msg;
-    pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "Get a command from Prometheus Station.");
+    pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "[control] Get a command from Station.");
 
     // 无人机一旦接受到Disarm指令，则会屏蔽其他指令
     if(Command_Last.Mode == prometheus_msgs::ControlCommand::Disarm){
@@ -103,10 +103,6 @@ void drone_state_cb(const prometheus_msgs::DroneState::ConstPtr& msg){
     _DroneState = *msg;
 
     _DroneState.time_from_start = cur_time;
-}
-
-void timerCallback(const ros::TimerEvent& e){
-    pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "Program is running.");
 }
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主 函 数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -133,21 +129,18 @@ int main(int argc, char **argv){
     // 【发布】用于log的消息
     log_message_pub = nh.advertise<prometheus_msgs::LogMessageControl>("/prometheus/log/control", 10);
 
-    // 10秒定时打印，以确保程序在正确运行
-    ros::Timer timer = nh.createTimer(ros::Duration(1.0), timerCallback);
-
     // 参数读取
     nh.param<string>("control/controller_type", controller_type, "default");
     nh.param<float>("control/Takeoff_height", Takeoff_height, 0.4);
     nh.param<float>("control/Disarm_height", Disarm_height, 0.15);
     nh.param<float>("control/Land_speed", Land_speed, 0.2);
 
-    nh.param<float>("geo_fence/x_min", geo_fence_x[0], -20.0);
-    nh.param<float>("geo_fence/x_max", geo_fence_x[1], 20.0);
-    nh.param<float>("geo_fence/y_min", geo_fence_y[0], -20.0);
-    nh.param<float>("geo_fence/y_max", geo_fence_y[1], 20.0);
+    nh.param<float>("geo_fence/x_min", geo_fence_x[0], -8.0);
+    nh.param<float>("geo_fence/x_max", geo_fence_x[1], 8.0);
+    nh.param<float>("geo_fence/y_min", geo_fence_y[0], -5.0);
+    nh.param<float>("geo_fence/y_max", geo_fence_y[1], 5.0);
     nh.param<float>("geo_fence/z_min", geo_fence_z[0], -0.3);
-    nh.param<float>("geo_fence/z_max", geo_fence_z[1], 10.0);
+    nh.param<float>("geo_fence/z_max", geo_fence_z[1], 3.0);
 
     nh.param<float>("disturbance_a_xy", disturbance_a_xy, 0.5);
     nh.param<float>("disturbance_b_xy", disturbance_b_xy, 0.0);
@@ -164,7 +157,6 @@ int main(int argc, char **argv){
     LPF_x.set_Time_constant(disturbance_T);
     LPF_y.set_Time_constant(disturbance_T);
     LPF_z.set_Time_constant(disturbance_T);
-
 
     // 位置控制一般选取为50Hz，主要取决于位置状态的更新频率
     ros::Rate rate(50.0);
@@ -249,7 +241,6 @@ int main(int argc, char **argv){
         switch (Command_Now.Mode){
             // 【Idle】 怠速旋转，此时可以切入offboard模式，但不会起飞。
             case prometheus_msgs::ControlCommand::Idle:
-
                 _command_to_mavros.idle();
 
                 // 设定yaw_ref=999时，切换offboard模式，并解锁
@@ -262,7 +253,6 @@ int main(int argc, char **argv){
                         pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "The Drone is in OFFBOARD Mode already...");
                     }
 
-
                     if(!_DroneState.armed){
                         _command_to_mavros.arm_cmd.request.value = true;
                         _command_to_mavros.arming_client.call(_command_to_mavros.arm_cmd);
@@ -270,14 +260,12 @@ int main(int argc, char **argv){
                     }else{
                         pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "The Drone is armd already...");
                     }
-
                 }
 
                 break;
 
                 // 【Takeoff】 从摆放初始位置原地起飞至指定高度，偏航角也保持当前角度
             case prometheus_msgs::ControlCommand::Takeoff:
-
                 //当无人机在空中时若受到起飞指令，则发出警告并悬停
                 // if (_DroneState.landed == false)
                 // {
@@ -304,7 +292,6 @@ int main(int argc, char **argv){
                 break;
                 // 【Hold】 悬停。当前位置悬停
             case prometheus_msgs::ControlCommand::Hold:
-
                 if (Command_Last.Mode != prometheus_msgs::ControlCommand::Hold){
                     Command_Now.Reference_State.Move_mode       = prometheus_msgs::PositionReference::XYZ_POS;
                     Command_Now.Reference_State.Move_frame      = prometheus_msgs::PositionReference::ENU_FRAME;
@@ -318,7 +305,6 @@ int main(int argc, char **argv){
 
                 // 【Land】 降落。当前位置原地降落，降落后会自动上锁，且切换为mannual模式
             case prometheus_msgs::ControlCommand::Land:
-
                 if (Command_Last.Mode != prometheus_msgs::ControlCommand::Land){
                     Command_Now.Reference_State.Move_mode       = prometheus_msgs::PositionReference::XY_POS_Z_VEL;
                     Command_Now.Reference_State.Move_frame      = prometheus_msgs::PositionReference::ENU_FRAME;
@@ -347,7 +333,6 @@ int main(int argc, char **argv){
 
                 // 【Move】 ENU系移动。只有PID算法中才有追踪速度的选项，其他控制只能追踪位置
             case prometheus_msgs::ControlCommand::Move:
-
                 //对于机体系的指令,需要转换成ENU坐标系执行,且同一ID号内,只执行一次.
                 if(Command_Now.Reference_State.Move_frame != prometheus_msgs::PositionReference::ENU_FRAME && Command_Now.Command_ID  >  Command_Last.Command_ID ){
                     Body_to_ENU();
@@ -357,8 +342,7 @@ int main(int argc, char **argv){
 
                 // 【Disarm】 上锁
             case prometheus_msgs::ControlCommand::Disarm:
-
-                pub_message(message_pub, prometheus_msgs::Message::WARN, NODE_NAME, "Disarm: switch to MANUAL flight mode");
+                pub_message(message_pub, prometheus_msgs::Message::WARN, NODE_NAME, "[control] Disarm: switch to MANUAL flight mode");
                 if(_DroneState.mode == "OFFBOARD"){
                     _command_to_mavros.mode_cmd.request.custom_mode = "MANUAL";
                     _command_to_mavros.set_mode_client.call(_command_to_mavros.mode_cmd);
@@ -395,7 +379,6 @@ int main(int argc, char **argv){
                 _ControlOutput = pos_controller_NE.pos_controller(_DroneState, Command_Now.Reference_State, dt);
             }
 
-
             if(Command_Now.Reference_State.Move_mode == prometheus_msgs::PositionReference::TRAJECTORY){
                 // 输入干扰
                 Eigen::Vector3d random;
@@ -415,7 +398,7 @@ int main(int argc, char **argv){
                     _ControlOutput.Throttle[0] = _ControlOutput.Throttle[0] + random[0];
                     _ControlOutput.Throttle[1] = _ControlOutput.Throttle[1] + random[1];
                     _ControlOutput.Throttle[2] = _ControlOutput.Throttle[2] + random[2];
-                    cout<<"add disturbance"<<endl;
+                    cout<<"[control] add disturbance"<<endl;
                 }
             }
 
@@ -470,13 +453,12 @@ int check_failsafe(){
     if (_DroneState.position[0] < geo_fence_x[0] || _DroneState.position[0] > geo_fence_x[1] ||
         _DroneState.position[1] < geo_fence_y[0] || _DroneState.position[1] > geo_fence_y[1] ||
         _DroneState.position[2] < geo_fence_z[0] || _DroneState.position[2] > geo_fence_z[1]){
-        pub_message(message_pub, prometheus_msgs::Message::ERROR, NODE_NAME, "Out of the geo fence, the drone is landing...");
+        pub_message(message_pub, prometheus_msgs::Message::ERROR, NODE_NAME, "[control] Out of the geo fence, the drone is landing...");
         return 1;
     }else{
         return 0;
     }
 }
-
 
 //【Body_to_ENU】 机体系移动。
 void Body_to_ENU(){
@@ -517,7 +499,6 @@ void Body_to_ENU(){
             Command_Now.Reference_State.position_ref[2] = _DroneState.position[2] + Command_Now.Reference_State.position_ref[2];
             Command_Now.Reference_State.velocity_ref[2] = 0;
         }
-
     }
 
     Command_Now.Reference_State.yaw_ref = _DroneState.attitude[2] + Command_Now.Reference_State.yaw_ref;
@@ -530,9 +511,7 @@ void Body_to_ENU(){
     Command_Now.Reference_State.acceleration_ref[2] = Command_Now.Reference_State.acceleration_ref[2];
 }
 
-void add_disturbance(){
-
-}
+void add_disturbance(){}
 
 
 geometry_msgs::PoseStamped get_ref_pose_rviz(const prometheus_msgs::ControlCommand& cmd, const prometheus_msgs::AttitudeReference& att_ref){
