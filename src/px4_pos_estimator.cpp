@@ -124,7 +124,6 @@ void gazebo_cb(const nav_msgs::Odometry::ConstPtr &msg){
     }
 }
 
-
 void t265_cb(const nav_msgs::Odometry::ConstPtr &msg){
     if (msg->header.frame_id == "t265_odom_frame"){
         pos_drone_t265 = Eigen::Vector3d(msg->pose.pose.position.x,
@@ -145,7 +144,6 @@ void t265_cb(const nav_msgs::Odometry::ConstPtr &msg){
         pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "wrong t265 frame id.");
     }
 }
-
 
 void laser_cb(const tf2_msgs::TFMessage::ConstPtr &msg){
     //确定是cartographer发出来的/tf信息
@@ -175,7 +173,6 @@ void laser_cb(const tf2_msgs::TFMessage::ConstPtr &msg){
         //cout << "Euler [X Y Z] : " << Euler_laser[0] << " [m/s] "<< Euler_laser[1]<<" [m/s] "<< Euler_laser[2]<<" [m/s] "<<endl;
     }
 }
-
 
 void optitrack_cb(const geometry_msgs::PoseStamped::ConstPtr &msg){
     //位置 -- optitrack系 到 ENU系
@@ -216,7 +213,6 @@ void optitrack_cb(const geometry_msgs::PoseStamped::ConstPtr &msg){
     last_timestamp = msg->header.stamp;
 }
 
-
 void slam_cb(const geometry_msgs::PoseStamped::ConstPtr &msg){
     if (msg->header.frame_id == "map_slam"){
         pos_drone_slam = Eigen::Vector3d(msg->pose.position.x,
@@ -237,12 +233,6 @@ void slam_cb(const geometry_msgs::PoseStamped::ConstPtr &msg){
         pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "wrong slam frame id.");
     }
 }
-
-
-void timerCallback(const ros::TimerEvent &e){
-    pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "Program is running.");
-}
-
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主 函 数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 int main(int argc, char **argv){
@@ -286,7 +276,7 @@ int main(int argc, char **argv){
     //  【订阅】t265估计位置
     ros::Subscriber t265_sub = nh.subscribe<nav_msgs::Odometry>("/t265/odom/sample", 100, t265_cb);
     // TODO:【订阅】gazebo仿真真值
-    ros::Subscriber gazebo_sub = nh.subscribe<nav_msgs::Odometry>("/uav1/prometheus/ground_truth", 100, gazebo_cb);
+    ros::Subscriber gazebo_sub = nh.subscribe<nav_msgs::Odometry>("/prometheus/ground_truth", 100, gazebo_cb);
     // 【订阅】SLAM估计位姿
     ros::Subscriber slam_sub = nh.subscribe<geometry_msgs::PoseStamped>("/slam/pose", 100, slam_cb);
     // 【订阅】cartographer估计位置
@@ -307,9 +297,6 @@ int main(int argc, char **argv){
     trajectory_pub = nh.advertise<nav_msgs::Path>("/prometheus/drone_trajectory", 10);
     // 【发布】提示消息
     message_pub = nh.advertise<prometheus_msgs::Message>("/prometheus/message/main", 10);
-
-    // 10秒定时打印，以确保程序在正确运行
-    ros::Timer timer = nh.createTimer(ros::Duration(1.0), timerCallback);
 
     // 用于与mavros通讯的类，通过mavros接收来至飞控的消息【飞控->mavros->本程序】
     state_from_mavros _state_from_mavros;
@@ -332,7 +319,6 @@ int main(int argc, char **argv){
     }
     return 0;
 }
-
 
 void send_to_fcu(){
     geometry_msgs::PoseStamped vision;
@@ -401,7 +387,6 @@ void send_to_fcu(){
     vision_pub.publish(vision);
 }
 
-
 void pub_to_nodes(prometheus_msgs::DroneState State_from_fcu){
     // 发布无人机状态，具体内容参见 prometheus_msgs::DroneState
     Drone_State = State_from_fcu;
@@ -415,8 +400,7 @@ void pub_to_nodes(prometheus_msgs::DroneState State_from_fcu){
     // 发布无人机当前odometry,用于导航及rviz显示
     nav_msgs::Odometry Drone_odom;
     Drone_odom.header.stamp = ros::Time::now();
-    // TODO: what the hell???
-    Drone_odom.header.frame_id = "world";
+    Drone_odom.header.frame_id = "map";
     Drone_odom.child_frame_id = "base_link";
 
     Drone_odom.pose.pose.position.x = Drone_State.position[0];
@@ -437,7 +421,7 @@ void pub_to_nodes(prometheus_msgs::DroneState State_from_fcu){
     // 发布无人机运动轨迹，用于rviz显示
     geometry_msgs::PoseStamped drone_pos;
     drone_pos.header.stamp = ros::Time::now();
-    drone_pos.header.frame_id = "world";
+    drone_pos.header.frame_id = "map";
     drone_pos.pose.position.x = Drone_State.position[0];
     drone_pos.pose.position.y = Drone_State.position[1];
     drone_pos.pose.position.z = Drone_State.position[2];
@@ -452,7 +436,7 @@ void pub_to_nodes(prometheus_msgs::DroneState State_from_fcu){
 
     nav_msgs::Path drone_trajectory;
     drone_trajectory.header.stamp = ros::Time::now();
-    drone_trajectory.header.frame_id = "world";
+    drone_trajectory.header.frame_id = "map";
     drone_trajectory.poses = posehistory_vector_;
     trajectory_pub.publish(drone_trajectory);
 }
