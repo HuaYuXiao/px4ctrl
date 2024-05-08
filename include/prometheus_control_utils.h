@@ -240,6 +240,14 @@ void rotation_yaw(float yaw_angle, float body_frame[2], float enu_frame[2])
     enu_frame[1] = body_frame[0] * sin(yaw_angle) + body_frame[1] * cos(yaw_angle);
 }
 
+// TODO: roll & pitch is missing
+//    void rotation_yaw(float yaw_angle, float body_frame[3], float enu_frame[3])
+//    {
+//        enu_frame[0] = body_frame[0] * cos(yaw_angle) - body_frame[1] * sin(yaw_angle);
+//        enu_frame[1] = body_frame[0] * sin(yaw_angle) + body_frame[1] * cos(yaw_angle);
+//        enu_frame[3] = body_frame[2]; // z轴（高度）不受影响
+//    }
+
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 控 制 辅 助 函 数 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< 
 //计算位置误差
 Eigen::Vector3f cal_pos_error(const prometheus_msgs::DroneState& _DroneState, const prometheus_msgs::PositionReference& _Reference_State)

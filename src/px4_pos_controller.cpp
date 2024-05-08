@@ -161,8 +161,6 @@ int main(int argc, char **argv){
     // 位置控制一般选取为50Hz，主要取决于位置状态的更新频率
     ros::Rate rate(50.0);
 
-    float time_trajectory = 0.0;
-
     // 用于与mavros通讯的类，通过mavros发送控制指令至飞控【本程序->mavros->飞控】
     command_to_mavros _command_to_mavros;
 
@@ -209,6 +207,9 @@ int main(int argc, char **argv){
     ros::Time begin_time = ros::Time::now();
     float last_time = prometheus_control_utils::get_time_in_sec(begin_time);
     int printf_num = 0;
+
+    cout << "[control] controller initialized" << endl;
+
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主  循  环<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     while(ros::ok()){
         // 当前时间
@@ -290,6 +291,7 @@ int main(int argc, char **argv){
                 }
 
                 break;
+
                 // 【Hold】 悬停。当前位置悬停
             case prometheus_msgs::ControlCommand::Hold:
                 if (Command_Last.Mode != prometheus_msgs::ControlCommand::Hold){
@@ -329,7 +331,6 @@ int main(int argc, char **argv){
                 }
 
                 break;
-
 
                 // 【Move】 ENU系移动。只有PID算法中才有追踪速度的选项，其他控制只能追踪位置
             case prometheus_msgs::ControlCommand::Move:
@@ -446,7 +447,6 @@ void printf_param(){
     cout << "geo_fence_x : "<< geo_fence_x[0] << " [m]  to  "<<geo_fence_x[1] << " [m]"<< endl;
     cout << "geo_fence_y : "<< geo_fence_y[0] << " [m]  to  "<<geo_fence_y[1] << " [m]"<< endl;
     cout << "geo_fence_z : "<< geo_fence_z[0] << " [m]  to  "<<geo_fence_z[1] << " [m]"<< endl;
-
 }
 
 int check_failsafe(){
@@ -462,9 +462,30 @@ int check_failsafe(){
 
 //【Body_to_ENU】 机体系移动。
 void Body_to_ENU(){
+    if(Command_Now.Reference_State.Move_mode  & 0b00){
+        // XYZ_POS
+        float d_pos_body[2] = {Command_Now.Reference_State.position_ref[0], Command_Now.Reference_State.position_ref[1]};         //the desired xy position in Body Frame
+        float d_pos_enu[2];                                                           //the desired xy position in enu Frame (The origin point is the drone)
+        prometheus_control_utils::rotation_yaw(_DroneState.attitude[2], d_pos_body, d_pos_enu);
 
-    if( Command_Now.Reference_State.Move_mode  & 0b10 ){
-        //xy velocity mode
+        Command_Now.Reference_State.position_ref[0] = _DroneState.position[0] + d_pos_enu[0];
+        Command_Now.Reference_State.position_ref[1] = _DroneState.position[1] + d_pos_enu[1];
+        Command_Now.Reference_State.velocity_ref[0] = 0;
+        Command_Now.Reference_State.velocity_ref[1] = 0;
+    }else if( Command_Now.Reference_State.Move_mode  & 0b01 ){
+//        TODO: XY_POS_Z_VEL
+//        float d_vel_body[2] = {Command_Now.Reference_State.velocity_ref[0], Command_Now.Reference_State.velocity_ref[1]};         //the desired xy velocity in Body Frame
+//        float d_vel_enu[2];                                                           //the desired xy velocity in NED Frame
+//
+//        //根据无人机当前偏航角进行坐标系转换
+//        prometheus_control_utils::rotation_yaw(_DroneState.attitude[2], d_vel_body, d_vel_enu);
+//
+//        Command_Now.Reference_State.position_ref[0] = _DroneState.position[0] + d_pos_enu[0];
+//        Command_Now.Reference_State.position_ref[1] = _DroneState.position[1] + d_pos_enu[1];
+//        Command_Now.Reference_State.velocity_ref[0] = 0;
+//        Command_Now.Reference_State.velocity_ref[1] = 0;
+    }else if( Command_Now.Reference_State.Move_mode  & 0b10 ){
+        // XY_VEL_Z_POS
         float d_vel_body[2] = {Command_Now.Reference_State.velocity_ref[0], Command_Now.Reference_State.velocity_ref[1]};         //the desired xy velocity in Body Frame
         float d_vel_enu[2];                                                           //the desired xy velocity in NED Frame
 
@@ -474,16 +495,19 @@ void Body_to_ENU(){
         Command_Now.Reference_State.position_ref[1] = 0;
         Command_Now.Reference_State.velocity_ref[0] = d_vel_enu[0];
         Command_Now.Reference_State.velocity_ref[1] = d_vel_enu[1];
-    }else{
-        //xy position mode
-        float d_pos_body[2] = {Command_Now.Reference_State.position_ref[0], Command_Now.Reference_State.position_ref[1]};         //the desired xy position in Body Frame
-        float d_pos_enu[2];                                                           //the desired xy position in enu Frame (The origin point is the drone)
-        prometheus_control_utils::rotation_yaw(_DroneState.attitude[2], d_pos_body, d_pos_enu);
+    }else if( Command_Now.Reference_State.Move_mode  & 0b11 ){
+        // XYZ_VEL
+        float d_vel_body[2] = {Command_Now.Reference_State.velocity_ref[0], Command_Now.Reference_State.velocity_ref[1]};
+        float d_vel_enu[2];                                                           //the desired xy velocity in NED Frame
 
-        Command_Now.Reference_State.position_ref[0] = _DroneState.position[0] + d_pos_enu[0];
-        Command_Now.Reference_State.position_ref[1] = _DroneState.position[1] + d_pos_enu[1];
-        Command_Now.Reference_State.velocity_ref[0] = 0;
-        Command_Now.Reference_State.velocity_ref[1] = 0;
+        //根据无人机当前偏航角进行坐标系转换
+        prometheus_control_utils::rotation_yaw(_DroneState.attitude[2], d_vel_body, d_vel_enu);
+        Command_Now.Reference_State.position_ref[0] = 0;
+        Command_Now.Reference_State.position_ref[1] = 0;
+        Command_Now.Reference_State.position_ref[2] = 0;
+        Command_Now.Reference_State.velocity_ref[0] = d_vel_enu[0];
+        Command_Now.Reference_State.velocity_ref[1] = d_vel_enu[1];
+        Command_Now.Reference_State.velocity_ref[2] = Command_Now.Reference_State.velocity_ref[2];
     }
 
     if(Command_Now.Reference_State.Move_frame == prometheus_msgs::PositionReference::MIX_FRAME){
@@ -519,7 +543,7 @@ geometry_msgs::PoseStamped get_ref_pose_rviz(const prometheus_msgs::ControlComma
 
     ref_pose.header.stamp = ros::Time::now();
     // world: 世界系,即gazebo坐标系,参见tf_transform.launch
-    ref_pose.header.frame_id = "world";
+    ref_pose.header.frame_id = "map";
 
     if(cmd.Mode == prometheus_msgs::ControlCommand::Idle){
         ref_pose.pose.position.x = _DroneState.position[0];
