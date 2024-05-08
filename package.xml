@@ -1,13 +1,13 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>uav_control</name>
-  <version>3.2.1</version>
+  <version>3.3.0</version>
   <description>
-    A ROS package for controlling Prometheus P450
+    A ROS package to control drone
   </description>
   <maintainer email="hyx020222@gmail.com">Eason Hua</maintainer>
   <author email="fatmoonqyp@126.com">Yuhua Qi</author>
-  <license>MIT</license>
+  <license>Apache</license>
 
   <url type="website">http://www.amovlab.com/</url>
   <url type="repository">https://github.com/HuaYuXiao/uav_control.git</url>
