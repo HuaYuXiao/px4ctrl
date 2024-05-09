@@ -495,37 +495,25 @@ void Body_to_ENU(){
         Command_Now.Reference_State.position_ref[1] = 0;
         Command_Now.Reference_State.velocity_ref[0] = d_vel_enu[0];
         Command_Now.Reference_State.velocity_ref[1] = d_vel_enu[1];
-    }else if( Command_Now.Reference_State.Move_mode  & 0b11 ){
+    }else if(Command_Now.Reference_State.Move_mode & 0b11){
         // XYZ_VEL
         float d_vel_body[2] = {Command_Now.Reference_State.velocity_ref[0], Command_Now.Reference_State.velocity_ref[1]};
         float d_vel_enu[2];                                                           //the desired xy velocity in NED Frame
 
         //根据无人机当前偏航角进行坐标系转换
         prometheus_control_utils::rotation_yaw(_DroneState.attitude[2], d_vel_body, d_vel_enu);
-        Command_Now.Reference_State.position_ref[0] = 0;
-        Command_Now.Reference_State.position_ref[1] = 0;
-        Command_Now.Reference_State.position_ref[2] = 0;
+
         Command_Now.Reference_State.velocity_ref[0] = d_vel_enu[0];
         Command_Now.Reference_State.velocity_ref[1] = d_vel_enu[1];
         Command_Now.Reference_State.velocity_ref[2] = Command_Now.Reference_State.velocity_ref[2];
-    }
-
-    if(Command_Now.Reference_State.Move_frame == prometheus_msgs::PositionReference::MIX_FRAME){
-        Command_Now.Reference_State.position_ref[2] = Command_Now.Reference_State.position_ref[2];
-        //Command_Now.Reference_State.yaw_ref = Command_Now.Reference_State.yaw_ref;
     }else{
-        if( Command_Now.Reference_State.Move_mode  & 0b01 ){
-            //z velocity mode
-            Command_Now.Reference_State.position_ref[2] = 0;
-            Command_Now.Reference_State.velocity_ref[2] = Command_Now.Reference_State.velocity_ref[2];
-        }else{
-            //z posiiton mode
-            Command_Now.Reference_State.position_ref[2] = _DroneState.position[2] + Command_Now.Reference_State.position_ref[2];
-            Command_Now.Reference_State.velocity_ref[2] = 0;
-        }
+        ROS_ERROR("[control] unsupported Move_mode: ", Command_Now.Reference_State.Move_mode);
+
+        return;
     }
 
     Command_Now.Reference_State.yaw_ref = _DroneState.attitude[2] + Command_Now.Reference_State.yaw_ref;
+
     float d_acc_body[2] = {Command_Now.Reference_State.acceleration_ref[0], Command_Now.Reference_State.acceleration_ref[1]};
     float d_acc_enu[2];
 
