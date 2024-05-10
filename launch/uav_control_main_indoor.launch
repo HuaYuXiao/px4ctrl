@@ -1,0 +1,31 @@
+<!-- 启动Prometheus代码 -->
+<launch>
+    <arg name="launch_prefix" default="gnome-terminal --"/>
+
+    <arg name="x" default="0"/>
+    <arg name="y" default="0"/>
+    <arg name="z" default="0"/>
+
+    <!-- run the px4_pos_estimator.cpp -->
+        <node pkg="uav_control" type="px4_pos_estimator" name="px4_pos_estimator" output="screen">
+            <!-- 定位数据输入源 0 for vicon， 1 for 激光SLAM, 2 for gazebo ground truth, 3 for T265 -->
+            <param name="input_source" value="2" />
+            <param name="rate_hz" value="50" />
+            <param name="offset_x" value="$(arg x)" />
+            <param name="offset_y" value="$(arg y)" />
+            <param name="offset_z" value="$(arg z)" />
+        </node>
+
+        <!-- 启动uav_control_main -->
+        <node pkg="uav_control" type="px4_pos_controller" name="px4_pos_controller" output="screen">
+            <rosparam command="load" file="$(find uav_control)/config/uav_control_indoor.yaml"/>
+        </node>
+
+        <!-- 启动虚拟摇杆驱动 -->
+        <include file="$(find uav_control)/launch/joy_node.launch"/>
+
+        <!-- run the terminal_control.cpp -->
+        <node pkg="uav_control" type="terminal_control" name="terminal_control" output="screen" launch-prefix="$(arg launch_prefix)">
+            <rosparam command="load" file="$(find uav_control)/config/uav_control_indoor.yaml"/>
+        </node>
+</launch>
