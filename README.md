@@ -11,6 +11,10 @@ A ROS package to control drone, modified from [prometheus_control](https://githu
 
 ## Release Note
 
+
+- v3.3.1: 
+  - support move mode `XYZ_VEL_ACC`
+  - merge with `prometheus_station_utils` from `prometheus_station`
 - v3.3.0: support move mode `XYZ_VEL` 
 - v3.2.1: catch invalid input of terminal control
 - v2.0.0: support control type `NE`, `PID`, `UDE`

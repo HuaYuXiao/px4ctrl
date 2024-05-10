@@ -108,7 +108,7 @@ void vicon_cb(const geometry_msgs::TransformStamped::ConstPtr& msg){
 
 
 void gazebo_cb(const nav_msgs::Odometry::ConstPtr &msg){
-    if (msg->header.frame_id == "world"){
+    if (msg->header.frame_id == "map"){
         pos_drone_gazebo = Eigen::Vector3d(msg->pose.pose.position.x,
                                            msg->pose.pose.position.y,
                                            msg->pose.pose.position.z);
@@ -125,7 +125,7 @@ void gazebo_cb(const nav_msgs::Odometry::ConstPtr &msg){
 }
 
 void t265_cb(const nav_msgs::Odometry::ConstPtr &msg){
-    if (msg->header.frame_id == "t265_odom_frame"){
+    if (msg->header.frame_id == "map"){
         pos_drone_t265 = Eigen::Vector3d(msg->pose.pose.position.x,
                                          msg->pose.pose.position.y,
                                          msg->pose.pose.position.z);
@@ -252,11 +252,11 @@ int main(int argc, char **argv){
     nh.param<int>("input_source", input_source, 6);
 
     //　程序执行频率
-    nh.param<float>("rate_hz", rate_hz, 100);
+    nh.param<float>("rate_hz", rate_hz, 50);
 
     // TODO: redefined in pub_tp_fcu???
     nh.param<string>("child_frame_id",child_frame_id, "base_link");
-    nh.param<string>("frame_id",frame_id, "odom");
+    nh.param<string>("frame_id",frame_id, "map");
 
     // 动作捕捉设备中设定的刚体名字
     nh.param<string>("object_name", object_name, "p450");
@@ -275,7 +275,7 @@ int main(int argc, char **argv){
     ros::Subscriber vicon_sub = nh.subscribe<geometry_msgs::TransformStamped>("/vicon/" + subject_name + "/" + segment_name, 1000, vicon_cb);
     //  【订阅】t265估计位置
     ros::Subscriber t265_sub = nh.subscribe<nav_msgs::Odometry>("/t265/odom/sample", 100, t265_cb);
-    // TODO:【订阅】gazebo仿真真值
+    // 【订阅】gazebo仿真真值
     ros::Subscriber gazebo_sub = nh.subscribe<nav_msgs::Odometry>("/prometheus/ground_truth", 100, gazebo_cb);
     // 【订阅】SLAM估计位姿
     ros::Subscriber slam_sub = nh.subscribe<geometry_msgs::PoseStamped>("/slam/pose", 100, slam_cb);
@@ -303,6 +303,8 @@ int main(int argc, char **argv){
 
     // 频率
     ros::Rate rate(rate_hz);
+
+    cout << "[control] estimator initialized" << endl;
 
     //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Main Loop<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     while (ros::ok()){
@@ -334,7 +336,7 @@ void send_to_fcu(){
         vision.pose.orientation.w = q_mocap.w();
       
         // 此处时间主要用于监测动捕，T265设备是否正常工作
-        if(prometheus_control_utils::get_time_in_sec(last_timestamp) > TIMEOUT_MAX){
+        if(prometheus_station_utils::get_time_in_sec(last_timestamp) > TIMEOUT_MAX){
             pub_message(message_pub, prometheus_msgs::Message::ERROR, NODE_NAME, "Mocap Timeout.");
         }
     }else if(input_source == 6){

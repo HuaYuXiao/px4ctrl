@@ -205,7 +205,7 @@ int main(int argc, char **argv){
 
     // 记录启控时间
     ros::Time begin_time = ros::Time::now();
-    float last_time = prometheus_control_utils::get_time_in_sec(begin_time);
+    float last_time = prometheus_station_utils::get_time_in_sec(begin_time);
     int printf_num = 0;
 
     cout << "[control] controller initialized" << endl;
@@ -213,7 +213,7 @@ int main(int argc, char **argv){
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主  循  环<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     while(ros::ok()){
         // 当前时间
-        cur_time = prometheus_control_utils::get_time_in_sec(begin_time);
+        cur_time = prometheus_station_utils::get_time_in_sec(begin_time);
         dt = cur_time  - last_time;
         dt = constrain_function2(dt, 0.01, 0.03);
         last_time = cur_time;
