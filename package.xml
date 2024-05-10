@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>uav_control</name>
-  <version>3.3.2</version>
+  <version>3.3.3</version>
   <description>
-    A ROS package to control drone
+    A ROS package to estimate and control drone
   </description>
   <maintainer email="hyx020222@gmail.com">Eason Hua</maintainer>
   <author email="fatmoonqyp@126.com">Yuhua Qi</author>

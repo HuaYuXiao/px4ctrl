@@ -53,7 +53,7 @@ prometheus_msgs::LogMessageControl LogMessage;
 
 //RVIZ显示：期望位置
 geometry_msgs::PoseStamped ref_pose_rviz;
-float dt = 0;
+float dt = 0.02;
 
 float disturbance_a_xy,disturbance_b_xy;
 float disturbance_a_z,disturbance_b_z;
@@ -174,16 +174,23 @@ int main(int argc, char **argv){
 
     printf_param();
 
-    if(controller_type == "default"){
+    if(controller_type == "cascade_pid"){
         pos_controller_cascade_pid.printf_param();
-    }else if(controller_type == "pid"){
+    }
+    else if(controller_type == "pid"){
         pos_controller_pid.printf_param();
-    }else if(controller_type == "passivity"){
+    }
+    else if(controller_type == "passivity"){
         pos_controller_passivity.printf_param();
-    }else if(controller_type == "ude"){
+    }
+    else if(controller_type == "ude"){
         pos_controller_UDE.printf_param();
-    }else if(controller_type == "ne"){
+    }
+    else if(controller_type == "ne"){
         pos_controller_NE.printf_param();
+    }
+    else{
+        cout << "[control] unsupported controller type!" << endl;
     }
 
     // 初始化命令-
@@ -216,12 +223,17 @@ int main(int argc, char **argv){
         dt = cur_time  - last_time;
         dt = constrain_function2(dt, 0.01, 0.03);
         last_time = cur_time;
+
             if(controller_type == "default"){
-            }else if(controller_type == "pid"){
-            }else if(controller_type == "passivity"){
-            }else if(controller_type == "ude"){
+            }
+            else if(controller_type == "pid"){
+            }
+            else if(controller_type == "passivity"){
+            }
+            else if(controller_type == "ude"){
                 pos_controller_UDE.printf_result();
-            }else if(controller_type == "ne"){
+            }
+            else if(controller_type == "ne"){
                 pos_controller_NE.printf_result();
             }
 
@@ -354,24 +366,32 @@ int main(int argc, char **argv){
         //执行控制
         if(Command_Now.Mode != prometheus_msgs::ControlCommand::Idle){
             //选择控制器
-            if(controller_type == "default"){
-                //轨迹追踪控制,直接改为PID控制器
+            if(controller_type == "cascade_pid"){
                 if(Command_Now.Reference_State.Move_mode != prometheus_msgs::PositionReference::TRAJECTORY){
+                    //轨迹追踪控制,直接改为PID控制器
                     _ControlOutput = pos_controller_cascade_pid.pos_controller(_DroneState, Command_Now.Reference_State, dt);
-                }else{
+                }
+                else{
                     _ControlOutput = pos_controller_cascade_pid.pos_controller(_DroneState, Command_Now.Reference_State, dt);
                     // _ControlOutput = pos_controller_pid.pos_controller(_DroneState, Command_Now.Reference_State, dt);
-                    pub_message(message_pub, prometheus_msgs::Message::WARN, NODE_NAME, "CPID NOT SUPPOORT TRAJECTORY TRACKING.");
                 }
-
-            }else if(controller_type == "pid"){
+            }
+            else if(controller_type == "pid"){
                 _ControlOutput = pos_controller_pid.pos_controller(_DroneState, Command_Now.Reference_State, dt);
-            }else if(controller_type == "passivity"){
+            }
+            else if(controller_type == "passivity"){
                 _ControlOutput = pos_controller_passivity.pos_controller(_DroneState, Command_Now.Reference_State, dt);
-            }else if(controller_type == "ude"){
+            }
+            else if(controller_type == "ude"){
                 _ControlOutput = pos_controller_UDE.pos_controller(_DroneState, Command_Now.Reference_State, dt);
-            }else if(controller_type == "ne"){
+            }
+            else if(controller_type == "ne"){
                 _ControlOutput = pos_controller_NE.pos_controller(_DroneState, Command_Now.Reference_State, dt);
+            }
+            else{
+                _ControlOutput = pos_controller_cascade_pid.pos_controller(_DroneState, Command_Now.Reference_State, dt);
+
+                pub_message(message_pub, prometheus_msgs::Message::ERROR, NODE_NAME, "[control] unsupported controller_type, use cascade_pid as default");
             }
 
             if(Command_Now.Reference_State.Move_mode == prometheus_msgs::PositionReference::TRAJECTORY){
@@ -540,7 +560,6 @@ ROS_INFO("[control] POS_VEL_ACC");
 
 void add_disturbance(){}
 
-
 geometry_msgs::PoseStamped get_ref_pose_rviz(const prometheus_msgs::ControlCommand& cmd, const prometheus_msgs::AttitudeReference& att_ref){
     geometry_msgs::PoseStamped ref_pose;
 
@@ -563,27 +582,56 @@ geometry_msgs::PoseStamped get_ref_pose_rviz(const prometheus_msgs::ControlComma
         ref_pose.pose.position.y = cmd.Reference_State.position_ref[1];
         ref_pose.pose.position.z = 0.0;
         ref_pose.pose.orientation = _DroneState.attitude_q;
-    }else if(cmd.Mode == prometheus_msgs::ControlCommand::Move){
-        //xy速度控制
-        if( Command_Now.Reference_State.Move_mode  & 0b10 ){
-            ref_pose.pose.position.x = _DroneState.position[0] + cmd.Reference_State.velocity_ref[0] * dt;
-            ref_pose.pose.position.y = _DroneState.position[1] + cmd.Reference_State.velocity_ref[1] * dt;
-        }else{
+    }
+    else if(cmd.Mode == prometheus_msgs::ControlCommand::Move){
+        if(Command_Now.Reference_State.Move_mode & 0b00){
+            // POS
             ref_pose.pose.position.x = cmd.Reference_State.position_ref[0];
             ref_pose.pose.position.y = cmd.Reference_State.position_ref[1];
-        }
-
-        if(Command_Now.Reference_State.Move_mode  & 0b01 ){
-            ref_pose.pose.position.z = _DroneState.position[2] + cmd.Reference_State.velocity_ref[2] * dt;
-        }else{
             ref_pose.pose.position.z = cmd.Reference_State.position_ref[2];
         }
-
+        else if(Command_Now.Reference_State.Move_mode & 0b01){
+            // XY_POS, Z_VEL
+            ref_pose.pose.position.x = cmd.Reference_State.position_ref[0];
+            ref_pose.pose.position.y = cmd.Reference_State.position_ref[1];
+            ref_pose.pose.position.z = _DroneState.position[2] + cmd.Reference_State.velocity_ref[2] * dt;
+        }
+        else if(Command_Now.Reference_State.Move_mode & 0b10){
+            // xy速度控制, Z_POS
+            ref_pose.pose.position.x = _DroneState.position[0] + cmd.Reference_State.velocity_ref[0] * dt;
+            ref_pose.pose.position.y = _DroneState.position[1] + cmd.Reference_State.velocity_ref[1] * dt;
+            ref_pose.pose.position.z = cmd.Reference_State.position_ref[2];
+        }
+        else if(Command_Now.Reference_State.Move_mode  & 0b11 ){
+            // VEL
+            ref_pose.pose.position.x = _DroneState.position[0] + cmd.Reference_State.velocity_ref[0] * dt;
+            ref_pose.pose.position.y = _DroneState.position[1] + cmd.Reference_State.velocity_ref[1] * dt;
+            ref_pose.pose.position.z = _DroneState.position[2] + cmd.Reference_State.velocity_ref[2] * dt;
+        }
+        else if(Command_Now.Reference_State.Move_mode  & 0b100 ){
+            // ACC
+            ref_pose.pose.position.x = _DroneState.position[0] + cmd.Reference_State.velocity_ref[0] * dt + 0.5 * cmd.Reference_State.acceleration_ref[0] * dt * dt;
+            ref_pose.pose.position.y = _DroneState.position[1] + cmd.Reference_State.velocity_ref[1] * dt + 0.5 * cmd.Reference_State.acceleration_ref[1] * dt * dt;
+            ref_pose.pose.position.z = _DroneState.position[2] + cmd.Reference_State.velocity_ref[2] * dt + 0.5 * cmd.Reference_State.acceleration_ref[2] * dt * dt;
+        }
+        else if(Command_Now.Reference_State.Move_mode  & 0b101 ) {
+            // Trajectory
+            ref_pose.pose.position.x = cmd.Reference_State.position_ref[0];
+            ref_pose.pose.position.y = cmd.Reference_State.position_ref[1];
+            ref_pose.pose.position.z = cmd.Reference_State.position_ref[2];
+        }
+        else if(Command_Now.Reference_State.Move_mode  & 0b110){
+            // POS_VEL_ACC
+            ref_pose.pose.position.x = cmd.Reference_State.position_ref[0];
+            ref_pose.pose.position.y = cmd.Reference_State.position_ref[1];
+            ref_pose.pose.position.z = cmd.Reference_State.position_ref[2];
+        }
         ref_pose.pose.orientation = att_ref.desired_att_q;
-    }else{
-        ref_pose.pose.position.x = 0.0;
-        ref_pose.pose.position.y = 0.0;
-        ref_pose.pose.position.z = 0.0;
+    }
+    else{
+        ref_pose.pose.position.x = _DroneState.position[0];
+        ref_pose.pose.position.y = _DroneState.position[1];
+        ref_pose.pose.position.z = _DroneState.position[2];
         ref_pose.pose.orientation = _DroneState.attitude_q;
     }
 

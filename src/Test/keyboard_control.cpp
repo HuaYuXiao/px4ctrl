@@ -48,8 +48,8 @@ void timerCallback(const ros::TimerEvent& e)
     cout << ">>>>>>>>>>>>>>>>>>>>>>>> Welcome to Prometheus <<<<<<<<<<<<<<<<<<<<<<" <<endl;
     cout << "ENTER key to control the drone: 1 for switch offboard and arm, Space for Takeoff, L for Land, H for Hold" <<endl;
     cout << "Move mode (XYZ_VEL,BODY_FRAME): w/s for body_x, a/d for body_y, k/m for z, q/e for body_yaw" <<endl;
-    cout << "CTRL-C to quit." <<endl;
 }
+
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "keyboard_control");
