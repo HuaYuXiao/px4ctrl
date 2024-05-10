@@ -9,13 +9,11 @@
 ***************************************************************************************************************************/
 #include <ros/ros.h>
 #include <iostream>
-
 #include <prometheus_msgs/ControlCommand.h>
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
 #include <nav_msgs/Path.h>
-
 #include "controller_test.h"
 #include "KeyboardEvent.h"
 
@@ -66,12 +64,12 @@ int main(int argc, char **argv){
     //　【发布】　参考轨迹
     ref_trajectory_pub = nh.advertise<nav_msgs::Path>("/prometheus/reference_trajectory", 10);
 
-    nh.param<float>("geo_fence/x_min", geo_fence_x[0], -20.0);
-    nh.param<float>("geo_fence/x_max", geo_fence_x[1], 20.0);
-    nh.param<float>("geo_fence/y_min", geo_fence_y[0], -20.0);
-    nh.param<float>("geo_fence/y_max", geo_fence_y[1], 20.0);
+    nh.param<float>("geo_fence/x_min", geo_fence_x[0], -8.0);
+    nh.param<float>("geo_fence/x_max", geo_fence_x[1], 8.0);
+    nh.param<float>("geo_fence/y_min", geo_fence_y[0], -5.0);
+    nh.param<float>("geo_fence/y_max", geo_fence_y[1], 5.0);
     nh.param<float>("geo_fence/z_min", geo_fence_z[0], -0.3);
-    nh.param<float>("geo_fence/z_max", geo_fence_z[1], 5.0);
+    nh.param<float>("geo_fence/z_max", geo_fence_z[1], 3.0);
 
     // 初始化命令 - Idle模式 电机怠速旋转 等待来自上层的控制指令
     Command_to_pub.Mode                                = prometheus_msgs::ControlCommand::Idle;
@@ -89,6 +87,7 @@ int main(int argc, char **argv){
     Command_to_pub.Reference_State.acceleration_ref[1] = 0.0;
     Command_to_pub.Reference_State.acceleration_ref[2] = 0.0;
     Command_to_pub.Reference_State.yaw_ref             = 0.0;
+    Command_to_pub.Reference_State.yaw_rate_ref        = 0.0;
 
     //固定的浮点显示
     cout.setf(ios::fixed);
@@ -832,7 +831,7 @@ void Draw_in_rviz(const prometheus_msgs::PositionReference& pos_ref, bool draw_t
     geometry_msgs::PoseStamped reference_pose;
 
     reference_pose.header.stamp = ros::Time::now();
-    reference_pose.header.frame_id = "world";
+    reference_pose.header.frame_id = "map";
 
     reference_pose.pose.position.x = pos_ref.position_ref[0];
     reference_pose.pose.position.y = pos_ref.position_ref[1];
@@ -846,7 +845,7 @@ void Draw_in_rviz(const prometheus_msgs::PositionReference& pos_ref, bool draw_t
 
         nav_msgs::Path reference_trajectory;
         reference_trajectory.header.stamp = ros::Time::now();
-        reference_trajectory.header.frame_id = "world";
+        reference_trajectory.header.frame_id = "map";
         reference_trajectory.poses = posehistory_vector_;
         ref_trajectory_pub.publish(reference_trajectory);
     }else{
@@ -854,7 +853,7 @@ void Draw_in_rviz(const prometheus_msgs::PositionReference& pos_ref, bool draw_t
 
         nav_msgs::Path reference_trajectory;
         reference_trajectory.header.stamp = ros::Time::now();
-        reference_trajectory.header.frame_id = "world";
+        reference_trajectory.header.frame_id = "map";
         reference_trajectory.poses = posehistory_vector_;
         ref_trajectory_pub.publish(reference_trajectory);
     }
