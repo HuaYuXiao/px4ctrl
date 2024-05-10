@@ -57,6 +57,7 @@ include_directories(
         include
         include/Position_Controller
         $ENV{HOME}/Prometheus/Modules/common/include
+        $ENV{HOME}/Prometheus/Modules/ground_station/include
 )
 
 
