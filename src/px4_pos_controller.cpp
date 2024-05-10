@@ -206,7 +206,6 @@ int main(int argc, char **argv){
     // 记录启控时间
     ros::Time begin_time = ros::Time::now();
     float last_time = prometheus_station_utils::get_time_in_sec(begin_time);
-    int printf_num = 0;
 
     cout << "[control] controller initialized" << endl;
 
@@ -217,8 +216,6 @@ int main(int argc, char **argv){
         dt = cur_time  - last_time;
         dt = constrain_function2(dt, 0.01, 0.03);
         last_time = cur_time;
-        printf_num++;
-        if(printf_num > 100){
             if(controller_type == "default"){
             }else if(controller_type == "pid"){
             }else if(controller_type == "passivity"){
@@ -227,9 +224,6 @@ int main(int argc, char **argv){
             }else if(controller_type == "ne"){
                 pos_controller_NE.printf_result();
             }
-
-            printf_num = 0;
-        }
 
         //执行回调函数
         ros::spinOnce();
