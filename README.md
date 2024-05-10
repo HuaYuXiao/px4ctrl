@@ -11,7 +11,7 @@ A ROS package to control drone, modified from [prometheus_control](https://githu
 
 ## Release Note
 
-
+- v3.3.2: support `launch`
 - v3.3.1: 
   - support move mode `XYZ_VEL_ACC`
   - merge with `prometheus_station_utils` from `prometheus_station`
