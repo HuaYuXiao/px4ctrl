@@ -19,17 +19,20 @@
 #include "prometheus_control_utils.h"
 #include "message_utils.h"
 #include "control_common.h"
+#include "Filter/LowPassFilter.h"
 #include "Position_Controller/pos_controller_cascade_PID.h"
 #include "Position_Controller/pos_controller_PID.h"
 #include "Position_Controller/pos_controller_UDE.h"
 #include "Position_Controller/pos_controller_NE.h"
 #include "Position_Controller/pos_controller_Passivity.h"
-#include "Filter/LowPassFilter.h"
 
 #define NODE_NAME "pos_controller"
 
 using namespace std;
+
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>变量声明<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+float rate_hz_;
+
 float cur_time;                                             //程序运行时间
 string controller_type;                                      //控制器类型
 float Takeoff_height;                                       //默认起飞高度
@@ -80,7 +83,7 @@ void Command_cb(const prometheus_msgs::ControlCommand::ConstPtr& msg){
     if( msg->Command_ID  >  Command_Now.Command_ID ){
         Command_Now = *msg;
     }else{
-        pub_message(message_pub, prometheus_msgs::Message::WARN, NODE_NAME, "[control] Wrong Command ID.");
+        ROS_WARN("[control] Wrong Command ID.");
     }
 
     // 无人机一旦接受到Disarm指令，则会屏蔽其他指令
@@ -110,28 +113,12 @@ int main(int argc, char **argv){
     ros::init(argc, argv, "px4_pos_controller");
     ros::NodeHandle nh("~");
 
-    //【订阅】指令
-    // 本话题为任务模块生成的控制指令
-    ros::Subscriber Command_sub = nh.subscribe<prometheus_msgs::ControlCommand>("/prometheus/control_command", 10, Command_cb);
-    //【订阅】指令
-    // 本话题为Prometheus地面站发送的控制指令
-    ros::Subscriber station_command_sub = nh.subscribe<prometheus_msgs::ControlCommand>("/prometheus/control_command_station", 10, station_command_cb);
-    //【订阅】无人机状态
-    // 本话题来自px4_pos_estimator.cpp
-    ros::Subscriber drone_state_sub = nh.subscribe<prometheus_msgs::DroneState>("/prometheus/drone_state", 10, drone_state_cb);
-
-    //【发布】位置控制器的输出量:期望姿态
-    att_ref_pub = nh.advertise<prometheus_msgs::AttitudeReference>("/prometheus/control/attitude_reference", 10);
-    //【发布】参考位姿 RVIZ显示用
-    rivz_ref_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/prometheus/control/ref_pose_rviz", 10);
-    // 【发布】用于地面站显示的提示消息
-    message_pub = nh.advertise<prometheus_msgs::Message>("/prometheus/message/main", 10);
-    // 【发布】用于log的消息
-    log_message_pub = nh.advertise<prometheus_msgs::LogMessageControl>("/prometheus/log/control", 10);
+    //　程序执行频率
+    nh.param<float>("rate_hz", rate_hz_, 100);
 
     // 参数读取
-    nh.param<string>("control/controller_type", controller_type, "default");
-    nh.param<float>("control/Takeoff_height", Takeoff_height, 0.4);
+    nh.param<string>("control/controller_type", controller_type, "cascade_pid");
+    nh.param<float>("control/Takeoff_height", Takeoff_height, 1.5);
     nh.param<float>("control/Disarm_height", Disarm_height, 0.15);
     nh.param<float>("control/Land_speed", Land_speed, 0.2);
 
@@ -150,6 +137,22 @@ int main(int argc, char **argv){
     nh.param<float>("disturbance_start_time", disturbance_start_time, 10.0);
     nh.param<float>("disturbance_end_time", disturbance_end_time, -1.0);
 
+    //【订阅】指令 本话题为任务模块生成的控制指令
+    ros::Subscriber Command_sub = nh.subscribe<prometheus_msgs::ControlCommand>("/prometheus/control_command", 10, Command_cb);
+    //【订阅】指令 本话题为Prometheus地面站发送的控制指令
+    ros::Subscriber station_command_sub = nh.subscribe<prometheus_msgs::ControlCommand>("/prometheus/control_command_station", 10, station_command_cb);
+    //【订阅】无人机状态 本话题来自px4_pos_estimator.cpp
+    ros::Subscriber drone_state_sub = nh.subscribe<prometheus_msgs::DroneState>("/prometheus/drone_state", 10, drone_state_cb);
+
+    //【发布】位置控制器的输出量:期望姿态
+    att_ref_pub = nh.advertise<prometheus_msgs::AttitudeReference>("/prometheus/control/attitude_reference", 10);
+    //【发布】参考位姿 RVIZ显示用
+    rivz_ref_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/prometheus/control/ref_pose_rviz", 10);
+    // 【发布】用于地面站显示的提示消息
+    message_pub = nh.advertise<prometheus_msgs::Message>("/prometheus/message/main", 10);
+    // 【发布】用于log的消息
+    log_message_pub = nh.advertise<prometheus_msgs::LogMessageControl>("/prometheus/log/control", 10);
+
     LowPassFilter LPF_x;
     LowPassFilter LPF_y;
     LowPassFilter LPF_z;
@@ -159,7 +162,7 @@ int main(int argc, char **argv){
     LPF_z.set_Time_constant(disturbance_T);
 
     // 位置控制一般选取为50Hz，主要取决于位置状态的更新频率
-    ros::Rate rate(50.0);
+    ros::Rate rate(rate_hz_);
 
     // 用于与mavros通讯的类，通过mavros发送控制指令至飞控【本程序->mavros->飞控】
     command_to_mavros _command_to_mavros;
@@ -220,8 +223,8 @@ int main(int argc, char **argv){
     while(ros::ok()){
         // 当前时间
         cur_time = prometheus_station_utils::get_time_in_sec(begin_time);
-        dt = cur_time  - last_time;
-        dt = constrain_function2(dt, 0.01, 0.03);
+        dt = cur_time - last_time;
+        dt = constrain_function2(dt, 0.008, 0.012);
         last_time = cur_time;
 
             if(controller_type == "default"){
@@ -255,17 +258,17 @@ int main(int argc, char **argv){
                     if(_DroneState.mode != "OFFBOARD"){
                         _command_to_mavros.mode_cmd.request.custom_mode = "OFFBOARD";
                         _command_to_mavros.set_mode_client.call(_command_to_mavros.mode_cmd);
-                        pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "Setting to OFFBOARD Mode...");
+                        ROS_INFO("[control] Setting to OFFBOARD Mode");
                     }else{
-                        pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "The Drone is in OFFBOARD Mode already...");
+                        ROS_INFO("[control] Drone is in OFFBOARD");
                     }
 
                     if(!_DroneState.armed){
                         _command_to_mavros.arm_cmd.request.value = true;
                         _command_to_mavros.arming_client.call(_command_to_mavros.arm_cmd);
-                        pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "Arming...");
+                        ROS_INFO("[control] Arming");
                     }else{
-                        pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "The Drone is armd already...");
+                        ROS_INFO("[control] Drone is armed");
                     }
                 }
 
@@ -274,14 +277,13 @@ int main(int argc, char **argv){
                 // 【Takeoff】 从摆放初始位置原地起飞至指定高度，偏航角也保持当前角度
             case prometheus_msgs::ControlCommand::Takeoff:
                 //当无人机在空中时若受到起飞指令，则发出警告并悬停
-                // if (_DroneState.landed == false)
-                // {
+                // if (_DroneState.landed == false){
                 //     Command_Now.Mode = prometheus_msgs::ControlCommand::Hold;
-                //     pub_message(message_pub, prometheus_msgs::Message::WARN, NODE_NAME, "The drone is in the air!");
+                //     ROS_WARN("[control] The drone is in the air!");
                 // }
 
                 if (Command_Last.Mode != prometheus_msgs::ControlCommand::Takeoff){
-                    pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "Takeoff to the desired point.");
+                    ROS_INFO("[control] Takeoff to desired point");
                     // 设定起飞位置
                     Takeoff_position[0] = _DroneState.position[0];
                     Takeoff_position[1] = _DroneState.position[1];
@@ -328,7 +330,7 @@ int main(int argc, char **argv){
                         //此处切换会manual模式是因为:PX4默认在offboard模式且有控制的情况下没法上锁,直接使用飞控中的land模式
                         _command_to_mavros.mode_cmd.request.custom_mode = "AUTO.LAND";
                         _command_to_mavros.set_mode_client.call(_command_to_mavros.mode_cmd);
-                        pub_message(message_pub, prometheus_msgs::Message::WARN, NODE_NAME, "LAND: inter AUTO LAND filght mode");
+                        ROS_WARN("[control] LAND: inter AUTO LAND filght mode");
                     }
                 }
 
@@ -349,7 +351,7 @@ int main(int argc, char **argv){
 
                 // 【Disarm】 上锁
             case prometheus_msgs::ControlCommand::Disarm:
-                pub_message(message_pub, prometheus_msgs::Message::WARN, NODE_NAME, "[control] Disarm: switch to MANUAL flight mode");
+                pub_message(message_pub, prometheus_msgs::Message::WARN, NODE_NAME, "[control] Disarm: switch to MANUAL");
                 if(_DroneState.mode == "OFFBOARD"){
                     _command_to_mavros.mode_cmd.request.custom_mode = "MANUAL";
                     _command_to_mavros.set_mode_client.call(_command_to_mavros.mode_cmd);
@@ -391,7 +393,7 @@ int main(int argc, char **argv){
             else{
                 _ControlOutput = pos_controller_cascade_pid.pos_controller(_DroneState, Command_Now.Reference_State, dt);
 
-                pub_message(message_pub, prometheus_msgs::Message::ERROR, NODE_NAME, "[control] unsupported controller_type, use cascade_pid as default");
+                ROS_WARN("[control] unsupported controller_type, use cascade_pid as default");
             }
 
             if(Command_Now.Reference_State.Move_mode == prometheus_msgs::PositionReference::TRAJECTORY){
@@ -416,7 +418,6 @@ int main(int argc, char **argv){
                     cout<<"[control] add disturbance"<<endl;
                 }
             }
-
         }
 
         throttle_sp[0] = _ControlOutput.Throttle[0];
@@ -621,7 +622,7 @@ geometry_msgs::PoseStamped get_ref_pose_rviz(const prometheus_msgs::ControlComma
             ref_pose.pose.position.z = cmd.Reference_State.position_ref[2];
         }
         else if(Command_Now.Reference_State.Move_mode  & 0b110){
-            // POS_VEL_ACC
+            // TODO: POS_VEL_ACC
             ref_pose.pose.position.x = cmd.Reference_State.position_ref[0];
             ref_pose.pose.position.y = cmd.Reference_State.position_ref[1];
             ref_pose.pose.position.z = cmd.Reference_State.position_ref[2];

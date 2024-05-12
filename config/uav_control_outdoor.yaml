@@ -18,16 +18,16 @@ control:
   ## 定位源: 0 for MOCAP, 1 for T265, 2 for GAZEBO, 3 for FAKE_ODOM, 4 for GPS, 5 for RTK, 6 for UWB, 7 for VINS, 8 for OpticalFlow
   location_source : 2
   ## 最大安全速度
-  maximum_safe_vel_xy : 1.0
-  maximum_safe_vel_z : 1.0
+  maximum_safe_vel_xy : 5.0
+  maximum_safe_vel_z : 3.0
   ## 最大vision/px4速度误差
   maximum_vel_error_for_vision : 100.0
 
 ##　地理围栏
 geo_fence:
-  x_min: -8.0
-  x_max: 8.0
-  y_min: -5.0
-  y_max: 5.0
+  x_min: -20.0
+  x_max: 20.0
+  y_min: -20.0
+  y_max: 20.0
   z_min: -0.3
-  z_max: 3.0
+  z_max: 10.0
