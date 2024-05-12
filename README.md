@@ -11,6 +11,7 @@ A ROS package to estimate and control drone, modified from [prometheus_control](
 
 ## Release Note
 
+- v3.3.4: update `rate_hz_`
 - v3.3.3: update `get_ref_pose_rviz`
 - v3.3.2: support `launch`
 - v3.3.1: support move mode `XYZ_VEL_ACC`
@@ -21,7 +22,7 @@ A ROS package to estimate and control drone, modified from [prometheus_control](
 - v1.0.0: 加入VICON定位源
 
 
-## Compile
+## Compilation
 
 ```bash
 catkin_make install --source Modules/uav_control --build build/uav_control

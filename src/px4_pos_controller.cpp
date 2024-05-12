@@ -29,7 +29,10 @@
 #define NODE_NAME "pos_controller"
 
 using namespace std;
+
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>变量声明<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+float rate_hz_;
+
 float cur_time;                                             //程序运行时间
 string controller_type;                                      //控制器类型
 float Takeoff_height;                                       //默认起飞高度
@@ -110,6 +113,30 @@ int main(int argc, char **argv){
     ros::init(argc, argv, "px4_pos_controller");
     ros::NodeHandle nh("~");
 
+    //　程序执行频率
+    nh.param<float>("rate_hz", rate_hz_, 100);
+
+    // 参数读取
+    nh.param<string>("control/controller_type", controller_type, "cascade_pid");
+    nh.param<float>("control/Takeoff_height", Takeoff_height, 1.5);
+    nh.param<float>("control/Disarm_height", Disarm_height, 0.15);
+    nh.param<float>("control/Land_speed", Land_speed, 0.2);
+
+    nh.param<float>("geo_fence/x_min", geo_fence_x[0], -8.0);
+    nh.param<float>("geo_fence/x_max", geo_fence_x[1], 8.0);
+    nh.param<float>("geo_fence/y_min", geo_fence_y[0], -5.0);
+    nh.param<float>("geo_fence/y_max", geo_fence_y[1], 5.0);
+    nh.param<float>("geo_fence/z_min", geo_fence_z[0], -0.3);
+    nh.param<float>("geo_fence/z_max", geo_fence_z[1], 3.0);
+
+    nh.param<float>("disturbance_a_xy", disturbance_a_xy, 0.5);
+    nh.param<float>("disturbance_b_xy", disturbance_b_xy, 0.0);
+    nh.param<float>("disturbance_a_z", disturbance_a_z, 0.5);
+    nh.param<float>("disturbance_b_z", disturbance_b_z, 0.0);
+    nh.param<float>("disturbance_T", disturbance_T, 0.0);
+    nh.param<float>("disturbance_start_time", disturbance_start_time, 10.0);
+    nh.param<float>("disturbance_end_time", disturbance_end_time, -1.0);
+
     //【订阅】指令
     // 本话题为任务模块生成的控制指令
     ros::Subscriber Command_sub = nh.subscribe<prometheus_msgs::ControlCommand>("/prometheus/control_command", 10, Command_cb);
@@ -129,27 +156,6 @@ int main(int argc, char **argv){
     // 【发布】用于log的消息
     log_message_pub = nh.advertise<prometheus_msgs::LogMessageControl>("/prometheus/log/control", 10);
 
-    // 参数读取
-    nh.param<string>("control/controller_type", controller_type, "default");
-    nh.param<float>("control/Takeoff_height", Takeoff_height, 0.4);
-    nh.param<float>("control/Disarm_height", Disarm_height, 0.15);
-    nh.param<float>("control/Land_speed", Land_speed, 0.2);
-
-    nh.param<float>("geo_fence/x_min", geo_fence_x[0], -8.0);
-    nh.param<float>("geo_fence/x_max", geo_fence_x[1], 8.0);
-    nh.param<float>("geo_fence/y_min", geo_fence_y[0], -5.0);
-    nh.param<float>("geo_fence/y_max", geo_fence_y[1], 5.0);
-    nh.param<float>("geo_fence/z_min", geo_fence_z[0], -0.3);
-    nh.param<float>("geo_fence/z_max", geo_fence_z[1], 3.0);
-
-    nh.param<float>("disturbance_a_xy", disturbance_a_xy, 0.5);
-    nh.param<float>("disturbance_b_xy", disturbance_b_xy, 0.0);
-    nh.param<float>("disturbance_a_z", disturbance_a_z, 0.5);
-    nh.param<float>("disturbance_b_z", disturbance_b_z, 0.0);
-    nh.param<float>("disturbance_T", disturbance_T, 0.0);
-    nh.param<float>("disturbance_start_time", disturbance_start_time, 10.0);
-    nh.param<float>("disturbance_end_time", disturbance_end_time, -1.0);
-
     LowPassFilter LPF_x;
     LowPassFilter LPF_y;
     LowPassFilter LPF_z;
@@ -159,7 +165,7 @@ int main(int argc, char **argv){
     LPF_z.set_Time_constant(disturbance_T);
 
     // 位置控制一般选取为50Hz，主要取决于位置状态的更新频率
-    ros::Rate rate(50.0);
+    ros::Rate rate(rate_hz_);
 
     // 用于与mavros通讯的类，通过mavros发送控制指令至飞控【本程序->mavros->飞控】
     command_to_mavros _command_to_mavros;

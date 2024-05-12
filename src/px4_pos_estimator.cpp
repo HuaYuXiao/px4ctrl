@@ -27,12 +27,15 @@
 #include "message_utils.h"
 
 using namespace std;
+
 #define TRA_WINDOW 1000
 #define TIMEOUT_MAX 0.05
 #define NODE_NAME "pos_estimator"
+
 //---------------------------------------相关参数-----------------------------------------------
+float rate_hz_;
+
 int input_source;
-float rate_hz;
 
 Eigen::Vector3f pos_offset;
 float yaw_offset;
@@ -239,20 +242,12 @@ int main(int argc, char **argv){
     ros::init(argc, argv, "px4_pos_estimator");
     ros::NodeHandle nh("~");
 
-    //读取参数表中的参数
-    /* 定位数据输入源
-     0 for optitrack
-     6 for vicon
-     1 for 激光SLAM,
-     2 for gazebo ground truth,
-     3 for T265 ,
-     9 for outdoor
-     */
-
-    nh.param<int>("input_source", input_source, 6);
-
     //　程序执行频率
-    nh.param<float>("rate_hz", rate_hz, 50);
+    nh.param<float>("rate_hz", rate_hz_, 100);
+
+    //读取参数表中的参数
+    // 定位数据输入源 0 optitrack; 6 vicon; 1 激光SLAM; 2 gazebo; 3 T265; 9 outdoor
+    nh.param<int>("input_source", input_source, 2);
 
     // TODO: redefined in pub_tp_fcu???
     nh.param<string>("child_frame_id",child_frame_id, "base_link");
@@ -302,7 +297,7 @@ int main(int argc, char **argv){
     state_from_mavros _state_from_mavros;
 
     // 频率
-    ros::Rate rate(rate_hz);
+    ros::Rate rate(rate_hz_);
 
     cout << "[control] estimator initialized" << endl;
 
