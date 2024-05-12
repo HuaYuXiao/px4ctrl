@@ -132,7 +132,6 @@ int main(int argc, char **argv){
     return 0;
 }
 
-
 void mainloop1(){
     int Control_Mode = 0;
     bool valid_Control_Mode = false;
@@ -156,10 +155,10 @@ void mainloop1(){
     Controller_Test.printf_param();
 
     while(ros::ok()){
-        while (!valid_Control_Mode) {
+        while (!valid_Control_Mode){
             cout << ">>>>>>>>>>>>>>>> Welcome to use Prometheus Terminal Control <<<<<<<<<<<<<<<<" << endl;
             cout << "Please choose the Command.Mode: 0 for IDLE, 1 for TAKEOFF, 2 for HOLD, 3 for LAND, 4 for MOVE, 5 for DISARM" << endl;
-            cout << "Input 999 to switch to OFFBOARD mode and ARM the drone (ONLY for simulation, please use RC in experiment!!!)" << endl;
+            cout << "Input 999 to switch to OFFBOARD mode and ARM the drone" << endl;
             if (cin >> Control_Mode) {
                 if (Control_Mode == 0 ||
                     Control_Mode == 1 ||
@@ -186,8 +185,7 @@ void mainloop1(){
             case prometheus_msgs::ControlCommand::Idle:
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Idle;
-                // TODO: why unreachable?
-                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
                 break;
@@ -195,7 +193,7 @@ void mainloop1(){
             case prometheus_msgs::ControlCommand::Takeoff:
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Takeoff;
-                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
                 break;
@@ -203,7 +201,7 @@ void mainloop1(){
             case prometheus_msgs::ControlCommand::Hold:
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Hold;
-                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
                 break;
@@ -211,14 +209,14 @@ void mainloop1(){
             case prometheus_msgs::ControlCommand::Land:
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Land;
-                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
                 break;
 
             case prometheus_msgs::ControlCommand::Move:
                 while (!valid_move_mode) {
-                    cout << "Please choose the Command.Reference_State.Move_mode: 0 for XYZ_POS, 1 for XY_POS_Z_VEL, 2 for XY_VEL_Z_POS, 3 for XYZ_VEL, 5 for TRAJECTORY" << endl;
+                    cout << "Please choose the Command.Reference_State.Move_mode: 0 POS, 1 XY_POS_Z_VEL, 2 XY_VEL_Z_POS, 3 VEL, 5 for TRAJ" << endl;
                     if (cin >> Move_mode) {
                         if (Move_mode == 0 ||
                             Move_mode == 1 ||
@@ -281,7 +279,7 @@ void mainloop1(){
                     while (time_trajectory < trajectory_total_time) {
                         Command_to_pub.header.stamp = ros::Time::now();
                         Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
-                        Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                        Command_to_pub.Command_ID += 1;
                         Command_to_pub.source = NODE_NAME;
 
                         if (Trjectory_mode == 0) {
@@ -372,10 +370,10 @@ void mainloop1(){
                         cout << "setpoint_t[2] --- z [m] : " << endl;
                         if (cin >> state_desired[2]) {
                             // Check if z is within the range defined by geo_fence_z
-                            if (abs(state_desired[2]) < geo_fence_z[1]) {
+                            if (state_desired[2] > geo_fence_y[0] && state_desired[2] < geo_fence_z[1]) {
                                 valid_z_input = true;
                             } else {
-                                cout << "Invalid input for z! Please enter a value between -" << geo_fence_z[1] << " and " << geo_fence_z[1] << endl;
+                                cout << "Invalid input for z! Please enter a value between " << geo_fence_z[0] << " and " << geo_fence_z[1] << endl;
                             }
                         } else {
                             // Clear error flags
@@ -409,7 +407,7 @@ void mainloop1(){
 
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
-                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 Command_to_pub.Reference_State.Move_mode = Move_mode;
                 Command_to_pub.Reference_State.Move_frame = Move_frame;
@@ -425,7 +423,7 @@ void mainloop1(){
             case prometheus_msgs::ControlCommand::Disarm:
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Disarm;
-                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
                 break;
@@ -433,7 +431,7 @@ void mainloop1(){
             case 999:
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Idle;
-                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 Command_to_pub.Reference_State.yaw_ref = 999;
                 move_pub.publish(Command_to_pub);
@@ -441,10 +439,9 @@ void mainloop1(){
                 break;
         }
 
-        cout << ">>>>>>>>> MISSION RECEIVED <<<<<<<<" << endl;
+        cout << ">>>>>>>>> MISSION RECEIVED <<<<<<<<\n" << endl;
     }
 }
-
 
 void mainloop2(){
     KeyboardEvent keyboardcontrol;
@@ -483,7 +480,7 @@ void mainloop2(){
 
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Idle;
-                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 Command_to_pub.Reference_State.yaw_ref = 999;
                 move_pub.publish(Command_to_pub);
@@ -497,7 +494,7 @@ void mainloop2(){
 
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Takeoff;
-                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.Command_ID += 1;
                 Command_to_pub.Reference_State.yaw_ref = 0.0;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
@@ -513,7 +510,7 @@ void mainloop2(){
 
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Land;
-                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
 
@@ -526,7 +523,7 @@ void mainloop2(){
 
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Disarm;
-                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
 
@@ -539,7 +536,7 @@ void mainloop2(){
 
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Takeoff;
-                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
 
@@ -554,7 +551,7 @@ void mainloop2(){
 
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Hold;
-                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 Command_to_pub.Reference_State.position_ref[0]     = 0.0;
                 Command_to_pub.Reference_State.position_ref[1]     = 0.0;
@@ -576,7 +573,7 @@ void mainloop2(){
 
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
-                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 Command_to_pub.Reference_State.Move_mode       = prometheus_msgs::PositionReference::XYZ_VEL;
                 Command_to_pub.Reference_State.Move_frame      = prometheus_msgs::PositionReference::BODY_FRAME;
@@ -596,7 +593,7 @@ void mainloop2(){
 
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
-                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 Command_to_pub.Reference_State.Move_mode       = prometheus_msgs::PositionReference::XYZ_VEL;
                 Command_to_pub.Reference_State.Move_frame      = prometheus_msgs::PositionReference::BODY_FRAME;
@@ -614,7 +611,7 @@ void mainloop2(){
 
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
-                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 Command_to_pub.Reference_State.Move_mode       = prometheus_msgs::PositionReference::XYZ_VEL;
                 Command_to_pub.Reference_State.Move_frame      = prometheus_msgs::PositionReference::BODY_FRAME;
@@ -633,7 +630,7 @@ void mainloop2(){
 
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
-                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 Command_to_pub.Reference_State.Move_mode       = prometheus_msgs::PositionReference::XYZ_VEL;
                 Command_to_pub.Reference_State.Move_frame      = prometheus_msgs::PositionReference::BODY_FRAME;
@@ -653,7 +650,7 @@ void mainloop2(){
 
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
-                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 Command_to_pub.Reference_State.Move_mode       = prometheus_msgs::PositionReference::XYZ_VEL;
                 Command_to_pub.Reference_State.Move_frame      = prometheus_msgs::PositionReference::BODY_FRAME;
@@ -673,7 +670,7 @@ void mainloop2(){
 
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
-                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 Command_to_pub.Reference_State.Move_mode       = prometheus_msgs::PositionReference::XYZ_VEL;
                 Command_to_pub.Reference_State.Move_frame      = prometheus_msgs::PositionReference::BODY_FRAME;
@@ -693,7 +690,7 @@ void mainloop2(){
 
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
-                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 Command_to_pub.Reference_State.Move_mode       = prometheus_msgs::PositionReference::XYZ_VEL;
                 Command_to_pub.Reference_State.Move_frame      = prometheus_msgs::PositionReference::BODY_FRAME;
@@ -713,7 +710,7 @@ void mainloop2(){
 
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
-                Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 Command_to_pub.Reference_State.Move_mode       = prometheus_msgs::PositionReference::XYZ_POS;
                 Command_to_pub.Reference_State.Move_frame      = prometheus_msgs::PositionReference::BODY_FRAME;
@@ -735,7 +732,7 @@ void mainloop2(){
                 while(time_trajectory < trajectory_total_time){
                     Command_to_pub.header.stamp = ros::Time::now();
                     Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
-                    Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                    Command_to_pub.Command_ID += 1;
                     Command_to_pub.source = NODE_NAME;
 
                     Command_to_pub.Reference_State = Controller_Test.Circle_trajectory_generation(time_trajectory);
@@ -759,7 +756,7 @@ void mainloop2(){
                 while(time_trajectory < trajectory_total_time){
                     Command_to_pub.header.stamp = ros::Time::now();
                     Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
-                    Command_to_pub.Command_ID = Command_to_pub.Command_ID + 1;
+                    Command_to_pub.Command_ID += 1;
                     Command_to_pub.source = NODE_NAME;
 
                     Command_to_pub.Reference_State = Controller_Test.Eight_trajectory_generation(time_trajectory);

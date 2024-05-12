@@ -1,10 +1,12 @@
 <!-- 启动Prometheus代码 -->
 <launch>
+    <arg name="rate_hz" value="100"/>
+
     <!-- run the px4_pos_estimator.cpp -->
         <node pkg="uav_control" type="px4_pos_estimator" name="px4_pos_estimator" output="screen">
-            <param name="rate_hz" value="100"/>
+            <param name="rate_hz" value="$(arg rate_hz)"/>
 
-            <!-- 定位数据输入源 0 for vicon， 1 for 激光SLAM, 2 for gazebo ground truth, 3 for T265 -->
+            <!-- 定位数据输入源 0 for vicon， 1 for 激光SLAM, 2 for gazebo , 3 for T265 -->
             <param name="input_source" value="2"/>
 
             <param name="offset_x" value="0"/>
@@ -14,7 +16,7 @@
 
         <!-- 启动uav_control_main -->
         <node pkg="uav_control" type="px4_pos_controller" name="px4_pos_controller" output="screen">
-            <param name="rate_hz" value="100"/>
+            <param name="rate_hz" value="$(arg rate_hz)"/>
 
             <rosparam command="load" file="$(find uav_control)/config/uav_control_indoor.yaml"/>
         </node>
