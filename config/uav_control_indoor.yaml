@@ -1,8 +1,12 @@
 ## parameter for uav_control
 
 control:
-  ## 控制器编号：0 for PX4_ORIGIN, 1 for PID, 2 for UDE, 3 for NE
-  controller_type : default
+  # cascade_pid: P for POS, PID for VEL
+  # pid:         PID for POS
+  # passivity:   PD+UDE+passivity for POS
+  # ude:         PD+UDE for POS
+  # ne:          PD+UDE+NE for POS
+  controller_type : cascade_pid
   # 是否支持外部控制
   enable_external_control : false
   ## 起飞高度

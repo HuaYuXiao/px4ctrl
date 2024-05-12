@@ -2,8 +2,8 @@
 * pos_controller_cascade_PID.h
 *
 * Author: Qyp
-*
-* Update Time: 2019.5.1
+* Maintainer: Eason Hua
+* Update Time: 2024.5.12
 *
 * Introduction:  Position Controller using PID (P for pos loop, pid for vel loop)
 *         1. Similiar to the position controller in PX4 (1.8.2)
@@ -30,15 +30,12 @@
 
 using namespace std;
 
-class pos_controller_cascade_PID
-{
+class pos_controller_cascade_PID{
      //public表明该数据成员、成员函数是对全部用户开放的。全部用户都能够直接进行调用，在程序的不论什么其他地方訪问。
     public:
-
         //构造函数
         pos_controller_cascade_PID(void):
-            pos_cascade_pid_nh("~")
-        {
+            pos_cascade_pid_nh("~"){
             pos_cascade_pid_nh.param<float>("Pos_cascade_pid/Kp_xy", Kp_xy, 0.8);
             pos_cascade_pid_nh.param<float>("Pos_cascade_pid/Kp_z", Kp_z, 1.0);
             pos_cascade_pid_nh.param<float>("Pos_cascade_pid/Kp_vxvy", Kp_vxvy, 0.2);
@@ -64,12 +61,14 @@ class pos_controller_cascade_PID
             vel_D_output    = Eigen::Vector3d(0.0,0.0,0.0);
             error_vel_dot_last  = Eigen::Vector3d(0.0,0.0,0.0);
             error_vel_last      = Eigen::Vector3d(0.0,0.0,0.0);
-            delta_time      = 0.02;
+            delta_time      = 0.01;
         }
 
-        //PID parameter for the control law
+        // PID parameter for POS loop
         float Kp_xy;
         float Kp_z;
+
+    // PID parameter for VEL loop
         float Kp_vxvy;
         float Kp_vz;
         float Ki_vxvy;
@@ -127,26 +126,30 @@ class pos_controller_cascade_PID
 
         // Position control main function 
         // [Input: Current state, Reference state, _Move_mode, dt; Output: AttitudeReference;]
-        prometheus_msgs::ControlOutput pos_controller(const prometheus_msgs::DroneState& _DroneState, const prometheus_msgs::PositionReference& _Reference_State, float dt);
+        prometheus_msgs::ControlOutput pos_controller(const prometheus_msgs::DroneState& _DroneState,
+                                                      const prometheus_msgs::PositionReference& _Reference_State,
+                                                      float dt);
 
         //Position control loop [Input: current pos, desired pos; Output: desired vel]
-        void _positionController(const prometheus_msgs::DroneState& _DroneState, const prometheus_msgs::PositionReference& _Reference_State, Eigen::Vector3d& vel_setpoint);
+        void _positionController(const prometheus_msgs::DroneState& _DroneState,
+                                 const prometheus_msgs::PositionReference& _Reference_State,
+                                 Eigen::Vector3d& vel_setpoint);
 
         //Velocity control loop [Input: current vel, desired vel; Output: desired thrust]
-        void _velocityController(const prometheus_msgs::DroneState& _DroneState, const prometheus_msgs::PositionReference& _Reference_State, float dt, Eigen::Vector3d& thrust_sp);
+        void _velocityController(const prometheus_msgs::DroneState& _DroneState,
+                                 const prometheus_msgs::PositionReference& _Reference_State,
+                                 float dt,
+                                 Eigen::Vector3d& thrust_sp);
 
         void cal_vel_error_deriv(const Eigen::Vector3d& error_now, Eigen::Vector3d& vel_error_deriv);
 
     private:
-
         ros::NodeHandle pos_cascade_pid_nh;
 };
 
-prometheus_msgs::ControlOutput pos_controller_cascade_PID::pos_controller
-    (const prometheus_msgs::DroneState& _DroneState, 
-     const prometheus_msgs::PositionReference& _Reference_State, 
-     float dt)
-{
+prometheus_msgs::ControlOutput pos_controller_cascade_PID::pos_controller(const prometheus_msgs::DroneState& _DroneState,
+                                                                          const prometheus_msgs::PositionReference& _Reference_State,
+                                                                          float dt){
     delta_time = dt;
 
     _positionController(_DroneState, _Reference_State, vel_setpoint);
@@ -162,36 +165,38 @@ prometheus_msgs::ControlOutput pos_controller_cascade_PID::pos_controller
     return _ControlOutput;
 }
 
-
-void pos_controller_cascade_PID::_positionController
-    (const prometheus_msgs::DroneState& _DroneState, 
-     const prometheus_msgs::PositionReference& _Reference_State,
-     Eigen::Vector3d& vel_setpoint)
-{
+void pos_controller_cascade_PID::_positionController(const prometheus_msgs::DroneState& _DroneState,
+                                                     const prometheus_msgs::PositionReference& _Reference_State,
+                                                     Eigen::Vector3d& vel_setpoint){
     //# Reference_State.Move_mode 2-bit value:
     //# 0 for position, 1 for vel, 1st for xy, 2nd for z.
     //#                   xy position     xy velocity
     //# z position       	0b00[0]       0b10[2]
     //# z velocity		0b01[1]       0b11(3)
 
-    if((_Reference_State.Move_mode & 0b10) == 0) //xy channel
-    {
+    if((_Reference_State.Move_mode & 0b10) == 0){
+    //xy channel
         vel_setpoint[0] = _Reference_State.velocity_ref[0] + Kp_xy * (_Reference_State.position_ref[0] - _DroneState.position[0]);
         vel_setpoint[1] = _Reference_State.velocity_ref[1] + Kp_xy * (_Reference_State.position_ref[1] - _DroneState.position[1]);
     }
-    else
-    {
+    else{
         vel_setpoint[0] = _Reference_State.velocity_ref[0];
         vel_setpoint[1] = _Reference_State.velocity_ref[1];
     }
 
-    if((_Reference_State.Move_mode & 0b01) == 0) //z channel
-    {
+    if((_Reference_State.Move_mode & 0b01) == 0){
+    //z channel
         vel_setpoint[2] = _Reference_State.velocity_ref[2] + Kp_z  * (_Reference_State.position_ref[2] - _DroneState.position[2]);
     }
-    else
-    {
+    else{
         vel_setpoint[2] = _Reference_State.velocity_ref[2];
+    }
+
+if(_Reference_State.Move_mode & 0b110){
+        // POS_VEL_ACC
+        vel_setpoint[0] = _Reference_State.velocity_ref[0] + Kp_xy * (_Reference_State.position_ref[0] - _DroneState.position[0]);
+        vel_setpoint[1] = _Reference_State.velocity_ref[1] + Kp_xy * (_Reference_State.position_ref[1] - _DroneState.position[1]);
+        vel_setpoint[2] = _Reference_State.velocity_ref[2] + Kp_z  * (_Reference_State.position_ref[2] - _DroneState.position[2]);
     }
 
     // Limit the velocity setpoint
@@ -200,11 +205,10 @@ void pos_controller_cascade_PID::_positionController
     vel_setpoint[2] = constrain_function(vel_setpoint[2], MPC_Z_VEL_MAX);
 }
 
-void pos_controller_cascade_PID::_velocityController
-    (const prometheus_msgs::DroneState& _DroneState, 
-     const prometheus_msgs::PositionReference& _Reference_State, float dt,
-     Eigen::Vector3d& thrust_sp)
-{
+void pos_controller_cascade_PID::_velocityController(const prometheus_msgs::DroneState& _DroneState,
+                                                     const prometheus_msgs::PositionReference& _Reference_State,
+                                                     float dt,
+                                                     Eigen::Vector3d& thrust_sp){
     // Generate desired thrust setpoint.
     // PID
     // u_des = P(error_vel) + D(error_vel_dot) + I(vel_integral)
@@ -254,11 +258,10 @@ void pos_controller_cascade_PID::_velocityController
 
             // limit thrust integral
             thurst_int[2] = min(fabs(thurst_int[2]), MPC_THR_INT_MAX ) * sign_function(thurst_int[2]);
-    }else
-    {
+    }else{
         //　发生Windup，则积分项清零
         thurst_int[2] = 0;
-        cout<<"Anti-Windup!"<<endl;
+        cout << "[control] Anti-Windup!" << endl;
     }
 
     // Saturate thrust setpoint in Z-direction.
@@ -271,14 +274,13 @@ void pos_controller_cascade_PID::_velocityController
     thrust_desired_Y  = _Reference_State.acceleration_ref[1] + vel_P_output[1] + thurst_int[1] + vel_D_output[1];
 
     // Get maximum allowed thrust in XY based on tilt angle and excess thrust.
-    float thrust_max_XY_tilt = fabs(thrust_sp[2]) * tanf(tilt_max/180.0*M_PI);
+    float thrust_max_XY_tilt = fabs(thrust_sp[2]) * tanf(tilt_max / 180.0 * M_PI);
     float thrust_max_XY = sqrtf(MPC_THR_MAX * MPC_THR_MAX - thrust_sp[2] * thrust_sp[2]);
     thrust_max_XY = min(thrust_max_XY_tilt, thrust_max_XY);
 
     // Saturate thrust in XY-direction.
     thrust_sp[0] = thrust_desired_X;
     thrust_sp[1] = thrust_desired_Y;
-
 
     if ((thrust_desired_X * thrust_desired_X + thrust_desired_Y * thrust_desired_Y) > thrust_max_XY * thrust_max_XY) {
             float mag = sqrtf((thrust_desired_X * thrust_desired_X + thrust_desired_Y * thrust_desired_Y));
@@ -302,14 +304,12 @@ void pos_controller_cascade_PID::_velocityController
     thurst_int[1] += Ki_vxvy * vel_err_lim_y * delta_time;
 
     //If not in OFFBOARD mode, set all intergral to zero.
-    if(_DroneState.mode != "OFFBOARD")
-    {
+    if(_DroneState.mode != "OFFBOARD"){
         thurst_int = Eigen::Vector3d(0.0,0.0,0.0);
     }
 }
 
-void pos_controller_cascade_PID::cal_vel_error_deriv(const Eigen::Vector3d& error_now, Eigen::Vector3d& vel_error_deriv)
-{
+void pos_controller_cascade_PID::cal_vel_error_deriv(const Eigen::Vector3d& error_now, Eigen::Vector3d& vel_error_deriv){
     Eigen::Vector3d error_vel_dot_now;
     error_vel_dot_now = (error_now - error_vel_last)/delta_time;
 
@@ -323,9 +323,7 @@ void pos_controller_cascade_PID::cal_vel_error_deriv(const Eigen::Vector3d& erro
     error_vel_dot_last = vel_error_deriv;
 }
 
-
-void pos_controller_cascade_PID::printf_result()
-{
+void pos_controller_cascade_PID::printf_result(){
     cout <<">>>>>>>>>>>>>>>>>>>  cascade PID Position Controller <<<<<<<<<<<<<<<<<<" <<endl;
 
     //固定的浮点显示
@@ -336,7 +334,6 @@ void pos_controller_cascade_PID::printf_result()
     cout.setf(ios::showpoint);
     // 强制显示符号
     cout.setf(ios::showpos);
-
     cout<<setprecision(2);
 
     // cout << "delta_time : " << delta_time<< " [s] " <<endl;
@@ -353,8 +350,7 @@ void pos_controller_cascade_PID::printf_result()
 }
 
 // 【打印参数函数】
-void pos_controller_cascade_PID::printf_param()
-{
+void pos_controller_cascade_PID::printf_param(){
     cout <<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>PID Parameter <<<<<<<<<<<<<<<<<<<<<<<<<<<" <<endl;
 
     cout <<"Position Loop:  " <<endl;
@@ -375,8 +371,5 @@ void pos_controller_cascade_PID::printf_param()
     cout <<"MPC_THR_MIN : "<< MPC_THR_MIN << endl;
     cout <<"MPC_THR_MAX : "<< MPC_THR_MAX << endl;
     cout <<"Hover_throttle : "<< Hover_throttle << endl;
-
 }
-
-
 #endif
