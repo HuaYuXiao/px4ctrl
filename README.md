@@ -11,6 +11,8 @@ A ROS package to estimate and control drone, modified from [prometheus_control](
 
 ## Release Note
 
+- v3.4.1: remove `message_pub`
+- v3.4.0: support PID controller with `POS+VEL` loop
 - v3.3.4: update `rate_hz_`
 - v3.3.3: update `get_ref_pose_rviz`
 - v3.3.2: support `launch`
@@ -19,10 +21,10 @@ A ROS package to estimate and control drone, modified from [prometheus_control](
 - v3.2.1: catch invalid input of terminal control
 - v2.0.0: support control type `NE`, `PID`, `UDE`
 - v1.2.0: import position offset
-- v1.0.0: 加入VICON定位源
+- v1.0.0: support `VICON`
 
 
-## Compilation
+## Installation
 
 ```bash
 catkin_make install --source Modules/uav_control --build build/uav_control

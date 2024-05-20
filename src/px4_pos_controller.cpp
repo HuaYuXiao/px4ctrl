@@ -66,7 +66,6 @@ float disturbance_end_time;
 
 ros::Publisher att_ref_pub;
 ros::Publisher rivz_ref_pose_pub;
-ros::Publisher message_pub;
 ros::Publisher log_message_pub;
 Eigen::Vector3d throttle_sp;
 
@@ -83,7 +82,7 @@ void Command_cb(const prometheus_msgs::ControlCommand::ConstPtr& msg){
     if( msg->Command_ID  >  Command_Now.Command_ID ){
         Command_Now = *msg;
     }else{
-        ROS_WARN("[control] Wrong Command ID.");
+        ROS_WARN("[control] Wrong Command ID");
     }
 
     // 无人机一旦接受到Disarm指令，则会屏蔽其他指令
@@ -94,7 +93,7 @@ void Command_cb(const prometheus_msgs::ControlCommand::ConstPtr& msg){
 
 void station_command_cb(const prometheus_msgs::ControlCommand::ConstPtr& msg){
     Command_Now = *msg;
-    pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "[control] Get a command from Station.");
+    cout << "[control] Get a command from Station" << endl;
 
     // 无人机一旦接受到Disarm指令，则会屏蔽其他指令
     if(Command_Last.Mode == prometheus_msgs::ControlCommand::Disarm){
@@ -148,8 +147,6 @@ int main(int argc, char **argv){
     att_ref_pub = nh.advertise<prometheus_msgs::AttitudeReference>("/prometheus/control/attitude_reference", 10);
     //【发布】参考位姿 RVIZ显示用
     rivz_ref_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/prometheus/control/ref_pose_rviz", 10);
-    // 【发布】用于地面站显示的提示消息
-    message_pub = nh.advertise<prometheus_msgs::Message>("/prometheus/message/main", 10);
     // 【发布】用于log的消息
     log_message_pub = nh.advertise<prometheus_msgs::LogMessageControl>("/prometheus/log/control", 10);
 
@@ -351,7 +348,7 @@ int main(int argc, char **argv){
 
                 // 【Disarm】 上锁
             case prometheus_msgs::ControlCommand::Disarm:
-                pub_message(message_pub, prometheus_msgs::Message::WARN, NODE_NAME, "[control] Disarm: switch to MANUAL");
+                cout << "[control] Disarm: switch to MANUAL" << endl;
                 if(_DroneState.mode == "OFFBOARD"){
                     _command_to_mavros.mode_cmd.request.custom_mode = "MANUAL";
                     _command_to_mavros.set_mode_client.call(_command_to_mavros.mode_cmd);
@@ -415,7 +412,7 @@ int main(int argc, char **argv){
                     _ControlOutput.Throttle[0] = _ControlOutput.Throttle[0] + random[0];
                     _ControlOutput.Throttle[1] = _ControlOutput.Throttle[1] + random[1];
                     _ControlOutput.Throttle[2] = _ControlOutput.Throttle[2] + random[2];
-                    cout<<"[control] add disturbance"<<endl;
+                    cout << "[control] add disturbance" << endl;
                 }
             }
         }
@@ -468,7 +465,7 @@ int check_failsafe(){
     if (_DroneState.position[0] < geo_fence_x[0] || _DroneState.position[0] > geo_fence_x[1] ||
         _DroneState.position[1] < geo_fence_y[0] || _DroneState.position[1] > geo_fence_y[1] ||
         _DroneState.position[2] < geo_fence_z[0] || _DroneState.position[2] > geo_fence_z[1]){
-        pub_message(message_pub, prometheus_msgs::Message::ERROR, NODE_NAME, "[control] Out of the geo fence, the drone is landing...");
+        cout << "[control] Out of geo fence, the drone is landing" << endl;
         return 1;
     }else{
         return 0;
