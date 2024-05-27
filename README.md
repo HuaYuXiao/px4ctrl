@@ -11,6 +11,7 @@ A ROS package to estimate and control drone, modified from [prometheus_control](
 
 ## Release Note
 
+- v3.4.2: update odometry source of gazebo
 - v3.4.1: remove `message_pub`
 - v3.4.0: support PID controller with `POS+VEL` loop
 - v3.3.4: update `rate_hz_`
