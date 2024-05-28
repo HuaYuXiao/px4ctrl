@@ -3,7 +3,7 @@
     <arg name="rate_hz" value="100"/>
 
     <!-- run the px4_pos_estimator.cpp -->
-        <node pkg="uav_control" type="px4_pos_estimator" name="px4_pos_estimator" output="screen">
+        <node pkg="easondrone_control" type="px4_pos_estimator" name="px4_pos_estimator" output="screen">
             <param name="rate_hz" value="$(arg rate_hz)"/>
 
             <!-- 定位数据输入源 0 for vicon， 1 for 激光SLAM, 2 for gazebo , 3 for T265 -->
@@ -15,17 +15,17 @@
         </node>
 
         <!-- 启动uav_control_main -->
-        <node pkg="uav_control" type="px4_pos_controller" name="px4_pos_controller" output="screen" launch-prefix="gnome-terminal --">
+        <node pkg="easondrone_control" type="px4_pos_controller" name="px4_pos_controller" output="screen" launch-prefix="gnome-terminal --">
             <param name="rate_hz" value="$(arg rate_hz)"/>
 
-            <rosparam command="load" file="$(find uav_control)/config/uav_control_indoor.yaml"/>
+            <rosparam command="load" file="$(find easondrone_control)/config/uav_control_indoor.yaml"/>
         </node>
 
         <!-- 启动虚拟摇杆驱动 -->
-        <include file="$(find uav_control)/launch/joy_node.launch"/>
+        <include file="$(find easondrone_control)/launch/joy_node.launch"/>
 
         <!-- run the terminal_control.cpp -->
-        <node pkg="uav_control" type="terminal_control" name="terminal_control" output="screen" launch-prefix="gnome-terminal --">
-            <rosparam command="load" file="$(find uav_control)/config/uav_control_indoor.yaml"/>
+        <node pkg="easondrone_control" type="terminal_control" name="terminal_control" output="screen" launch-prefix="gnome-terminal --">
+            <rosparam command="load" file="$(find easondrone_control)/config/uav_control_indoor.yaml"/>
         </node>
 </launch>
