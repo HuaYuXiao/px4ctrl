@@ -15,7 +15,7 @@
         </node>
 
         <!-- 启动uav_control_main -->
-        <node pkg="uav_control" type="px4_pos_controller" name="px4_pos_controller" output="screen">
+        <node pkg="uav_control" type="px4_pos_controller" name="px4_pos_controller" output="screen" launch-prefix="gnome-terminal --">
             <param name="rate_hz" value="$(arg rate_hz)"/>
 
             <rosparam command="load" file="$(find uav_control)/config/uav_control_indoor.yaml"/>

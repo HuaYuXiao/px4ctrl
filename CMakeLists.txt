@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(uav_control)
+project(easondrone_control)
 
 # Compile as C++11, supported in ROS Kinetic and newer
  add_compile_options(-std=c++14)
@@ -60,7 +60,6 @@ include_directories(
         $ENV{HOME}/Prometheus/Modules/ground_station/include
 )
 
-
 ###############################
 ##      声明可执行cpp文件     ##
 ###############################
@@ -85,6 +84,9 @@ add_executable(terminal_control src/Utilities/terminal_control.cpp)
 add_dependencies(terminal_control prometheus_control_gencpp)
 target_link_libraries(terminal_control ${catkin_LIBRARIES})
 target_link_libraries(terminal_control KeyboardEvent)
+
+catkin_install_python(PROGRAMS script/multirotor_communication.py script/multirotor_keyboard_control.py
+        DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 ## Mark cpp header files for installation
 install(DIRECTORY include/${PROJECT_NAME}/

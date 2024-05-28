@@ -78,7 +78,6 @@ Eigen::Vector3d Euler_slam;
 //---------------------------------------发布相关变量--------------------------------------------
 ros::Publisher vision_pub;
 ros::Publisher drone_state_pub;
-ros::Publisher message_pub;
 ros::Publisher odom_pub;
 ros::Publisher trajectory_pub;
 
@@ -123,7 +122,7 @@ void gazebo_cb(const nav_msgs::Odometry::ConstPtr &msg){
         // Euler_gazebo[2] = Euler_gazebo[2] + yaw_offset;
         // q_gazebo = quaternion_from_rpy(Euler_gazebo);
     }else{
-        pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "wrong gazebo ground truth frame id.");
+        cout << "[estimator] wrong gazebo ground truth frame id" << endl;
     }
 }
 
@@ -144,7 +143,7 @@ void t265_cb(const nav_msgs::Odometry::ConstPtr &msg){
         // Euler_t265[2] = Euler_t265[2] + yaw_offset;
         // q_t265 = quaternion_from_rpy(Euler_t265);
     }else{
-        pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "wrong t265 frame id.");
+        cout << "[estimator] wrong t265 frame id" << endl;
     }
 }
 
@@ -169,8 +168,6 @@ void laser_cb(const tf2_msgs::TFMessage::ConstPtr &msg){
 
         // Transform the Quaternion to Euler Angles
         Euler_laser = quaternion_to_euler(q_laser);
-
-        // pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "test.");
 
         //cout << "Position [X Y Z] : " << pos_drone_laser[0] << " [ m ] "<< pos_drone_laser[1]<<" [ m ] "<< pos_drone_laser[2]<<" [ m ] "<<endl;
         //cout << "Euler [X Y Z] : " << Euler_laser[0] << " [m/s] "<< Euler_laser[1]<<" [m/s] "<< Euler_laser[2]<<" [m/s] "<<endl;
@@ -233,7 +230,7 @@ void slam_cb(const geometry_msgs::PoseStamped::ConstPtr &msg){
         // Euler_gazebo[2] = Euler_gazebo[2] + yaw_offset;
         // q_gazebo = quaternion_from_rpy(Euler_gazebo);
     }else{
-        pub_message(message_pub, prometheus_msgs::Message::NORMAL, NODE_NAME, "wrong slam frame id.");
+        cout << "[estimator] wrong slam frame id" << endl;
     }
 }
 
@@ -271,7 +268,7 @@ int main(int argc, char **argv){
     //  【订阅】t265估计位置
     ros::Subscriber t265_sub = nh.subscribe<nav_msgs::Odometry>("/t265/odom/sample", 100, t265_cb);
     // 【订阅】gazebo仿真真值
-    ros::Subscriber gazebo_sub = nh.subscribe<nav_msgs::Odometry>("/prometheus/ground_truth", 100, gazebo_cb);
+    ros::Subscriber gazebo_sub = nh.subscribe<nav_msgs::Odometry>("/mavros/local_position/odom", 100, gazebo_cb);
     // 【订阅】SLAM估计位姿
     ros::Subscriber slam_sub = nh.subscribe<geometry_msgs::PoseStamped>("/slam/pose", 100, slam_cb);
     // 【订阅】cartographer估计位置
@@ -290,8 +287,6 @@ int main(int argc, char **argv){
     odom_pub = nh.advertise<nav_msgs::Odometry>("/prometheus/drone_odom", 10);
     // 【发布】无人机移动轨迹，用于RVIZ显示
     trajectory_pub = nh.advertise<nav_msgs::Path>("/prometheus/drone_trajectory", 10);
-    // 【发布】提示消息
-    message_pub = nh.advertise<prometheus_msgs::Message>("/prometheus/message/main", 10);
 
     // 用于与mavros通讯的类，通过mavros接收来至飞控的消息【飞控->mavros->本程序】
     state_from_mavros _state_from_mavros;
@@ -332,7 +327,7 @@ void send_to_fcu(){
       
         // 此处时间主要用于监测动捕，T265设备是否正常工作
         if(prometheus_station_utils::get_time_in_sec(last_timestamp) > TIMEOUT_MAX){
-            pub_message(message_pub, prometheus_msgs::Message::ERROR, NODE_NAME, "Mocap Timeout.");
+            cout << "[estimator] Mocap Timeout" << endl;
         }
     }else if(input_source == 6){
         // VICON
