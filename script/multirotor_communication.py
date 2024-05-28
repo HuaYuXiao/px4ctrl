@@ -223,10 +223,15 @@ class Communication:
     def hover(self):
         self.coordinate_frame = 1
         self.motion_type = 0
-        self.target_motion = self.construct_target(x=self.current_position.x,
-                                                   y=self.current_position.y,
-                                                   z=self.current_position.z,
-                                                   yaw=self.current_yaw)
+
+        try:
+            self.target_motion = self.construct_target(x=self.current_position.x,
+                                                       y=self.current_position.y,
+                                                       z=self.current_position.z,
+                                                       yaw=self.current_yaw)
+        except AttributeError as e:
+            rospy.logwarn("Error in hover_state_transition: %s", e)
+
         print(self.flight_mode)
 
     def flight_mode_switch(self):
