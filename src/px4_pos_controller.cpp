@@ -3,7 +3,7 @@
 *
 * Author: Qyp
 * Maintainer: Eason Hua
-* Update Time: 2024.5.22
+* Update Time: 2024.5.28
 *
 * Introduction:  PX4 Position Controller 
 *         1. 从应用层节点订阅/prometheus/control_command话题（ControlCommand.msg），接收来自上层的控制指令。
@@ -34,10 +34,10 @@ using namespace std;
 float rate_hz_;
 
 float cur_time;                                             //程序运行时间
-string controller_type;                                      //控制器类型
-float Takeoff_height;                                       //默认起飞高度
-float Disarm_height;                                        //自动上锁高度
-float Land_speed;                                           //降落速度
+string controller_type_;                                      //控制器类型
+float Takeoff_height_;                                       //默认起飞高度
+float Disarm_height_;                                        //自动上锁高度
+float Land_speed_;                                           //降落速度
 //Geigraphical fence 地理围栏
 Eigen::Vector2f geo_fence_x;
 Eigen::Vector2f geo_fence_y;
@@ -116,10 +116,10 @@ int main(int argc, char **argv){
     nh.param<float>("rate_hz", rate_hz_, 100);
 
     // 参数读取
-    nh.param<string>("control/controller_type", controller_type, "cascade_pid");
-    nh.param<float>("control/Takeoff_height", Takeoff_height, 1.5);
-    nh.param<float>("control/Disarm_height", Disarm_height, 0.15);
-    nh.param<float>("control/Land_speed", Land_speed, 0.2);
+    nh.param<string>("control/controller_type", controller_type_, "cascade_pid");
+    nh.param<float>("control/Takeoff_height", Takeoff_height_, 1.5);
+    nh.param<float>("control/Disarm_height", Disarm_height_, 0.15);
+    nh.param<float>("control/Land_speed", Land_speed_, 0.2);
 
     nh.param<float>("geo_fence/x_min", geo_fence_x[0], -8.0);
     nh.param<float>("geo_fence/x_max", geo_fence_x[1], 8.0);
@@ -173,19 +173,19 @@ int main(int argc, char **argv){
 
     printf_param();
 
-    if(controller_type == "cascade_pid"){
+    if(controller_type_ == "cascade_pid"){
         pos_controller_cascade_pid.printf_param();
     }
-    else if(controller_type == "pid"){
+    else if(controller_type_ == "pid"){
         pos_controller_pid.printf_param();
     }
-    else if(controller_type == "passivity"){
+    else if(controller_type_ == "passivity"){
         pos_controller_passivity.printf_param();
     }
-    else if(controller_type == "ude"){
+    else if(controller_type_ == "ude"){
         pos_controller_UDE.printf_param();
     }
-    else if(controller_type == "ne"){
+    else if(controller_type_ == "ne"){
         pos_controller_NE.printf_param();
     }
     else{
@@ -223,16 +223,16 @@ int main(int argc, char **argv){
         dt = constrain_function2(dt, 0.008, 0.012);
         last_time = cur_time;
 
-            if(controller_type == "default"){
+            if(controller_type_ == "default"){
             }
-            else if(controller_type == "pid"){
+            else if(controller_type_ == "pid"){
             }
-            else if(controller_type == "passivity"){
+            else if(controller_type_ == "passivity"){
             }
-            else if(controller_type == "ude"){
+            else if(controller_type_ == "ude"){
                 pos_controller_UDE.printf_result();
             }
-            else if(controller_type == "ne"){
+            else if(controller_type_ == "ne"){
                 pos_controller_NE.printf_result();
             }
 
@@ -290,7 +290,7 @@ int main(int argc, char **argv){
                     Command_Now.Reference_State.Move_frame      = prometheus_msgs::PositionReference::ENU_FRAME;
                     Command_Now.Reference_State.position_ref[0] = Takeoff_position[0];
                     Command_Now.Reference_State.position_ref[1] = Takeoff_position[1];
-                    Command_Now.Reference_State.position_ref[2] = Takeoff_position[2] + Takeoff_height;
+                    Command_Now.Reference_State.position_ref[2] = Takeoff_position[2] + Takeoff_height_;
                     Command_Now.Reference_State.yaw_ref         = _DroneState.attitude[2];
                 }
 
@@ -316,12 +316,12 @@ int main(int argc, char **argv){
                     Command_Now.Reference_State.Move_frame      = prometheus_msgs::PositionReference::ENU_FRAME;
                     Command_Now.Reference_State.position_ref[0] = _DroneState.position[0];
                     Command_Now.Reference_State.position_ref[1] = _DroneState.position[1];
-                    Command_Now.Reference_State.velocity_ref[2] = - Land_speed; //Land_speed
+                    Command_Now.Reference_State.velocity_ref[2] = - Land_speed_; //Land_speed
                     Command_Now.Reference_State.yaw_ref         = _DroneState.attitude[2]; //rad
                 }
 
                 //如果距离起飞高度小于10厘米，则直接切换为land模式；
-                if(abs(_DroneState.position[2] - Takeoff_position[2]) < Disarm_height){
+                if(abs(_DroneState.position[2] - Takeoff_position[2]) < Disarm_height_){
                     if(_DroneState.mode != "AUTO.LAND"){
                         //此处切换会manual模式是因为:PX4默认在offboard模式且有控制的情况下没法上锁,直接使用飞控中的land模式
                         _command_to_mavros.mode_cmd.request.custom_mode = "AUTO.LAND";
@@ -364,7 +364,7 @@ int main(int argc, char **argv){
         //执行控制
         if(Command_Now.Mode != prometheus_msgs::ControlCommand::Idle){
             //选择控制器
-            if(controller_type == "cascade_pid"){
+            if(controller_type_ == "cascade_pid"){
                 if(Command_Now.Reference_State.Move_mode != prometheus_msgs::PositionReference::TRAJECTORY){
                     //轨迹追踪控制,直接改为PID控制器
                     _ControlOutput = pos_controller_cascade_pid.pos_controller(_DroneState, Command_Now.Reference_State, dt);
@@ -374,20 +374,20 @@ int main(int argc, char **argv){
                     // _ControlOutput = pos_controller_pid.pos_controller(_DroneState, Command_Now.Reference_State, dt);
                 }
             }
-            else if(controller_type == "pid"){
+            else if(controller_type_ == "pid"){
                 _ControlOutput = pos_controller_pid.pos_controller(_DroneState, Command_Now.Reference_State, dt);
             }
-            else if(controller_type == "passivity"){
+            else if(controller_type_ == "passivity"){
                 _ControlOutput = pos_controller_passivity.pos_controller(_DroneState, Command_Now.Reference_State, dt);
             }
-            else if(controller_type == "ude"){
+            else if(controller_type_ == "ude"){
                 _ControlOutput = pos_controller_UDE.pos_controller(_DroneState, Command_Now.Reference_State, dt);
             }
-            else if(controller_type == "ne"){
+            else if(controller_type_ == "ne"){
                 _ControlOutput = pos_controller_NE.pos_controller(_DroneState, Command_Now.Reference_State, dt);
             }
             else{
-                cout << "[control] unsupported controller_type, use cascade_pid as default" << endl;
+                cout << "[control] unsupported controller_type_, use cascade_pid as default" << endl;
 
                 _ControlOutput = pos_controller_cascade_pid.pos_controller(_DroneState, Command_Now.Reference_State, dt);
             }
@@ -451,10 +451,10 @@ int main(int argc, char **argv){
 
 void printf_param(){
     cout <<">>>>>>>>>>>>>>>>>>>>>>>> px4_pos_controller Parameter <<<<<<<<<<<<<<<<<<<<<<" <<endl;
-    cout << "controller_type: "<< controller_type <<endl;
-    cout << "Takeoff_height   : "<< Takeoff_height<<" [m] "<<endl;
-    cout << "Disarm_height    : "<< Disarm_height <<" [m] "<<endl;
-    cout << "Land_speed       : "<< Land_speed <<" [m/s] "<<endl;
+    cout << "controller_type: "<< controller_type_ <<endl;
+    cout << "Takeoff_height   : "<< Takeoff_height_<<" [m] "<<endl;
+    cout << "Disarm_height    : "<< Disarm_height_ <<" [m] "<<endl;
+    cout << "Land_speed       : "<< Land_speed_ <<" [m/s] "<<endl;
     cout << "geo_fence_x : "<< geo_fence_x[0] << " [m]  to  "<<geo_fence_x[1] << " [m]"<< endl;
     cout << "geo_fence_y : "<< geo_fence_y[0] << " [m]  to  "<<geo_fence_y[1] << " [m]"<< endl;
     cout << "geo_fence_z : "<< geo_fence_z[0] << " [m]  to  "<<geo_fence_z[1] << " [m]"<< endl;

@@ -11,58 +11,7 @@ LINEAR_STEP_SIZE = 0.01
 ANG_VEL_STEP_SIZE = 0.01
 
 cmd_vel_mask = False
-ctrl_leader = False
 
-msg2all = """
-Control Your XTDrone!
-To all drones  (press g to control the leader)
----------------------------
-   1   2   3   4   5   6   7   8   9   0
-        w       r    t   y        i
-   a    s    d       g       j    k    l
-        x       v    b   n        ,
-
-w/x : increase/decrease forward  
-a/d : increase/decrease leftward 
-i/, : increase/decrease yaw 
-j/l : increase/decrease yaw
-r   : return home
-t/y : arm/disarm
-v/n : takeoff/land
-b   : offboard
-s/k : hover and remove the mask of keyboard control
-0   : mask the keyboard control (for single UAV)
-0~9 : extendable mission(eg.different formation configuration)
-      this will mask the keyboard control
-g   : control the leader
-CTRL-C to quit
-"""
-
-msg2leader = """
-Control Your XTDrone!
-To the leader  (press g to control all drones)
----------------------------
-   1   2   3   4   5   6   7   8   9   0
-        w       r    t   y        i
-   a    s    d       g       j    k    l
-        x       v    b   n        ,
-
-w/x : increase/decrease forward 
-a/d : increase/decrease leftward 
-i/, : increase/decrease upward 
-j/l : increase/decrease yaw
-r   : return home
-t/y : arm/disarm
-v/n : takeoff/land
-b   : offboard
-s/k : hover and remove the mask of keyboard control
-g   : control all drones
-CTRL-C to quit
-"""
-
-e = """
-Communications Failed
-"""
 
 def getKey():
     tty.setraw(sys.stdin.fileno())
@@ -75,50 +24,53 @@ def getKey():
     return key
 
 def print_msg():
-    if ctrl_leader:
-        print(msg2leader)
-    else:
-        print(msg2all)      
+    msg2all = """
+    Control Your XTDrone!
+    To all drones  (press g to control the leader)
+    ---------------------------
+       1   2   3   4   5   6   7   8   9   0
+            w       r    t   y        i
+       a    s    d       g       j    k    l
+            x       v    b   n        ,
+    
+    w/x : increase/decrease forward  
+    a/d : increase/decrease leftward 
+    i/, : increase/decrease yaw 
+    j/l : increase/decrease yaw
+    r   : return home
+    t/y : arm/disarm
+    v/n : takeoff/land
+    b   : offboard
+    s/k : hover and remove the mask of keyboard control
+    0   : mask the keyboard control (for single UAV)
+    0~9 : extendable mission(eg.different formation configuration)
+          this will mask the keyboard control
+    g   : control the leader
+    CTRL-C to quit
+    """
+
+    print(msg2all)
+
 
 if __name__=="__main__":
-
     settings = termios.tcgetattr(sys.stdin)
 
-    multirotor_type = sys.argv[1]
-    multirotor_num = int(sys.argv[2])
-    control_type = sys.argv[3]
+    control_type = sys.argv[1]
     
-    if multirotor_num == 18:
-        formation_configs = ['waiting', 'cuboid', 'sphere', 'diamond']
-    elif multirotor_num == 9:
-        formation_configs = ['waiting', 'cube', 'pyramid', 'triangle']
-    elif multirotor_num == 6:
-        formation_configs = ['waiting', 'T', 'diamond', 'triangle']
-    elif multirotor_num == 1:
-        formation_configs = ['stop controlling']
+    formation_configs = ['stop controlling']
     
     cmd= String()
     twist = Twist()   
     
-    rospy.init_node(multirotor_type + '_multirotor_keyboard_control')
+    rospy.init_node('multirotor_keyboard_control')
     
     if control_type == 'vel':
-        multi_cmd_vel_flu_pub = [None]*multirotor_num
-        multi_cmd_pub = [None]*multirotor_num
-        for i in range(multirotor_num):
-            multi_cmd_vel_flu_pub[i] = rospy.Publisher('/cmd_vel_flu', Twist, queue_size=1)
-            multi_cmd_pub[i] = rospy.Publisher('/cmd',String,queue_size=3)
-        leader_cmd_vel_flu_pub = rospy.Publisher("/cmd_vel_flu", Twist, queue_size=1)
-        leader_cmd_pub = rospy.Publisher("/cmd", String, queue_size=1)
+        multi_cmd_vel_flu_pub = rospy.Publisher('/cmd_vel_flu', Twist, queue_size=1)
+        multi_cmd_pub = rospy.Publisher('/cmd',String,queue_size=3)
  
     else:
-        multi_cmd_accel_flu_pub = [None]*multirotor_num
-        multi_cmd_pub = [None]*multirotor_num
-        for i in range(multirotor_num):
-            multi_cmd_accel_flu_pub[i] = rospy.Publisher('/cmd_accel_flu', Twist, queue_size=1)
-            multi_cmd_pub[i] = rospy.Publisher('/cmd',String,queue_size=1)
-        leader_cmd_accel_flu_pub = rospy.Publisher("/cmd_accel_flu", Twist, queue_size=1)
-        leader_cmd_pub = rospy.Publisher("/cmd", String, queue_size=3)
+        multi_cmd_accel_flu_pub = rospy.Publisher("/cmd_accel_flu", Twist, queue_size=1)
+        multi_cmd_pub = rospy.Publisher("/cmd", String, queue_size=1)
 
     forward  = 0.0
     leftward  = 0.0
@@ -212,7 +164,6 @@ if __name__=="__main__":
             print_msg()
             print('Landing')
         elif key == 'g':
-            ctrl_leader = not ctrl_leader
             print_msg()
         elif key in ['k', 's']:
             cmd_vel_mask = False
@@ -254,20 +205,12 @@ if __name__=="__main__":
         twist.linear.x = forward; twist.linear.y = leftward ; twist.linear.z = upward
         twist.angular.x = 0.0; twist.angular.y = 0.0;  twist.angular.z = angular
 
-        for i in range(multirotor_num):
-            if ctrl_leader:
-                if control_type == 'vel':
-                    leader_cmd_vel_flu_pub.publish(twist)
-                else:
-                    leader_cmd_accel_flu_pub.publish(twist)
-                leader_cmd_pub.publish(cmd)
+        if not cmd_vel_mask:
+            if control_type == 'vel':
+                multi_cmd_vel_flu_pub.publish(twist)
             else:
-                if not cmd_vel_mask:
-                    if control_type == 'vel':
-                        multi_cmd_vel_flu_pub[i].publish(twist)   
-                    else:
-                        multi_cmd_accel_flu_pub[i].publish(twist)
-                multi_cmd_pub[i].publish(cmd)
+                multi_cmd_accel_flu_pub.publish(twist)
+        multi_cmd_pub[i].publish(cmd)
                 
         cmd = ''
 

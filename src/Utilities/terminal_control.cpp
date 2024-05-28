@@ -3,7 +3,7 @@
 *
 * Author: Qyp
 * Edited by: Eason Hua
-* Update Time: 2024.04.10
+* Update Time: 2024.05.28
 *
 * Introduction:  test function for sending ControlCommand.msg
 ***************************************************************************************************************************/
@@ -47,8 +47,8 @@ void generate_com(int Move_mode, float state_desired[4]);
 void Draw_in_rviz(const prometheus_msgs::PositionReference& pos_ref, bool draw_trajectory);
 
 void timerCallback(const ros::TimerEvent& e){
-    cout << ">>>>>>>>>>>>>>>> Welcome to use Prometheus Terminal Control <<<<<<<<<<<<<<<<"<< endl;
-    cout << "ENTER key to control the drone: " <<endl;
+    cout << ">>>>>>>>>>>>>>>> Welcome to use EasonDrone Terminal Control <<<<<<<<<<<<<<<<"<< endl;
+    cout << "ENTER key to control the drone: " << endl;
     cout << "1 for Arm, Space for Takeoff, L for Land, H for Hold, 0 for Disarm, 8/9 for Trajectory tracking" <<endl;
     cout << "Move mode is fixed (XYZ_VEL,BODY_FRAME): w/s for body_x, a/d for body_y, k/m for z, q/e for body_yaw" <<endl;
     cout << "CTRL-C to quit." <<endl;
@@ -105,7 +105,7 @@ int main(int argc, char **argv){
     bool valid_Remote_Mode = false;
 
     while (!valid_Remote_Mode) {
-        cout << ">>>>>>>>>>>>>>>> Welcome to use Prometheus Terminal Control <<<<<<<<<<<<<<<<" << endl;
+        cout << ">>>>>>>>>>>>>>>> Welcome to use EasonDrone Terminal Control <<<<<<<<<<<<<<<<" << endl;
         cout << "Please choose the Remote Mode: 0 for COMMAND input control, 1 for KEYBOARD input control" << endl;
         if (cin >> Remote_Mode) {
             if (Remote_Mode == 0) {
@@ -156,7 +156,7 @@ void mainloop1(){
 
     while(ros::ok()){
         while (!valid_Control_Mode){
-            cout << ">>>>>>>>>>>>>>>> Welcome to use Prometheus Terminal Control <<<<<<<<<<<<<<<<" << endl;
+            cout << ">>>>>>>>>>>>>>>> Welcome to use EasonDrone Terminal Control <<<<<<<<<<<<<<<<" << endl;
             cout << "Please choose the Command.Mode: 0 for IDLE, 1 for TAKEOFF, 2 for HOLD, 3 for LAND, 4 for MOVE, 5 for DISARM" << endl;
             cout << "Input 999 to switch to OFFBOARD mode and ARM the drone" << endl;
             if (cin >> Control_Mode) {
@@ -452,7 +452,7 @@ void mainloop2(){
     char key_now;
     char key_last;
 
-    cout << ">>>>>>>>>>>>>>>> Welcome to use Prometheus Terminal Control <<<<<<<<<<<<<<<<"<< endl;
+    cout << ">>>>>>>>>>>>>>>> Welcome to use EasonDrone Terminal Control <<<<<<<<<<<<<<<<"<< endl;
     cout << "ENTER key to control the drone: " <<endl;
     cout << "1 for Arm, Space for Takeoff, L for Land, H for Hold, 0 for Disarm, 8/9 for Trajectory tracking" <<endl;
     cout << "Move mode is fixed (XYZ_VEL,BODY_FRAME): w/s for body_x, a/d for body_y, k/m for z, q/e for body_yaw" <<endl;
