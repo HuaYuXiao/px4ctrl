@@ -6,15 +6,11 @@ from std_msgs.msg import String
 from pyquaternion import Quaternion
 import sys
 
-rospy.init_node(sys.argv[1]+'_'+sys.argv[2]+"_communication")
+rospy.init_node("multirotor_communication")
 rate = rospy.Rate(30)
 
 class Communication:
-
-    def __init__(self, vehicle_type, vehicle_id):
-        
-        self.vehicle_type = vehicle_type
-        self.vehicle_id = vehicle_id
+    def __init__(self):
         self.current_position = None
         self.current_yaw = 0
         self.hover_flag = 0
@@ -50,7 +46,7 @@ class Communication:
         self.armService = rospy.ServiceProxy("/mavros/cmd/arming", CommandBool)
         self.flightModeService = rospy.ServiceProxy("/mavros/set_mode", SetMode)
 
-        print(self.vehicle_type+'_'+self.vehicle_id+": "+"communication initialized")
+        print("multirotor_communication initialized")
 
     def start(self):
         '''
@@ -152,15 +148,15 @@ class Communication:
 
         elif msg.data == 'ARM':
             self.arm_state =self.arm()
-            print(self.vehicle_type+'_'+self.vehicle_id+": Armed "+str(self.arm_state))
+            print("Armed "+str(self.arm_state))
 
         elif msg.data == 'DISARM':
             self.arm_state = not self.disarm()
-            print(self.vehicle_type+'_'+self.vehicle_id+": Armed "+str(self.arm_state))
+            print("Armed "+str(self.arm_state))
 
         elif msg.data[:-1] == "mission" and not msg.data == self.mission:
             self.mission = msg.data
-            print(self.vehicle_type+'_'+self.vehicle_id+": "+msg.data)
+            print(msg.data)
 
         else:
             self.flight_mode = msg.data
@@ -181,33 +177,33 @@ class Communication:
         if self.armService(True):
             return True
         else:
-            print(self.vehicle_type+'_'+self.vehicle_id+": arming failed!")
+            print("Arming failed!")
             return False
 
     def disarm(self):
         if self.armService(False):
             return True
         else:
-            print(self.vehicle_type+'_'+self.vehicle_id+": disarming failed!")
+            print("Disarming failed!")
             return False
 
     def hover(self):
         self.coordinate_frame = 1
         self.motion_type = 0
         self.target_motion = self.construct_target(x=self.current_position.x,y=self.current_position.y,z=self.current_position.z,yaw=self.current_yaw)
-        print(self.vehicle_type+'_'+self.vehicle_id+":"+self.flight_mode)
+        print(self.flight_mode)
 
     def flight_mode_switch(self):
         if self.flight_mode == 'HOVER':
             self.hover_flag = 1
             self.hover()
         elif self.flightModeService(custom_mode=self.flight_mode):
-            print(self.vehicle_type+'_'+self.vehicle_id+": "+self.flight_mode)
+            print(self.flight_mode)
             return True
         else:
-            print(self.vehicle_type+'_'+self.vehicle_id+": "+self.flight_mode+"failed")
+            print(self.flight_mode+"failed")
             return False
 
 if __name__ == '__main__':
-    communication = Communication(sys.argv[1],sys.argv[2])
+    communication = Communication()
     communication.start()

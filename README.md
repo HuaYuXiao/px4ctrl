@@ -18,6 +18,7 @@ catkin_make install --source Modules/EasonDrone_Control --build Modules/EasonDro
 
 ## Release Note
 
+- v3.5.0: remove `vehicle_type` & `vehicle_id`
 - v3.4.2: update odometry source of gazebo
 - v3.4.1: remove `message_pub`
 - v3.4.0: support PID controller with `POS+VEL` loop
