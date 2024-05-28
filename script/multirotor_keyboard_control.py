@@ -1,9 +1,9 @@
+#!/usr/bin/env python3.8
 import rospy
 from geometry_msgs.msg import Twist
 import sys, select, os
 import tty, termios
 from std_msgs.msg import String
-
 
 MAX_LINEAR = 20
 MAX_ANG_VEL = 3
@@ -52,92 +52,104 @@ def print_msg():
     print(msg2all)
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     settings = termios.tcgetattr(sys.stdin)
 
-    control_type = sys.argv[1]
-    
     formation_configs = ['stop controlling']
-    
-    cmd= String()
-    twist = Twist()   
-    
-    rospy.init_node('multirotor_keyboard_control')
-    
-    if control_type == 'vel':
+
+    cmd = String()
+    twist = Twist()
+
+    rospy.init_node('multirotor_keyboard_control', anonymous=True)
+
+    control_type_ = rospy.get_param('~control_type', 'vel')
+
+    if control_type_ == 'vel':
         multi_cmd_vel_flu_pub = rospy.Publisher('/cmd_vel_flu', Twist, queue_size=1)
-        multi_cmd_pub = rospy.Publisher('/cmd',String,queue_size=3)
- 
+        multi_cmd_pub = rospy.Publisher('/cmd', String, queue_size=3)
     else:
         multi_cmd_accel_flu_pub = rospy.Publisher("/cmd_accel_flu", Twist, queue_size=1)
         multi_cmd_pub = rospy.Publisher("/cmd", String, queue_size=1)
 
-    forward  = 0.0
-    leftward  = 0.0
-    upward  = 0.0
+    forward = 0.0
+    leftward = 0.0
+    upward = 0.0
     angular = 0.0
 
     print_msg()
-    while(1):
+    while (1):
         key = getKey()
-        if key == 'w' :
+        if key == 'w':
             forward = forward + LINEAR_STEP_SIZE
             print_msg()
-            if control_type == 'vel':
-                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (forward, leftward, upward, angular))
+            if control_type_ == 'vel':
+                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (
+                forward, leftward, upward, angular))
             else:
-                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (forward, leftward, upward, angular))
+                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (
+                forward, leftward, upward, angular))
 
-        elif key == 'x' :
+        elif key == 'x':
             forward = forward - LINEAR_STEP_SIZE
             print_msg()
-            if control_type == 'vel':
-                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (forward, leftward, upward, angular))
+            if control_type_ == 'vel':
+                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (
+                forward, leftward, upward, angular))
             else:
-                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (forward, leftward, upward, angular))
+                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (
+                forward, leftward, upward, angular))
 
-        elif key == 'a' :
-
+        elif key == 'a':
             leftward = leftward + LINEAR_STEP_SIZE
             print_msg()
-            if control_type == 'vel':
-                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (forward, leftward, upward, angular))
+            if control_type_ == 'vel':
+                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (
+                forward, leftward, upward, angular))
             else:
-                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (forward, leftward, upward, angular))
+                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (
+                forward, leftward, upward, angular))
 
-        elif key == 'd' :
+        elif key == 'd':
             leftward = leftward - LINEAR_STEP_SIZE
             print_msg()
-            if control_type == 'vel':
-                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (forward, leftward, upward, angular))
+            if control_type_ == 'vel':
+                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (
+                forward, leftward, upward, angular))
             else:
-                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (forward, leftward, upward, angular))
+                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (
+                forward, leftward, upward, angular))
 
-        elif key == 'i' :
+        elif key == 'i':
             upward = upward + LINEAR_STEP_SIZE
             print_msg()
-            if control_type == 'vel':
-                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (forward, leftward, upward, angular))
+            if control_type_ == 'vel':
+                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (
+                forward, leftward, upward, angular))
             else:
-                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (forward, leftward, upward, angular))
+                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (
+                forward, leftward, upward, angular))
 
-        elif key == ',' :
+        elif key == ',':
             upward = upward - LINEAR_STEP_SIZE
             print_msg()
-            if control_type == 'vel':
-                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (forward, leftward, upward, angular))
+            if control_type_ == 'vel':
+                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (
+                forward, leftward, upward, angular))
             else:
-                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (forward, leftward, upward, angular))
+                print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (
+                forward, leftward, upward, angular))
 
         elif key == 'j':
             angular = angular + ANG_VEL_STEP_SIZE
             print_msg()
-            print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (forward, leftward, upward, angular))
+            print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (
+            forward, leftward, upward, angular))
 
         elif key == 'l':
             angular = angular - ANG_VEL_STEP_SIZE
             print_msg()
-            print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (forward, leftward, upward, angular))
+            print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (
+            forward, leftward, upward, angular))
 
         elif key == 'r':
             cmd = 'AUTO.RTL'
@@ -167,13 +179,14 @@ if __name__=="__main__":
             print_msg()
         elif key in ['k', 's']:
             cmd_vel_mask = False
-            forward   = 0.0
-            leftward   = 0.0
-            upward   = 0.0
-            angular  = 0.0
+            forward = 0.0
+            leftward = 0.0
+            upward = 0.0
+            angular = 0.0
             cmd = 'HOVER'
             print_msg()
-            print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (forward, leftward, upward, angular))
+            print("currently:\t forward vel %.2f\t leftward vel %.2f\t upward vel %.2f\t angular %.2f " % (
+            forward, leftward, upward, angular))
             print('Hover')
         else:
             for i in range(10):
@@ -201,18 +214,21 @@ if __name__=="__main__":
             angular = MAX_ANG_VEL
         elif angular < -MAX_ANG_VEL:
             angular = - MAX_ANG_VEL
-            
-        twist.linear.x = forward; twist.linear.y = leftward ; twist.linear.z = upward
-        twist.angular.x = 0.0; twist.angular.y = 0.0;  twist.angular.z = angular
+
+        twist.linear.x = forward
+        twist.linear.y = leftward
+        twist.linear.z = upward
+        twist.angular.x = 0.0
+        twist.angular.y = 0.0
+        twist.angular.z = angular
 
         if not cmd_vel_mask:
-            if control_type == 'vel':
+            if control_type_ == 'vel':
                 multi_cmd_vel_flu_pub.publish(twist)
             else:
                 multi_cmd_accel_flu_pub.publish(twist)
-        multi_cmd_pub[i].publish(cmd)
-                
+        multi_cmd_pub.publish(cmd)
+
         cmd = ''
 
     termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
-

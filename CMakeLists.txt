@@ -2,13 +2,12 @@ cmake_minimum_required(VERSION 2.8.3)
 project(easondrone_control)
 
 # Compile as C++11, supported in ROS Kinetic and newer
- add_compile_options(-std=c++14)
+add_compile_options(-std=c++14)
+set(PYTHON_EXECUTABLE "/usr/bin/python3.8")
 
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED COMPONENTS system)
-## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
+find_package(PythonInterp REQUIRED 3.8)
 find_package(catkin REQUIRED COMPONENTS
   message_generation  
   roscpp
@@ -45,7 +44,6 @@ catkin_package(
   CATKIN_DEPENDS message_runtime
 )
 
-
 ###########
 ## Build ##
 ###########
@@ -55,7 +53,6 @@ catkin_package(
 include_directories(
         ${catkin_INCLUDE_DIRS}
         include
-        include/Position_Controller
         $ENV{HOME}/Prometheus/Modules/common/include
         $ENV{HOME}/Prometheus/Modules/ground_station/include
 )
