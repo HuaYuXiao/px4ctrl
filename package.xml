@@ -1,18 +1,18 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>uav_control</name>
+  <name>easondrone_control</name>
   <version>3.4.2</version>
   <description>
     A ROS package to estimate and control drone
   </description>
 
-  <maintainer email="hyx020222@gmail.com">Eason Hua</maintainer>
+  <maintainer email="12010508@mail.sustech.edu.cn">Eason Hua</maintainer>
   <author email="fatmoonqyp@126.com">Yuhua Qi</author>
 
   <license>Apache</license>
 
   <url type="website">http://www.amovlab.com/</url>
-  <url type="repository">https://github.com/HuaYuXiao/prometheus_control.git</url>
+  <url type="repository">https://github.com/HuaYuXiao/EasonDrone_Control.git</url>
 
   <buildtool_depend>catkin</buildtool_depend>
 
