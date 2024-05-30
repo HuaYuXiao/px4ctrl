@@ -10,8 +10,7 @@
 #include <ros/ros.h>
 #include <controller_test.h>
 #include <iostream>
-
-#include <prometheus_msgs/ControlCommand.h>
+#include <easondrone_msgs/ControlCommand.h>
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
@@ -22,21 +21,21 @@
 
 using namespace std;
 
-prometheus_msgs::ControlCommand Command_Now;
+easondrone_msgs::ControlCommand Command_Now;
 std::vector<geometry_msgs::PoseStamped> posehistory_vector_;
 ros::Publisher move_pub;
 ros::Publisher ref_trajectory_pub;
 void generate_com(int Move_mode, float state_desired[4]);
-void Draw_in_rviz(const prometheus_msgs::PositionReference& pos_ref, bool draw_trajectory);
+void Draw_in_rviz(const easondrone_msgs::PositionReference& pos_ref, bool draw_trajectory);
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "terminal_control_rover");
     ros::NodeHandle nh;
 
-    move_pub = nh.advertise<prometheus_msgs::ControlCommand>("/prometheus/control_command", 10);
+    move_pub = nh.advertise<easondrone_msgs::ControlCommand>("/easondrone/control_command", 10);
 
     //【发布】参考轨迹
-    ref_trajectory_pub = nh.advertise<nav_msgs::Path>("/prometheus/reference_trajectory", 10);
+    ref_trajectory_pub = nh.advertise<nav_msgs::Path>("/easondrone/reference_trajectory", 10);
 
     int Control_Mode = 0;
     int Move_mode = 0;
@@ -51,11 +50,11 @@ int main(int argc, char **argv)
 
     // 初始化命令-
     // 默认设置：Idle模式 电机怠速旋转 等待来自上层的控制指令
-    Command_Now.Mode                                = prometheus_msgs::ControlCommand::Idle;
+    Command_Now.Mode                                = easondrone_msgs::ControlCommand::Idle;
     Command_Now.Command_ID                          = 0;
     Command_Now.source = NODE_NAME;
-    Command_Now.Reference_State.Move_mode           = prometheus_msgs::PositionReference::XYZ_POS;
-    Command_Now.Reference_State.Move_frame          = prometheus_msgs::PositionReference::ENU_FRAME;
+    Command_Now.Reference_State.Move_mode           = easondrone_msgs::PositionReference::XYZ_POS;
+    Command_Now.Reference_State.Move_frame          = easondrone_msgs::PositionReference::ENU_FRAME;
     Command_Now.Reference_State.position_ref[0]     = 0;
     Command_Now.Reference_State.position_ref[1]     = 0;
     Command_Now.Reference_State.position_ref[2]     = 0;
@@ -76,7 +75,7 @@ int main(int argc, char **argv)
         cout << "Input 999 to switch to offboard mode and arm the drone"<<endl;
         cin >> Control_Mode;
 
-        if(Control_Mode == prometheus_msgs::ControlCommand::Move)
+        if(Control_Mode == easondrone_msgs::ControlCommand::Move)
         {
             cout << "Input the Move_mode: 0 for position control, 3 for velocity control, 4 for att control"<<endl;
             cin >> Move_mode;
@@ -92,7 +91,7 @@ int main(int argc, char **argv)
         }else if(Control_Mode == 999)
         {
             Command_Now.header.stamp = ros::Time::now();
-            Command_Now.Mode = prometheus_msgs::ControlCommand::Idle;
+            Command_Now.Mode = easondrone_msgs::ControlCommand::Idle;
             Command_Now.Command_ID = Command_Now.Command_ID + 1;
             Command_Now.source = NODE_NAME;
             Command_Now.Reference_State.yaw_ref = 999;
@@ -101,42 +100,42 @@ int main(int argc, char **argv)
 
         switch (Control_Mode)
         {
-            case prometheus_msgs::ControlCommand::Idle:
+            case easondrone_msgs::ControlCommand::Idle:
                 Command_Now.header.stamp = ros::Time::now();
-                Command_Now.Mode = prometheus_msgs::ControlCommand::Idle;
+                Command_Now.Mode = easondrone_msgs::ControlCommand::Idle;
                 Command_Now.Command_ID = Command_Now.Command_ID + 1;
                 Command_Now.source = NODE_NAME;
                 move_pub.publish(Command_Now);
                 break;
 
-            case prometheus_msgs::ControlCommand::Takeoff:
+            case easondrone_msgs::ControlCommand::Takeoff:
                 Command_Now.header.stamp = ros::Time::now();
-                Command_Now.Mode = prometheus_msgs::ControlCommand::Takeoff;
+                Command_Now.Mode = easondrone_msgs::ControlCommand::Takeoff;
                 Command_Now.Command_ID = Command_Now.Command_ID + 1;
                 Command_Now.source = NODE_NAME;
                 move_pub.publish(Command_Now);
                 break;
 
-            case prometheus_msgs::ControlCommand::Hold:
+            case easondrone_msgs::ControlCommand::Hold:
                 Command_Now.header.stamp = ros::Time::now();
-                Command_Now.Mode = prometheus_msgs::ControlCommand::Hold;
+                Command_Now.Mode = easondrone_msgs::ControlCommand::Hold;
                 Command_Now.Command_ID = Command_Now.Command_ID + 1;
                 Command_Now.source = NODE_NAME;
                 move_pub.publish(Command_Now);
                 break;
     
-            case prometheus_msgs::ControlCommand::Land:
+            case easondrone_msgs::ControlCommand::Land:
                 Command_Now.header.stamp = ros::Time::now();
-                Command_Now.Mode = prometheus_msgs::ControlCommand::Land;
+                Command_Now.Mode = easondrone_msgs::ControlCommand::Land;
                 Command_Now.Command_ID = Command_Now.Command_ID + 1;
                 Command_Now.source = NODE_NAME;
                 move_pub.publish(Command_Now);
                 break;
 
-            case prometheus_msgs::ControlCommand::Move:
+            case easondrone_msgs::ControlCommand::Move:
 
                 Command_Now.header.stamp = ros::Time::now();
-                Command_Now.Mode = prometheus_msgs::ControlCommand::Move;
+                Command_Now.Mode = easondrone_msgs::ControlCommand::Move;
                 Command_Now.Command_ID = Command_Now.Command_ID + 1;
                 Command_Now.source = NODE_NAME;
                 Command_Now.Reference_State.Move_mode  = Move_mode;
@@ -148,9 +147,9 @@ int main(int argc, char **argv)
                 
                 break;
             
-            case prometheus_msgs::ControlCommand::Disarm:
+            case easondrone_msgs::ControlCommand::Disarm:
                 Command_Now.header.stamp = ros::Time::now();
-                Command_Now.Mode = prometheus_msgs::ControlCommand::Disarm;
+                Command_Now.Mode = easondrone_msgs::ControlCommand::Disarm;
                 Command_Now.Command_ID = Command_Now.Command_ID + 1;
                 Command_Now.source = NODE_NAME;
                 move_pub.publish(Command_Now);
@@ -207,7 +206,7 @@ void generate_com(int Move_mode, float state_desired[4])
     Command_Now.Reference_State.yaw_ref = state_desired[3]/180.0*M_PI;
 }
 
-void Draw_in_rviz(const prometheus_msgs::PositionReference& pos_ref, bool draw_trajectory)
+void Draw_in_rviz(const easondrone_msgs::PositionReference& pos_ref, bool draw_trajectory)
 {
     geometry_msgs::PoseStamped reference_pose;
 

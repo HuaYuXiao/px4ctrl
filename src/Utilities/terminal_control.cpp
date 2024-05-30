@@ -3,13 +3,13 @@
 *
 * Author: Qyp
 * Edited by: Eason Hua
-* Update Time: 2024.05.28
+* Update Time: 2024.05.30
 *
 * Introduction:  test function for sending ControlCommand.msg
 ***************************************************************************************************************************/
 #include <ros/ros.h>
 #include <iostream>
-#include <prometheus_msgs/ControlCommand.h>
+#include <easondrone_msgs/ControlCommand.h>
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
@@ -26,7 +26,7 @@
 using namespace std;
 
 //即将发布的command
-prometheus_msgs::ControlCommand Command_to_pub;
+easondrone_msgs::ControlCommand Command_to_pub;
 //轨迹容器
 std::vector<geometry_msgs::PoseStamped> posehistory_vector_;
 
@@ -44,7 +44,7 @@ ros::Publisher ref_trajectory_pub;
 void mainloop1();
 void mainloop2();
 void generate_com(int Move_mode, float state_desired[4]);
-void Draw_in_rviz(const prometheus_msgs::PositionReference& pos_ref, bool draw_trajectory);
+void Draw_in_rviz(const easondrone_msgs::PositionReference& pos_ref, bool draw_trajectory);
 
 void timerCallback(const ros::TimerEvent& e){
     cout << ">>>>>>>>>>>>>>>> Welcome to use EasonDrone Terminal Control <<<<<<<<<<<<<<<<"<< endl;
@@ -60,9 +60,9 @@ int main(int argc, char **argv){
     ros::NodeHandle nh;
 
     //　【发布】　控制指令
-    move_pub = nh.advertise<prometheus_msgs::ControlCommand>("/prometheus/control_command", 10);
+    move_pub = nh.advertise<easondrone_msgs::ControlCommand>("/easondrone/control_command", 10);
     //　【发布】　参考轨迹
-    ref_trajectory_pub = nh.advertise<nav_msgs::Path>("/prometheus/reference_trajectory", 10);
+    ref_trajectory_pub = nh.advertise<nav_msgs::Path>("/easondrone/reference_trajectory", 10);
 
     nh.param<float>("geo_fence/x_min", geo_fence_x[0], -8.0);
     nh.param<float>("geo_fence/x_max", geo_fence_x[1], 8.0);
@@ -72,11 +72,11 @@ int main(int argc, char **argv){
     nh.param<float>("geo_fence/z_max", geo_fence_z[1], 3.0);
 
     // 初始化命令 - Idle模式 电机怠速旋转 等待来自上层的控制指令
-    Command_to_pub.Mode                                = prometheus_msgs::ControlCommand::Idle;
+    Command_to_pub.Mode                                = easondrone_msgs::ControlCommand::Idle;
     Command_to_pub.Command_ID                          = 0;
     Command_to_pub.source = NODE_NAME;
-    Command_to_pub.Reference_State.Move_mode           = prometheus_msgs::PositionReference::XYZ_POS;
-    Command_to_pub.Reference_State.Move_frame          = prometheus_msgs::PositionReference::ENU_FRAME;
+    Command_to_pub.Reference_State.Move_mode           = easondrone_msgs::PositionReference::XYZ_POS;
+    Command_to_pub.Reference_State.Move_frame          = easondrone_msgs::PositionReference::ENU_FRAME;
     Command_to_pub.Reference_State.position_ref[0]     = 0.0;
     Command_to_pub.Reference_State.position_ref[1]     = 0.0;
     Command_to_pub.Reference_State.position_ref[2]     = 0.0;
@@ -182,39 +182,39 @@ void mainloop1(){
         valid_Control_Mode = false;
 
         switch (Control_Mode){
-            case prometheus_msgs::ControlCommand::Idle:
+            case easondrone_msgs::ControlCommand::Idle:
                 Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Idle;
+                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Idle;
                 Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
                 break;
 
-            case prometheus_msgs::ControlCommand::Takeoff:
+            case easondrone_msgs::ControlCommand::Takeoff:
                 Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Takeoff;
+                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Takeoff;
                 Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
                 break;
 
-            case prometheus_msgs::ControlCommand::Hold:
+            case easondrone_msgs::ControlCommand::Hold:
                 Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Hold;
+                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Hold;
                 Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
                 break;
 
-            case prometheus_msgs::ControlCommand::Land:
+            case easondrone_msgs::ControlCommand::Land:
                 Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Land;
+                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Land;
                 Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
                 break;
 
-            case prometheus_msgs::ControlCommand::Move:
+            case easondrone_msgs::ControlCommand::Move:
                 while (!valid_move_mode) {
                     cout << "Please choose the Command.Reference_State.Move_mode: 0 POS, 1 XY_POS_Z_VEL, 2 XY_VEL_Z_POS, 3 VEL, 5 for TRAJ" << endl;
                     if (cin >> Move_mode) {
@@ -237,7 +237,7 @@ void mainloop1(){
                 }
                 valid_move_mode = false;
 
-                if (Move_mode == prometheus_msgs::PositionReference::TRAJECTORY) {
+                if (Move_mode == easondrone_msgs::PositionReference::TRAJECTORY) {
                     while (!valid_trajectory_mode) {
                         cout << "Please choose the trajectory type: 0 for Circle, 1 for Eight Shape, 2 for Step, 3 for Line" << endl;
                         if (cin >> Trjectory_mode) {
@@ -278,7 +278,7 @@ void mainloop1(){
 
                     while (time_trajectory < trajectory_total_time) {
                         Command_to_pub.header.stamp = ros::Time::now();
-                        Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
+                        Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
                         Command_to_pub.Command_ID += 1;
                         Command_to_pub.source = NODE_NAME;
 
@@ -406,7 +406,7 @@ void mainloop1(){
                 }
 
                 Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
+                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
                 Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 Command_to_pub.Reference_State.Move_mode = Move_mode;
@@ -420,9 +420,9 @@ void mainloop1(){
 
                 break;
 
-            case prometheus_msgs::ControlCommand::Disarm:
+            case easondrone_msgs::ControlCommand::Disarm:
                 Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Disarm;
+                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Disarm;
                 Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
@@ -430,7 +430,7 @@ void mainloop1(){
 
             case 999:
                 Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Idle;
+                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Idle;
                 Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 Command_to_pub.Reference_State.yaw_ref = 999;
@@ -479,7 +479,7 @@ void mainloop2(){
                 cout << "Arm and Switch to OFFBOARD." <<endl;
 
                 Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Idle;
+                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Idle;
                 Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 Command_to_pub.Reference_State.yaw_ref = 999;
@@ -493,7 +493,7 @@ void mainloop2(){
                 cout << "Switch to Takeoff Mode." <<endl;
 
                 Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Takeoff;
+                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Takeoff;
                 Command_to_pub.Command_ID += 1;
                 Command_to_pub.Reference_State.yaw_ref = 0.0;
                 Command_to_pub.source = NODE_NAME;
@@ -509,7 +509,7 @@ void mainloop2(){
                 cout << "Switch to Land Mode." <<endl;
 
                 Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Land;
+                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Land;
                 Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
@@ -522,7 +522,7 @@ void mainloop2(){
                 cout << "Switch to Disarm Mode." <<endl;
 
                 Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Disarm;
+                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Disarm;
                 Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
@@ -535,7 +535,7 @@ void mainloop2(){
                 cout << "Switch to Takeoff Mode." <<endl;
 
                 Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Takeoff;
+                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Takeoff;
                 Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
@@ -550,7 +550,7 @@ void mainloop2(){
                 cout << "Switch to Hold Mode." <<endl;
 
                 Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Hold;
+                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Hold;
                 Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
                 Command_to_pub.Reference_State.position_ref[0]     = 0.0;
@@ -572,11 +572,11 @@ void mainloop2(){
             case U_KEY_W:
 
                 Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
+                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
                 Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
-                Command_to_pub.Reference_State.Move_mode       = prometheus_msgs::PositionReference::XYZ_VEL;
-                Command_to_pub.Reference_State.Move_frame      = prometheus_msgs::PositionReference::BODY_FRAME;
+                Command_to_pub.Reference_State.Move_mode       = easondrone_msgs::PositionReference::XYZ_VEL;
+                Command_to_pub.Reference_State.Move_frame      = easondrone_msgs::PositionReference::BODY_FRAME;
                 Command_to_pub.Reference_State.velocity_ref[0]     += VEL_XY_STEP_SIZE;
                 move_pub.publish(Command_to_pub);
 
@@ -592,11 +592,11 @@ void mainloop2(){
 
 
                 Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
+                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
                 Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
-                Command_to_pub.Reference_State.Move_mode       = prometheus_msgs::PositionReference::XYZ_VEL;
-                Command_to_pub.Reference_State.Move_frame      = prometheus_msgs::PositionReference::BODY_FRAME;
+                Command_to_pub.Reference_State.Move_mode       = easondrone_msgs::PositionReference::XYZ_VEL;
+                Command_to_pub.Reference_State.Move_frame      = easondrone_msgs::PositionReference::BODY_FRAME;
                 Command_to_pub.Reference_State.velocity_ref[0]     -= VEL_XY_STEP_SIZE;
                 move_pub.publish(Command_to_pub);
                 cout << " " <<endl;
@@ -610,11 +610,11 @@ void mainloop2(){
             case U_KEY_A:
 
                 Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
+                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
                 Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
-                Command_to_pub.Reference_State.Move_mode       = prometheus_msgs::PositionReference::XYZ_VEL;
-                Command_to_pub.Reference_State.Move_frame      = prometheus_msgs::PositionReference::BODY_FRAME;
+                Command_to_pub.Reference_State.Move_mode       = easondrone_msgs::PositionReference::XYZ_VEL;
+                Command_to_pub.Reference_State.Move_frame      = easondrone_msgs::PositionReference::BODY_FRAME;
                 Command_to_pub.Reference_State.velocity_ref[1]     += VEL_XY_STEP_SIZE;
                 move_pub.publish(Command_to_pub);
 
@@ -629,11 +629,11 @@ void mainloop2(){
             case U_KEY_D:
 
                 Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
+                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
                 Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
-                Command_to_pub.Reference_State.Move_mode       = prometheus_msgs::PositionReference::XYZ_VEL;
-                Command_to_pub.Reference_State.Move_frame      = prometheus_msgs::PositionReference::BODY_FRAME;
+                Command_to_pub.Reference_State.Move_mode       = easondrone_msgs::PositionReference::XYZ_VEL;
+                Command_to_pub.Reference_State.Move_frame      = easondrone_msgs::PositionReference::BODY_FRAME;
                 Command_to_pub.Reference_State.velocity_ref[1]     -= VEL_XY_STEP_SIZE;
                 move_pub.publish(Command_to_pub);
 
@@ -649,11 +649,11 @@ void mainloop2(){
 
 
                 Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
+                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
                 Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
-                Command_to_pub.Reference_State.Move_mode       = prometheus_msgs::PositionReference::XYZ_VEL;
-                Command_to_pub.Reference_State.Move_frame      = prometheus_msgs::PositionReference::BODY_FRAME;
+                Command_to_pub.Reference_State.Move_mode       = easondrone_msgs::PositionReference::XYZ_VEL;
+                Command_to_pub.Reference_State.Move_frame      = easondrone_msgs::PositionReference::BODY_FRAME;
                 Command_to_pub.Reference_State.velocity_ref[2]     += VEL_Z_STEP_SIZE;
                 move_pub.publish(Command_to_pub);
 
@@ -669,11 +669,11 @@ void mainloop2(){
 
 
                 Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
+                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
                 Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
-                Command_to_pub.Reference_State.Move_mode       = prometheus_msgs::PositionReference::XYZ_VEL;
-                Command_to_pub.Reference_State.Move_frame      = prometheus_msgs::PositionReference::BODY_FRAME;
+                Command_to_pub.Reference_State.Move_mode       = easondrone_msgs::PositionReference::XYZ_VEL;
+                Command_to_pub.Reference_State.Move_frame      = easondrone_msgs::PositionReference::BODY_FRAME;
                 Command_to_pub.Reference_State.velocity_ref[2]     -= VEL_Z_STEP_SIZE;
                 move_pub.publish(Command_to_pub);
 
@@ -689,11 +689,11 @@ void mainloop2(){
 
 
                 Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
+                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
                 Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
-                Command_to_pub.Reference_State.Move_mode       = prometheus_msgs::PositionReference::XYZ_VEL;
-                Command_to_pub.Reference_State.Move_frame      = prometheus_msgs::PositionReference::BODY_FRAME;
+                Command_to_pub.Reference_State.Move_mode       = easondrone_msgs::PositionReference::XYZ_VEL;
+                Command_to_pub.Reference_State.Move_frame      = easondrone_msgs::PositionReference::BODY_FRAME;
                 Command_to_pub.Reference_State.yaw_ref             = YAW_STEP_SIZE;
                 move_pub.publish(Command_to_pub);
 
@@ -709,11 +709,11 @@ void mainloop2(){
 
 
                 Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
+                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
                 Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
-                Command_to_pub.Reference_State.Move_mode       = prometheus_msgs::PositionReference::XYZ_POS;
-                Command_to_pub.Reference_State.Move_frame      = prometheus_msgs::PositionReference::BODY_FRAME;
+                Command_to_pub.Reference_State.Move_mode       = easondrone_msgs::PositionReference::XYZ_POS;
+                Command_to_pub.Reference_State.Move_frame      = easondrone_msgs::PositionReference::BODY_FRAME;
                 Command_to_pub.Reference_State.yaw_ref             = YAW_STEP_SIZE;
                 move_pub.publish(Command_to_pub);
 
@@ -731,7 +731,7 @@ void mainloop2(){
                 // 需要设置
                 while(time_trajectory < trajectory_total_time){
                     Command_to_pub.header.stamp = ros::Time::now();
-                    Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
+                    Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
                     Command_to_pub.Command_ID += 1;
                     Command_to_pub.source = NODE_NAME;
 
@@ -755,7 +755,7 @@ void mainloop2(){
                 // 需要设置
                 while(time_trajectory < trajectory_total_time){
                     Command_to_pub.header.stamp = ros::Time::now();
-                    Command_to_pub.Mode = prometheus_msgs::ControlCommand::Move;
+                    Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
                     Command_to_pub.Command_ID += 1;
                     Command_to_pub.source = NODE_NAME;
 
@@ -787,7 +787,7 @@ void generate_com(int Move_mode, float state_desired[4]){
     //# z position       	0b00(0)       0b10(2)
     //# z velocity		0b01(1)       0b11(3)
 
-    if(Move_mode == prometheus_msgs::PositionReference::XYZ_ACC){
+    if(Move_mode == easondrone_msgs::PositionReference::XYZ_ACC){
         cout << "ACC control not support yet." <<endl;
     }
     if((Move_mode & 0b10) == 0) //xy channel
@@ -824,7 +824,7 @@ void generate_com(int Move_mode, float state_desired[4]){
 }
 
 
-void Draw_in_rviz(const prometheus_msgs::PositionReference& pos_ref, bool draw_trajectory){
+void Draw_in_rviz(const easondrone_msgs::PositionReference& pos_ref, bool draw_trajectory){
     geometry_msgs::PoseStamped reference_pose;
 
     reference_pose.header.stamp = ros::Time::now();

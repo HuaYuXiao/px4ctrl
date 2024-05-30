@@ -1,29 +1,26 @@
 /***************************************************************************************************************************
-* prometheus_control_utils.h
+* control_utils.h
 *
 * Author: Qyp
-*
-* Update Time: 2019.7.6
+* Maintainer: Eason Hua
+* Update Time: 2024.5.30
 ***************************************************************************************************************************/
-#ifndef PROMETHEUS_CONTORL_UTILS_H
-#define PROMETHEUS_CONTORL_UTILS_H
+#ifndef CONTORL_UTILS_H
+#define CONTORL_UTILS_H
 
 #include <Eigen/Eigen>
 #include <math.h>
 #include <math_utils.h>
 #include <command_to_mavros.h>
-#include <prometheus_msgs/Message.h>
-#include <prometheus_msgs/ControlCommand.h>
-#include <prometheus_msgs/SwarmCommand.h>
-#include <prometheus_msgs/DroneState.h>
-#include <prometheus_msgs/PositionReference.h>
-#include <prometheus_msgs/AttitudeReference.h>
-#include <prometheus_msgs/ControlOutput.h>
-#include <prometheus_msgs/LogMessage.h>
-#include <prometheus_msgs/LogMessageControl.h>
+#include <easondrone_msgs/Message.h>
+#include <easondrone_msgs/ControlCommand.h>
+#include <easondrone_msgs/DroneState.h>
+#include <easondrone_msgs/PositionReference.h>
+#include <easondrone_msgs/AttitudeReference.h>
+#include <easondrone_msgs/ControlOutput.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
-#include "prometheus_station_utils.h"
+#include "station_utils.h"
 
 using namespace std;
 
@@ -38,7 +35,7 @@ using namespace std;
 
 #define thrust_max_single_motor 6.0
 
-namespace prometheus_control_utils 
+namespace control_utils
 {
 // 【坐标系旋转函数】- 机体系到enu系
 // body_frame是机体系,enu_frame是惯性系，yaw_angle是当前偏航角[rad]
@@ -50,7 +47,7 @@ void rotation_yaw(float yaw_angle, float body_frame[2], float enu_frame[2])
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 控 制 辅 助 函 数 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< 
 //计算位置误差
-Eigen::Vector3f cal_pos_error(const prometheus_msgs::DroneState& _DroneState, const prometheus_msgs::PositionReference& _Reference_State)
+Eigen::Vector3f cal_pos_error(const easondrone_msgs::DroneState& _DroneState, const easondrone_msgs::PositionReference& _Reference_State)
 {
     Eigen::Vector3f pos_error;
 
@@ -63,7 +60,7 @@ Eigen::Vector3f cal_pos_error(const prometheus_msgs::DroneState& _DroneState, co
 }
 
 //计算速度误差
-Eigen::Vector3f cal_vel_error(const prometheus_msgs::DroneState& _DroneState, const prometheus_msgs::PositionReference& _Reference_State)
+Eigen::Vector3f cal_vel_error(const easondrone_msgs::DroneState& _DroneState, const easondrone_msgs::PositionReference& _Reference_State)
 {
     Eigen::Vector3f vel_error;
 
@@ -115,9 +112,9 @@ Eigen::Vector3d thrustToThrottle(const Eigen::Vector3d& thrust_sp)
 //Thrust to Attitude
 //Input: desired thrust (desired throttle [0,1]) and yaw_sp(rad)
 //Output: desired attitude (quaternion)
-prometheus_msgs::AttitudeReference ThrottleToAttitude(const Eigen::Vector3d& thr_sp, float yaw_sp)
+easondrone_msgs::AttitudeReference ThrottleToAttitude(const Eigen::Vector3d& thr_sp, float yaw_sp)
 {
-    prometheus_msgs::AttitudeReference _AttitudeReference;
+    easondrone_msgs::AttitudeReference _AttitudeReference;
     Eigen::Vector3d att_sp;
     att_sp[2] = yaw_sp;
 

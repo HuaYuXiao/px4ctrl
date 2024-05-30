@@ -2,8 +2,8 @@
 * pos_controller_NE.h
 *
 * Author: Qyp
-*
-* Update Time: 2021.3.5
+* Maintainer: Eason Hua
+* Update Time: 2024.05.30
 *
 * Introduction:  Position Controller using NE+UDE method
 ***************************************************************************************************************************/
@@ -13,18 +13,15 @@
 #include <Eigen/Eigen>
 #include <math.h>
 #include <command_to_mavros.h>
-#include <prometheus_control_utils.h>
+#include <control_utils.h>
 #include <math_utils.h>
-
 #include <Filter/LowPassFilter.h>
 #include <Filter/HighPassFilter.h>
 #include <Filter/LeadLagFilter.h>
-
-#include <prometheus_msgs/DroneState.h>
-#include <prometheus_msgs/PositionReference.h>
-#include <prometheus_msgs/AttitudeReference.h>
-#include <prometheus_msgs/ControlOutput.h>
-
+#include <easondrone_msgs/DroneState.h>
+#include <easondrone_msgs/PositionReference.h>
+#include <easondrone_msgs/AttitudeReference.h>
+#include <easondrone_msgs/ControlOutput.h>
 
 using namespace std;
 
@@ -72,7 +69,6 @@ public:
         set_filter();
     }
 
-
     //Quadrotor Parameter
     float Quad_MASS;
 
@@ -89,7 +85,7 @@ public:
     Eigen::Vector3f Kd;
     Eigen::Vector3f T_ude;
     float T_ne;
-    prometheus_msgs::ControlOutput _ControlOutput;
+    easondrone_msgs::ControlOutput _ControlOutput;
 
 
     //Filter for NE
@@ -127,7 +123,7 @@ public:
 
     // Position control main function
     // [Input: Current state, Reference state, sub_mode, dt; Output: AttitudeReference;]
-    prometheus_msgs::ControlOutput pos_controller(const prometheus_msgs::DroneState& _DroneState, const prometheus_msgs::PositionReference& _Reference_State, float dt);
+    easondrone_msgs::ControlOutput pos_controller(const easondrone_msgs::DroneState& _DroneState, const easondrone_msgs::PositionReference& _Reference_State, float dt);
 
     void set_initial_pos(const Eigen::Vector3d& pos);
 
@@ -159,9 +155,9 @@ void pos_controller_NE::set_initial_pos(const Eigen::Vector3d& pos)
     pos_initial = pos;
 }
 
-prometheus_msgs::ControlOutput pos_controller_NE::pos_controller(
-        const prometheus_msgs::DroneState& _DroneState,
-        const prometheus_msgs::PositionReference& _Reference_State, float dt)
+easondrone_msgs::ControlOutput pos_controller_NE::pos_controller(
+        const easondrone_msgs::DroneState& _DroneState,
+        const easondrone_msgs::PositionReference& _Reference_State, float dt)
 {
     Eigen::Vector3d accel_sp;
 
@@ -169,8 +165,8 @@ prometheus_msgs::ControlOutput pos_controller_NE::pos_controller(
     Eigen::Vector3f pos_error;
     Eigen::Vector3f vel_error;
 
-    pos_error = prometheus_control_utils::cal_pos_error(_DroneState, _Reference_State);
-    vel_error = prometheus_control_utils::cal_vel_error(_DroneState, _Reference_State);
+    pos_error = control_utils::cal_pos_error(_DroneState, _Reference_State);
+    vel_error = control_utils::cal_vel_error(_DroneState, _Reference_State);
 
     // 误差项限幅
     for (int i=0; i<3; i++)
@@ -237,8 +233,8 @@ prometheus_msgs::ControlOutput pos_controller_NE::pos_controller(
     // 归一化推力 ： 根据电机模型，反解出归一化推力
     Eigen::Vector3d thrust_sp;
     Eigen::Vector3d throttle_sp;
-    thrust_sp =  prometheus_control_utils::accelToThrust(accel_sp, Quad_MASS, tilt_max);
-    throttle_sp = prometheus_control_utils::thrustToThrottle(thrust_sp);
+    thrust_sp =  control_utils::accelToThrust(accel_sp, Quad_MASS, tilt_max);
+    throttle_sp = control_utils::thrustToThrottle(thrust_sp);
 
     for (int i=0; i<3; i++)
     {

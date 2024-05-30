@@ -22,11 +22,11 @@
 #include <Eigen/Eigen>
 #include <math.h>
 #include <math_utils.h>
-#include <prometheus_control_utils.h>
-#include <prometheus_msgs/DroneState.h>
-#include <prometheus_msgs/PositionReference.h>
-#include <prometheus_msgs/AttitudeReference.h>
-#include <prometheus_msgs/ControlOutput.h>
+#include <control_utils.h>
+#include <easondrone_msgs/DroneState.h>
+#include <easondrone_msgs/PositionReference.h>
+#include <easondrone_msgs/AttitudeReference.h>
+#include <easondrone_msgs/ControlOutput.h>
 
 using namespace std;
 
@@ -116,7 +116,7 @@ class pos_controller_cascade_PID{
         //Current state of the drone
         mavros_msgs::State current_state;
 
-        prometheus_msgs::ControlOutput _ControlOutput;
+        easondrone_msgs::ControlOutput _ControlOutput;
 
         //Printf the PID parameter
         void printf_param();
@@ -126,18 +126,18 @@ class pos_controller_cascade_PID{
 
         // Position control main function 
         // [Input: Current state, Reference state, _Move_mode, dt; Output: AttitudeReference;]
-        prometheus_msgs::ControlOutput pos_controller(const prometheus_msgs::DroneState& _DroneState,
-                                                      const prometheus_msgs::PositionReference& _Reference_State,
+        easondrone_msgs::ControlOutput pos_controller(const easondrone_msgs::DroneState& _DroneState,
+                                                      const easondrone_msgs::PositionReference& _Reference_State,
                                                       float dt);
 
         //Position control loop [Input: current pos, desired pos; Output: desired vel]
-        void _positionController(const prometheus_msgs::DroneState& _DroneState,
-                                 const prometheus_msgs::PositionReference& _Reference_State,
+        void _positionController(const easondrone_msgs::DroneState& _DroneState,
+                                 const easondrone_msgs::PositionReference& _Reference_State,
                                  Eigen::Vector3d& vel_setpoint);
 
         //Velocity control loop [Input: current vel, desired vel; Output: desired thrust]
-        void _velocityController(const prometheus_msgs::DroneState& _DroneState,
-                                 const prometheus_msgs::PositionReference& _Reference_State,
+        void _velocityController(const easondrone_msgs::DroneState& _DroneState,
+                                 const easondrone_msgs::PositionReference& _Reference_State,
                                  float dt,
                                  Eigen::Vector3d& thrust_sp);
 
@@ -147,8 +147,8 @@ class pos_controller_cascade_PID{
         ros::NodeHandle pos_cascade_pid_nh;
 };
 
-prometheus_msgs::ControlOutput pos_controller_cascade_PID::pos_controller(const prometheus_msgs::DroneState& _DroneState,
-                                                                          const prometheus_msgs::PositionReference& _Reference_State,
+easondrone_msgs::ControlOutput pos_controller_cascade_PID::pos_controller(const easondrone_msgs::DroneState& _DroneState,
+                                                                          const easondrone_msgs::PositionReference& _Reference_State,
                                                                           float dt){
     delta_time = dt;
 
@@ -165,8 +165,8 @@ prometheus_msgs::ControlOutput pos_controller_cascade_PID::pos_controller(const 
     return _ControlOutput;
 }
 
-void pos_controller_cascade_PID::_positionController(const prometheus_msgs::DroneState& _DroneState,
-                                                     const prometheus_msgs::PositionReference& _Reference_State,
+void pos_controller_cascade_PID::_positionController(const easondrone_msgs::DroneState& _DroneState,
+                                                     const easondrone_msgs::PositionReference& _Reference_State,
                                                      Eigen::Vector3d& vel_setpoint){
     //# Reference_State.Move_mode 2-bit value:
     //# 0 for position, 1 for vel, 1st for xy, 2nd for z.
@@ -205,8 +205,8 @@ if(_Reference_State.Move_mode & 0b110){
     vel_setpoint[2] = constrain_function(vel_setpoint[2], MPC_Z_VEL_MAX);
 }
 
-void pos_controller_cascade_PID::_velocityController(const prometheus_msgs::DroneState& _DroneState,
-                                                     const prometheus_msgs::PositionReference& _Reference_State,
+void pos_controller_cascade_PID::_velocityController(const easondrone_msgs::DroneState& _DroneState,
+                                                     const easondrone_msgs::PositionReference& _Reference_State,
                                                      float dt,
                                                      Eigen::Vector3d& thrust_sp){
     // Generate desired thrust setpoint.

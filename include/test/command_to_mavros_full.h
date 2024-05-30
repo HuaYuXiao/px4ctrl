@@ -13,8 +13,8 @@
 *         5. Ref to the attitude control module in PX4: https://github.com/PX4/Firmware/blob/master/src/modules/mc_att_control
 *         6. 还需要考虑复合形式的输出情况
 * 主要功能：
-*    本库函数主要用于连接prometheus_control与mavros两个功能包。简单来讲，本代码提供飞控的状态量，用于控制或者监控，本代码接受控制指令，并将其发送至飞控。
-* 1、发布prometheus_control功能包生成的控制量至mavros功能包，可发送期望位置、速度、角度、角速度、底层控制等。
+*    本库函数主要用于连接control与mavros两个功能包。简单来讲，本代码提供飞控的状态量，用于控制或者监控，本代码接受控制指令，并将其发送至飞控。
+* 1、发布control功能包生成的控制量至mavros功能包，可发送期望位置、速度、角度、角速度、底层控制等。
 * 2、订阅mavros功能包发布的飞控状态量（包括PX4中的期望位置、速度、角度、角速度、底层控制），用于检查飞控是否正确接收机载电脑的指令
 * 3、解锁上锁、修改模式两个服务。
 ***************************************************************************************************************************/
@@ -32,10 +32,11 @@
 #include <geometry_msgs/TwistStamped.h>
 #include <mavros_msgs/ActuatorControl.h>
 #include <sensor_msgs/Imu.h>
-#include <prometheus_msgs/DroneState.h>
+#include <easondrone_msgs/DroneState.h>
 #include <bitset>
-#include <prometheus_msgs/AttitudeReference.h>
-#include <prometheus_msgs/DroneState.h>
+#include <easondrone_msgs/AttitudeReference.h>
+#include <easondrone_msgs/DroneState.h>
+
 using namespace std;
 
 class command_to_mavros
@@ -122,8 +123,6 @@ class command_to_mavros
     float Thrust_target;
     mavros_msgs::ActuatorControl actuator_target;
 
-
-
     //变量声明 - 服务
     mavros_msgs::SetMode mode_cmd;
 
@@ -150,7 +149,7 @@ class command_to_mavros
     void send_accel_setpoint(Eigen::Vector3d accel_sp, float yaw_sp);
 
     //发送角度期望值至飞控（输入：期望角度-四元数,期望推力）
-    void send_attitude_setpoint(prometheus_msgs::AttitudeReference _AttitudeReference);
+    void send_attitude_setpoint(easondrone_msgs::AttitudeReference _AttitudeReference);
 
     //发送角度期望值至飞控（输入：期望角速度,期望推力）
     void send_attitude_rate_setpoint(Eigen::Vector3d attitude_rate_sp, float thrust_sp);
@@ -159,7 +158,6 @@ class command_to_mavros
     void send_actuator_setpoint(Eigen::Vector4d actuator_sp);
 
     private:
-
         ros::NodeHandle command_nh;
 
         ros::Subscriber position_target_sub;
@@ -195,8 +193,6 @@ class command_to_mavros
         {
             actuator_target = *msg;
         }
-
-
 };
 
 void command_to_mavros::idle()
@@ -303,11 +299,10 @@ void command_to_mavros::send_accel_setpoint(Eigen::Vector3d accel_sp, float yaw_
     cout <<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>command_to_mavros<<<<<<<<<<<<<<<<<<<<<<<<<<<" <<endl;
     cout << "Acc_target [X Y Z] : " << accel_drone_fcu_target[0] << " [m/s^2] "<< accel_drone_fcu_target[1]<<" [m/s^2] "<<accel_drone_fcu_target[2]<<" [m/s^2] "<<endl;
     cout << "Yaw_target : " << euler_fcu_target[2] * 180/M_PI<<" [deg] "<<endl;
-
 }
 
 //发送角度期望值至飞控（输入：期望角度-四元数,期望推力）
-void command_to_mavros::send_attitude_setpoint(prometheus_msgs::AttitudeReference _AttitudeReference)
+void command_to_mavros::send_attitude_setpoint(easondrone_msgs::AttitudeReference _AttitudeReference)
 {
     mavros_msgs::AttitudeTarget att_setpoint;
 
@@ -378,10 +373,5 @@ void command_to_mavros::send_actuator_setpoint(Eigen::Vector4d actuator_sp)
     cout << "actuator_target [0 1 2 3] : " << actuator_target.controls[0] << " [ ] "<< -actuator_target.controls[1] <<" [ ] "<<-actuator_target.controls[2]<<" [ ] "<<actuator_target.controls[3] <<" [ ] "<<endl;
 
     cout << "actuator_target [4 5 6 7] : " << actuator_target.controls[4] << " [ ] "<< actuator_target.controls[5] <<" [ ] "<<actuator_target.controls[6]<<" [ ] "<<actuator_target.controls[7] <<" [ ] "<<endl;
-
 }
-
-
 #endif
-
-

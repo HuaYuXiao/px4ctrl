@@ -2,8 +2,8 @@
  * px4_pos_estimator.cpp
  *
  * Author: Qyp
- *
- * Update Time: 2020.10.29
+* Maintainer: Eason Hua
+* Update Time: 2024.5.30
  *
  * 说明: mavros位置估计程序
  *      1. 订阅激光SLAM (cartorgrapher_ros节点) 发布的位置信息,从laser坐标系转换至NED坐标系
@@ -23,7 +23,7 @@
 #include <Eigen/Dense>
 #include "state_from_mavros.h"
 #include "math_utils.h"
-#include "prometheus_control_utils.h"
+#include "control_utils.h"
 #include "message_utils.h"
 
 using namespace std;
@@ -81,14 +81,14 @@ ros::Publisher drone_state_pub;
 ros::Publisher odom_pub;
 ros::Publisher trajectory_pub;
 
-prometheus_msgs::Message message;
-prometheus_msgs::DroneState Drone_State;
+easondrone_msgs::Message message;
+easondrone_msgs::DroneState Drone_State;
 //nav_msgs::Odometry Drone_odom;
 std::vector<geometry_msgs::PoseStamped> posehistory_vector_;
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>函数声明<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 void send_to_fcu();
-void pub_to_nodes(prometheus_msgs::DroneState State_from_fcu);
+void pub_to_nodes(easondrone_msgs::DroneState State_from_fcu);
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>回调函数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 void vicon_cb(const geometry_msgs::TransformStamped::ConstPtr& msg){
@@ -282,11 +282,11 @@ int main(int argc, char **argv){
     //  对应的飞控中的uORB消息为vehicle_vision_position.msg 及 vehicle_vision_attitude.msg
     vision_pub = nh.advertise<geometry_msgs::PoseStamped>("/mavros/vision_pose/pose", 10);
     // 【发布】无人机状态量
-    drone_state_pub = nh.advertise<prometheus_msgs::DroneState>("/prometheus/drone_state", 10);
+    drone_state_pub = nh.advertise<easondrone_msgs::DroneState>("/easondrone/drone_state", 10);
     //　发布】无人机odometry，用于RVIZ显示
-    odom_pub = nh.advertise<nav_msgs::Odometry>("/prometheus/drone_odom", 10);
+    odom_pub = nh.advertise<nav_msgs::Odometry>("/easondrone/drone_odom", 10);
     // 【发布】无人机移动轨迹，用于RVIZ显示
-    trajectory_pub = nh.advertise<nav_msgs::Path>("/prometheus/drone_trajectory", 10);
+    trajectory_pub = nh.advertise<nav_msgs::Path>("/easondrone/drone_trajectory", 10);
 
     // 用于与mavros通讯的类，通过mavros接收来至飞控的消息【飞控->mavros->本程序】
     state_from_mavros _state_from_mavros;
@@ -326,7 +326,7 @@ void send_to_fcu(){
         vision.pose.orientation.w = q_mocap.w();
       
         // 此处时间主要用于监测动捕，T265设备是否正常工作
-        if(prometheus_station_utils::get_time_in_sec(last_timestamp) > TIMEOUT_MAX){
+        if(station_utils::get_time_in_sec(last_timestamp) > TIMEOUT_MAX){
             cout << "[estimator] Mocap Timeout" << endl;
         }
     }else if(input_source == 6){
@@ -379,8 +379,8 @@ void send_to_fcu(){
     vision_pub.publish(vision);
 }
 
-void pub_to_nodes(prometheus_msgs::DroneState State_from_fcu){
-    // 发布无人机状态，具体内容参见 prometheus_msgs::DroneState
+void pub_to_nodes(easondrone_msgs::DroneState State_from_fcu){
+    // 发布无人机状态，具体内容参见 easondrone_msgs::DroneState
     Drone_State = State_from_fcu;
     Drone_State.header.stamp = ros::Time::now();
     // 户外情况，使用相对高度

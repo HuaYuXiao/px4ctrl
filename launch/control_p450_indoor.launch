@@ -1,4 +1,3 @@
-<!-- 启动Prometheus代码 -->
 <launch>
     <arg name="rate_hz" value="100"/>
 

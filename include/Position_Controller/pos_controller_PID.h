@@ -13,12 +13,11 @@
 
 #include <math.h>
 #include <command_to_mavros.h>
-#include <prometheus_control_utils.h>
-#include <prometheus_msgs/DroneState.h>
-#include <prometheus_msgs/PositionReference.h>
-#include <prometheus_msgs/AttitudeReference.h>
-#include <prometheus_msgs/ControlOutput.h>
-
+#include <control_utils.h>
+#include <easondrone_msgs/DroneState.h>
+#include <easondrone_msgs/PositionReference.h>
+#include <easondrone_msgs/AttitudeReference.h>
+#include <easondrone_msgs/ControlOutput.h>
 
 using namespace std;
 
@@ -77,7 +76,7 @@ public:
     Eigen::Vector3f integral;
 
     //输出
-    prometheus_msgs::ControlOutput _ControlOutput;
+    easondrone_msgs::ControlOutput _ControlOutput;
 
 
     //Printf the PID parameter
@@ -87,16 +86,16 @@ public:
 
     // Position control main function
     // [Input: Current state, Reference state, sub_mode, dt; Output: AttitudeReference;]
-    prometheus_msgs::ControlOutput pos_controller(const prometheus_msgs::DroneState& _DroneState, const prometheus_msgs::PositionReference& _Reference_State, float dt);
+    easondrone_msgs::ControlOutput pos_controller(const easondrone_msgs::DroneState& _DroneState, const easondrone_msgs::PositionReference& _Reference_State, float dt);
 
 private:
     ros::NodeHandle pos_pid_nh;
 
 };
 
-prometheus_msgs::ControlOutput pos_controller_PID::pos_controller(
-        const prometheus_msgs::DroneState& _DroneState,
-        const prometheus_msgs::PositionReference& _Reference_State, float dt)
+easondrone_msgs::ControlOutput pos_controller_PID::pos_controller(
+        const easondrone_msgs::DroneState& _DroneState,
+        const easondrone_msgs::PositionReference& _Reference_State, float dt)
 {
     Eigen::Vector3d accel_sp;
 
@@ -104,8 +103,8 @@ prometheus_msgs::ControlOutput pos_controller_PID::pos_controller(
     Eigen::Vector3f pos_error;
     Eigen::Vector3f vel_error;
 
-    pos_error = prometheus_control_utils::cal_pos_error(_DroneState, _Reference_State);
-    vel_error = prometheus_control_utils::cal_vel_error(_DroneState, _Reference_State);
+    pos_error = control_utils::cal_pos_error(_DroneState, _Reference_State);
+    vel_error = control_utils::cal_vel_error(_DroneState, _Reference_State);
 
     // 误差项限幅
     for (int i=0; i<3; i++)
@@ -152,8 +151,8 @@ prometheus_msgs::ControlOutput pos_controller_PID::pos_controller(
     // 归一化推力 ： 根据电机模型，反解出归一化推力
     Eigen::Vector3d thrust_sp;
     Eigen::Vector3d throttle_sp;
-    thrust_sp =  prometheus_control_utils::accelToThrust(accel_sp, Quad_MASS, tilt_max);
-    throttle_sp = prometheus_control_utils::thrustToThrottle(thrust_sp);
+    thrust_sp =  control_utils::accelToThrust(accel_sp, Quad_MASS, tilt_max);
+    throttle_sp = control_utils::thrustToThrottle(thrust_sp);
 
     for (int i=0; i<3; i++)
     {

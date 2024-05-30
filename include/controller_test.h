@@ -2,8 +2,8 @@
 * controller_test.h
 *
 * Author: Qyp
-*
-* Update Time: 2020.1.10
+* Maintainer: Eason Hua
+* Update Time: 2024.5.30
 *               Controller_Test类用于控制器测试，提供圆形、8字、阶跃响应三种参考输入
 *                   1、圆形需设置圆心、半径、线速度、旋转方向等参数
 *                   2、8字需设置圆心、半径、角速度等参数
@@ -15,8 +15,8 @@
 #include <Eigen/Eigen>
 #include <math.h>
 #include <math_utils.h>
-#include <prometheus_control_utils.h>
-#include <prometheus_msgs/PositionReference.h>
+#include <control_utils.h>
+#include <easondrone_msgs/PositionReference.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Path.h>
 
@@ -52,13 +52,13 @@ public:
     void printf_param();
 
     //Controller_Test Calculation [Input: time_from_start; Output: Circle_trajectory;]
-    prometheus_msgs::PositionReference Circle_trajectory_generation(float time_from_start);
+    easondrone_msgs::PositionReference Circle_trajectory_generation(float time_from_start);
 
-    prometheus_msgs::PositionReference Eight_trajectory_generation(float time_from_start);
+    easondrone_msgs::PositionReference Eight_trajectory_generation(float time_from_start);
 
-    prometheus_msgs::PositionReference Step_trajectory_generation(float time_from_start);
+    easondrone_msgs::PositionReference Step_trajectory_generation(float time_from_start);
 
-    prometheus_msgs::PositionReference Line_trajectory_generation(float time_from_start);
+    easondrone_msgs::PositionReference Line_trajectory_generation(float time_from_start);
 
 private:
 
@@ -82,9 +82,9 @@ private:
 };
 
 
-prometheus_msgs::PositionReference Controller_Test::Circle_trajectory_generation(float time_from_start)
+easondrone_msgs::PositionReference Controller_Test::Circle_trajectory_generation(float time_from_start)
 {
-    prometheus_msgs::PositionReference Circle_trajectory;
+    easondrone_msgs::PositionReference Circle_trajectory;
     float omega;
     if( circle_radius != 0)
     {
@@ -104,7 +104,7 @@ prometheus_msgs::PositionReference Controller_Test::Circle_trajectory_generation
 
     Circle_trajectory.time_from_start = time_from_start;
 
-    Circle_trajectory.Move_mode = prometheus_msgs::PositionReference::TRAJECTORY;
+    Circle_trajectory.Move_mode = easondrone_msgs::PositionReference::TRAJECTORY;
 
     Circle_trajectory.position_ref[0] = circle_radius * cos_angle + circle_center[0];
     Circle_trajectory.position_ref[1] = circle_radius * sin_angle + circle_center[1];
@@ -133,9 +133,9 @@ prometheus_msgs::PositionReference Controller_Test::Circle_trajectory_generation
     return Circle_trajectory;
 }
 
-prometheus_msgs::PositionReference Controller_Test::Line_trajectory_generation(float time_from_start)
+easondrone_msgs::PositionReference Controller_Test::Line_trajectory_generation(float time_from_start)
 {
-    prometheus_msgs::PositionReference Line_trajectory;
+    easondrone_msgs::PositionReference Line_trajectory;
     float omega;
     if( circle_radius != 0)
     {
@@ -153,7 +153,7 @@ prometheus_msgs::PositionReference Controller_Test::Line_trajectory_generation(f
 
     Line_trajectory.time_from_start = time_from_start;
 
-    Line_trajectory.Move_mode = prometheus_msgs::PositionReference::TRAJECTORY;
+    Line_trajectory.Move_mode = easondrone_msgs::PositionReference::TRAJECTORY;
 
     Line_trajectory.position_ref[0] = 0.0;
     Line_trajectory.position_ref[1] = circle_radius * sin_angle + circle_center[1];
@@ -183,7 +183,7 @@ prometheus_msgs::PositionReference Controller_Test::Line_trajectory_generation(f
 }
 
 
-prometheus_msgs::PositionReference Controller_Test::Eight_trajectory_generation(float time_from_start)
+easondrone_msgs::PositionReference Controller_Test::Eight_trajectory_generation(float time_from_start)
 {
     Eigen::Vector3f position;
     Eigen::Vector3f velocity;
@@ -206,13 +206,13 @@ prometheus_msgs::PositionReference Controller_Test::Eight_trajectory_generation(
 
     acceleration << 0.0, 0.0, 0.0;
 
-    prometheus_msgs::PositionReference Eight_trajectory;
+    easondrone_msgs::PositionReference Eight_trajectory;
 
     Eight_trajectory.header.stamp = ros::Time::now();
 
     Eight_trajectory.time_from_start = time_from_start;
 
-    Eight_trajectory.Move_mode = prometheus_msgs::PositionReference::TRAJECTORY;
+    Eight_trajectory.Move_mode = easondrone_msgs::PositionReference::TRAJECTORY;
 
     Eight_trajectory.position_ref[0] = position[0];
     Eight_trajectory.position_ref[1] = position[1];
@@ -234,15 +234,15 @@ prometheus_msgs::PositionReference Controller_Test::Eight_trajectory_generation(
 }
 
 
-prometheus_msgs::PositionReference Controller_Test::Step_trajectory_generation(float time_from_start)
+easondrone_msgs::PositionReference Controller_Test::Step_trajectory_generation(float time_from_start)
 {
-    prometheus_msgs::PositionReference Step_trajectory;
+    easondrone_msgs::PositionReference Step_trajectory;
 
     Step_trajectory.header.stamp = ros::Time::now();
 
     Step_trajectory.time_from_start = time_from_start;
 
-    Step_trajectory.Move_mode = prometheus_msgs::PositionReference::TRAJECTORY;
+    Step_trajectory.Move_mode = easondrone_msgs::PositionReference::TRAJECTORY;
 
     int i = time_from_start / step_interval;
 

@@ -339,7 +339,7 @@ public:
     for (size_t i = 1; i <= agent_num; i++)
     {
       agent_name = "/uav" + std::to_string(i);
-      pub_fake_rc_in[i] = nh_.advertise<mavros_msgs::RCIn>(agent_name + "/prometheus/fake_rc_in", 1);
+      pub_fake_rc_in[i] = nh_.advertise<mavros_msgs::RCIn>(agent_name + "/easondrone/fake_rc_in", 1);
     }
 
     // pub_rc_override = nh_.advertise<mavros_msgs::OverrideRCIn>(agent_name + "/mavros/rc/override", 1);

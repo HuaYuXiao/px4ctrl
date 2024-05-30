@@ -11,7 +11,6 @@
 
   <license>Apache</license>
 
-  <url type="website">http://www.amovlab.com/</url>
   <url type="repository">https://github.com/HuaYuXiao/EasonDrone_Control.git</url>
 
   <buildtool_depend>catkin</buildtool_depend>

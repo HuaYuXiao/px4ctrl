@@ -5,25 +5,30 @@
 ![Static Badge](https://img.shields.io/badge/C%2B%2B-14-00599C?logo=cplusplus)
 ![Static Badge](https://img.shields.io/badge/Python-3.8.10-3776AB?logo=python)
 ![Static Badge](https://img.shields.io/badge/Ubuntu-18.04.6-E95420?logo=ubuntu)
-![Static Badge](https://img.shields.io/badge/NVIDIA-Jetson_Nano-76B900?LOGO=nvidia)
 
 A ROS package to estimate and control drone.
 
 
-## Installation
+## Compilation
 
-    ```bash
-    catkin_make install --source Modules/EasonDrone_Control --build Modules/EasonDrone_Control/build
-    ```
+```bash
+catkin_make install --source Modules/EasonDrone_Control --build Modules/EasonDrone_Control/build
+```
 
 
 ## Launch
 
+For p450:
+
+```bash
+roslaunch easondrone_control control_p450_indoor.launch
+```
+
 For isis:
 
-    ```bash
-    roslaunch easondrone_control control_iris_indoor.launch
-    ```
+```bash
+roslaunch easondrone_control control_iris_indoor.launch
+```
 
 - Enter t to unlock the aircraft for takeoff.
 - Enter r to return the aircraft to the takeoff point.
@@ -32,12 +37,6 @@ For isis:
 - Enter l to land the aircraft autonomously.
 - Enter p to print keyboard control instructions.
 - Enter q to exit the program.
-
-For p450:
-
-    ```bash
-    roslaunch easondrone_control control_p450_indoor.launch
-    ```
 
 
 ## Release Note
@@ -62,4 +61,4 @@ For p450:
 Thanks to following packages:
 
 - [prometheus_control](https://github.com/amov-lab/Prometheus/tree/v1.1/Modules/control)
-- 
+- [control](https://gitee.com/robin_shaun/XTDrone/control)

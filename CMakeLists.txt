@@ -7,7 +7,7 @@ set(PYTHON_EXECUTABLE "/usr/bin/python3.8")
 
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED COMPONENTS system)
-find_package(PythonInterp REQUIRED 3.8)
+#find_package(PythonInterp REQUIRED 3)
 find_package(catkin REQUIRED COMPONENTS
   message_generation  
   roscpp
@@ -22,7 +22,8 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_eigen
         tf2_geometry_msgs
   mavros_msgs
-  prometheus_msgs
+        easondrone_msgs
+        easondrone_station
 )
 
 ################################################
@@ -36,7 +37,7 @@ generate_messages(
   nav_msgs
   sensor_msgs
   std_msgs
-        prometheus_msgs
+        easondrone_msgs
 )
 
 catkin_package(
@@ -53,8 +54,7 @@ catkin_package(
 include_directories(
         ${catkin_INCLUDE_DIRS}
         include
-        $ENV{HOME}/Prometheus/Modules/common/include
-        $ENV{HOME}/Prometheus/Modules/ground_station/include
+        $ENV{HOME}/EasonDrone/Modules/common/include
 )
 
 ###############################
@@ -63,13 +63,13 @@ include_directories(
 
 ##px4_pos_controller.cpp
 add_executable(px4_pos_controller src/px4_pos_controller.cpp)
-add_dependencies(px4_pos_controller prometheus_control_gencpp) 
+add_dependencies(px4_pos_controller ${PROJECT_NAME}_gencpp)
 target_link_libraries(px4_pos_controller ${catkin_LIBRARIES})
 
 ##px4_pos_estimator.cpp
 add_library(OptiTrackFeedbackRigidBody src/lib/OptiTrackFeedBackRigidBody.cpp)
 add_executable(px4_pos_estimator src/px4_pos_estimator.cpp)
-add_dependencies(px4_pos_estimator prometheus_control_gencpp)
+add_dependencies(px4_pos_estimator ${PROJECT_NAME}_gencpp)
 target_link_libraries(px4_pos_estimator ${catkin_LIBRARIES})
 target_link_libraries(px4_pos_estimator OptiTrackFeedbackRigidBody)
 
@@ -78,7 +78,7 @@ target_link_libraries(joy_node ${catkin_LIBRARIES})
 
 add_library(KeyboardEvent src/lib/KeyboardEvent.cpp)
 add_executable(terminal_control src/Utilities/terminal_control.cpp)
-add_dependencies(terminal_control prometheus_control_gencpp)
+add_dependencies(terminal_control ${PROJECT_NAME}_gencpp)
 target_link_libraries(terminal_control ${catkin_LIBRARIES})
 target_link_libraries(terminal_control KeyboardEvent)
 
