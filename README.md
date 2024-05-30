@@ -12,9 +12,32 @@ A ROS package to estimate and control drone.
 
 ## Installation
 
-```bash
-catkin_make install --source Modules/EasonDrone_Control --build Modules/EasonDrone_Control/build
-```
+    ```bash
+    catkin_make install --source Modules/EasonDrone_Control --build Modules/EasonDrone_Control/build
+    ```
+
+
+## Launch
+
+For isis:
+
+    ```bash
+    roslaunch easondrone_control control_iris_indoor.launch
+    ```
+
+- Enter t to unlock the aircraft for takeoff.
+- Enter r to return the aircraft to the takeoff point.
+- Enter b to enter attitude control.
+- The target point can be changed by the keypad.
+- Enter l to land the aircraft autonomously.
+- Enter p to print keyboard control instructions.
+- Enter q to exit the program.
+
+For p450:
+
+    ```bash
+    roslaunch easondrone_control control_p450_indoor.launch
+    ```
 
 
 ## Release Note

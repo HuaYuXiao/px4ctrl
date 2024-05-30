@@ -2,7 +2,7 @@
     <arg name="agent_num" default="1"/>
 
     <!-- 启动虚拟摇杆驱动 -->
-    <node pkg="uav_control" type="joy_node" name="joy_node" output="screen">
+    <node pkg="easondrone_control" type="joy_node" name="joy_node" output="screen">
         <param name="agent_num" value="$(arg agent_num)" />
 	</node>
 </launch>
