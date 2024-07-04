@@ -3,7 +3,7 @@
 *
 * Author: Qyp
 * Maintainer: Eason Hua
-* Update Time: 2024.5.30
+* Update Time: 2024.07.04
 *
 * Introduction:  PX4 Position Controller 
 *         1. 从应用层节点订阅/easondrone/control_command话题（ControlCommand.msg），接收来自上层的控制指令。
@@ -17,7 +17,6 @@
 #include "state_from_mavros.h"
 #include "command_to_mavros.h"
 #include "control_utils.h"
-#include "message_utils.h"
 #include "control_common.h"
 #include "Filter/LowPassFilter.h"
 #include "Position_Controller/pos_controller_cascade_PID.h"
@@ -38,6 +37,7 @@ string controller_type_;                                      //控制器类型
 float Takeoff_height_;                                       //默认起飞高度
 float Disarm_height_;                                        //自动上锁高度
 float Land_speed_;                                           //降落速度
+
 //Geigraphical fence 地理围栏
 Eigen::Vector2f geo_fence_x;
 Eigen::Vector2f geo_fence_y;
@@ -51,29 +51,17 @@ easondrone_msgs::ControlCommand Command_Last;                     //无人机上
 
 easondrone_msgs::ControlOutput _ControlOutput;
 easondrone_msgs::AttitudeReference _AttitudeReference;           //位置控制器输出，即姿态环参考量
-easondrone_msgs::Message message;
-easondrone_msgs::LogMessageControl LogMessage;
 
-//RVIZ显示：期望位置
-geometry_msgs::PoseStamped ref_pose_rviz;
 float dt = 0.02;
 
-float disturbance_a_xy,disturbance_b_xy;
-float disturbance_a_z,disturbance_b_z;
-float disturbance_T;
-float disturbance_start_time;
-float disturbance_end_time;
-
 ros::Publisher att_ref_pub;
-ros::Publisher rivz_ref_pose_pub;
-ros::Publisher log_message_pub;
+
 Eigen::Vector3d throttle_sp;
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>函数声明<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 bool check_safety();
-void printf_param();
+
 void Body_to_ENU();
-geometry_msgs::PoseStamped get_ref_pose_rviz(const easondrone_msgs::ControlCommand& cmd, const easondrone_msgs::AttitudeReference& att_ref);
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>回调函数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 void Command_cb(const easondrone_msgs::ControlCommand::ConstPtr& msg){
@@ -128,14 +116,6 @@ int main(int argc, char **argv){
     nh.param<float>("geo_fence/z_min", geo_fence_z[0], -0.3);
     nh.param<float>("geo_fence/z_max", geo_fence_z[1], 3.0);
 
-    nh.param<float>("disturbance_a_xy", disturbance_a_xy, 0.5);
-    nh.param<float>("disturbance_b_xy", disturbance_b_xy, 0.0);
-    nh.param<float>("disturbance_a_z", disturbance_a_z, 0.5);
-    nh.param<float>("disturbance_b_z", disturbance_b_z, 0.0);
-    nh.param<float>("disturbance_T", disturbance_T, 0.0);
-    nh.param<float>("disturbance_start_time", disturbance_start_time, 10.0);
-    nh.param<float>("disturbance_end_time", disturbance_end_time, -1.0);
-
     //【订阅】指令 本话题为任务模块生成的控制指令
     ros::Subscriber Command_sub = nh.subscribe<easondrone_msgs::ControlCommand>("/easondrone/control_command", 10, Command_cb);
     //【订阅】指令 本话题为地面站发送的控制指令
@@ -145,18 +125,6 @@ int main(int argc, char **argv){
 
     //【发布】位置控制器的输出量:期望姿态
     att_ref_pub = nh.advertise<easondrone_msgs::AttitudeReference>("/easondrone/control/attitude_reference", 10);
-    //【发布】参考位姿 RVIZ显示用
-    rivz_ref_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/easondrone/control/ref_pose_rviz", 10);
-    // 【发布】用于log的消息
-    log_message_pub = nh.advertise<easondrone_msgs::LogMessageControl>("/easondrone/log/control", 10);
-
-    LowPassFilter LPF_x;
-    LowPassFilter LPF_y;
-    LowPassFilter LPF_z;
-
-    LPF_x.set_Time_constant(disturbance_T);
-    LPF_y.set_Time_constant(disturbance_T);
-    LPF_z.set_Time_constant(disturbance_T);
 
     // 位置控制一般选取为50Hz，主要取决于位置状态的更新频率
     ros::Rate rate(rate_hz_);
@@ -171,43 +139,20 @@ int main(int argc, char **argv){
     pos_controller_UDE pos_controller_UDE;
     pos_controller_NE pos_controller_NE;
 
-    printf_param();
-
-    if(controller_type_ == "cascade_pid"){
-        pos_controller_cascade_pid.printf_param();
-    }
-    else if(controller_type_ == "pid"){
-        pos_controller_pid.printf_param();
-    }
-    else if(controller_type_ == "passivity"){
-        pos_controller_passivity.printf_param();
-    }
-    else if(controller_type_ == "ude"){
-        pos_controller_UDE.printf_param();
-    }
-    else if(controller_type_ == "ne"){
-        pos_controller_NE.printf_param();
-    }
-    else{
-        cout << "[control] unsupported controller type, use cascade_pid as default" << endl;
-        pos_controller_cascade_pid.printf_param();
-    }
+    cout <<">>>>>>>>>>>>>>>>>>>>>>>> px4_pos_controller Parameter <<<<<<<<<<<<<<<<<<<<<<" <<endl;
+    cout << "controller_type: "<< controller_type_ <<endl;
+    cout << "Takeoff_height   : "<< Takeoff_height_<<" [m] "<<endl;
+    cout << "Disarm_height    : "<< Disarm_height_ <<" [m] "<<endl;
+    cout << "Land_speed       : "<< Land_speed_ <<" [m/s] "<<endl;
+    cout << "geo_fence_x : "<< geo_fence_x[0] << " [m]  to  "<<geo_fence_x[1] << " [m]"<< endl;
+    cout << "geo_fence_y : "<< geo_fence_y[0] << " [m]  to  "<<geo_fence_y[1] << " [m]"<< endl;
+    cout << "geo_fence_z : "<< geo_fence_z[0] << " [m]  to  "<<geo_fence_z[1] << " [m]"<< endl;
 
     // 初始化命令- 默认设置：Idle模式 电机怠速旋转 等待来自上层的控制指令
     Command_Now.Mode                                = easondrone_msgs::ControlCommand::Idle;
     Command_Now.Command_ID                          = 0;
     Command_Now.Reference_State.Move_mode           = easondrone_msgs::PositionReference::XYZ_POS;
     Command_Now.Reference_State.Move_frame          = easondrone_msgs::PositionReference::ENU_FRAME;
-    Command_Now.Reference_State.position_ref[0]     = 0.0;
-    Command_Now.Reference_State.position_ref[1]     = 0.0;
-    Command_Now.Reference_State.position_ref[2]     = 0.0;
-    Command_Now.Reference_State.velocity_ref[0]     = 0.0;
-    Command_Now.Reference_State.velocity_ref[1]     = 0.0;
-    Command_Now.Reference_State.velocity_ref[2]     = 0.0;
-    Command_Now.Reference_State.acceleration_ref[0] = 0.0;
-    Command_Now.Reference_State.acceleration_ref[1] = 0.0;
-    Command_Now.Reference_State.acceleration_ref[2] = 0.0;
-    Command_Now.Reference_State.yaw_ref             = 0.0;
 
     // 记录启控时间
     ros::Time begin_time = ros::Time::now();
@@ -391,29 +336,6 @@ int main(int argc, char **argv){
 
                 _ControlOutput = pos_controller_cascade_pid.pos_controller(_DroneState, Command_Now.Reference_State, dt);
             }
-
-            if(Command_Now.Reference_State.Move_mode == easondrone_msgs::PositionReference::TRAJECTORY){
-                // 输入干扰
-                Eigen::Vector3d random;
-
-                // 先生成随机数
-                random[0] = control_utils::random_num(disturbance_a_xy, disturbance_b_xy);
-                random[1] = control_utils::random_num(disturbance_a_xy, disturbance_b_xy);
-                random[2] = control_utils::random_num(disturbance_a_z, disturbance_b_z);
-
-                // 低通滤波
-                random[0] = LPF_x.apply(random[0], dt);
-                random[1] = LPF_y.apply(random[1], dt);
-                random[2] = LPF_z.apply(random[2], dt);
-
-                if(Command_Now.Reference_State.time_from_start>disturbance_start_time && Command_Now.Reference_State.time_from_start<disturbance_end_time){
-                    //应用输入干扰信号
-                    _ControlOutput.Throttle[0] = _ControlOutput.Throttle[0] + random[0];
-                    _ControlOutput.Throttle[1] = _ControlOutput.Throttle[1] + random[1];
-                    _ControlOutput.Throttle[2] = _ControlOutput.Throttle[2] + random[2];
-                    cout << "[control] add disturbance" << endl;
-                }
-            }
         }
 
         throttle_sp[0] = _ControlOutput.Throttle[0];
@@ -428,36 +350,11 @@ int main(int argc, char **argv){
         //发布期望姿态
         att_ref_pub.publish(_AttitudeReference);
 
-        //发布用于RVIZ显示的位姿
-        ref_pose_rviz = get_ref_pose_rviz(Command_Now, _AttitudeReference);
-        rivz_ref_pose_pub.publish(ref_pose_rviz);
-
-        //发布log消息，可用rosbag记录
-        LogMessage.control_type = 1;
-        LogMessage.time = cur_time;
-        LogMessage.Drone_State = _DroneState;
-        LogMessage.Control_Command = Command_Now;
-        LogMessage.Control_Output = _ControlOutput;
-        LogMessage.Attitude_Reference = _AttitudeReference;
-        LogMessage.ref_pose = ref_pose_rviz;
-        log_message_pub.publish(LogMessage);
-
         Command_Last = Command_Now;
         rate.sleep();
     }
 
     return 0;
-}
-
-void printf_param(){
-    cout <<">>>>>>>>>>>>>>>>>>>>>>>> px4_pos_controller Parameter <<<<<<<<<<<<<<<<<<<<<<" <<endl;
-    cout << "controller_type: "<< controller_type_ <<endl;
-    cout << "Takeoff_height   : "<< Takeoff_height_<<" [m] "<<endl;
-    cout << "Disarm_height    : "<< Disarm_height_ <<" [m] "<<endl;
-    cout << "Land_speed       : "<< Land_speed_ <<" [m/s] "<<endl;
-    cout << "geo_fence_x : "<< geo_fence_x[0] << " [m]  to  "<<geo_fence_x[1] << " [m]"<< endl;
-    cout << "geo_fence_y : "<< geo_fence_y[0] << " [m]  to  "<<geo_fence_y[1] << " [m]"<< endl;
-    cout << "geo_fence_z : "<< geo_fence_z[0] << " [m]  to  "<<geo_fence_z[1] << " [m]"<< endl;
 }
 
 bool check_safety(){
@@ -558,82 +455,4 @@ void Body_to_ENU(){
     Command_Now.Reference_State.acceleration_ref[0] = d_acc_enu[0];
     Command_Now.Reference_State.acceleration_ref[1] = d_acc_enu[1];
     Command_Now.Reference_State.acceleration_ref[2] = Command_Now.Reference_State.acceleration_ref[2];
-}
-
-geometry_msgs::PoseStamped get_ref_pose_rviz(const easondrone_msgs::ControlCommand& cmd, const easondrone_msgs::AttitudeReference& att_ref){
-    geometry_msgs::PoseStamped ref_pose;
-
-    ref_pose.header.stamp = ros::Time::now();
-    // world: 世界系,即gazebo坐标系,参见tf_transform.launch
-    ref_pose.header.frame_id = "map";
-
-    if(cmd.Mode == easondrone_msgs::ControlCommand::Idle){
-        ref_pose.pose.position.x = _DroneState.position[0];
-        ref_pose.pose.position.y = _DroneState.position[1];
-        ref_pose.pose.position.z = _DroneState.position[2];
-        ref_pose.pose.orientation = _DroneState.attitude_q;
-    }else if(cmd.Mode == easondrone_msgs::ControlCommand::Takeoff || cmd.Mode == easondrone_msgs::ControlCommand::Hold){
-        ref_pose.pose.position.x = cmd.Reference_State.position_ref[0];
-        ref_pose.pose.position.y = cmd.Reference_State.position_ref[1];
-        ref_pose.pose.position.z = cmd.Reference_State.position_ref[2];
-        ref_pose.pose.orientation = _DroneState.attitude_q;
-    }else if(cmd.Mode == easondrone_msgs::ControlCommand::Disarm  || cmd.Mode == easondrone_msgs::ControlCommand::Land ){
-        ref_pose.pose.position.x = cmd.Reference_State.position_ref[0];
-        ref_pose.pose.position.y = cmd.Reference_State.position_ref[1];
-        ref_pose.pose.position.z = 0.0;
-        ref_pose.pose.orientation = _DroneState.attitude_q;
-    }
-    else if(cmd.Mode == easondrone_msgs::ControlCommand::Move){
-        if(Command_Now.Reference_State.Move_mode & 0b00){
-            // POS
-            ref_pose.pose.position.x = cmd.Reference_State.position_ref[0];
-            ref_pose.pose.position.y = cmd.Reference_State.position_ref[1];
-            ref_pose.pose.position.z = cmd.Reference_State.position_ref[2];
-        }
-        else if(Command_Now.Reference_State.Move_mode & 0b01){
-            // XY_POS, Z_VEL
-            ref_pose.pose.position.x = cmd.Reference_State.position_ref[0];
-            ref_pose.pose.position.y = cmd.Reference_State.position_ref[1];
-            ref_pose.pose.position.z = _DroneState.position[2] + cmd.Reference_State.velocity_ref[2] * dt;
-        }
-        else if(Command_Now.Reference_State.Move_mode & 0b10){
-            // xy速度控制, Z_POS
-            ref_pose.pose.position.x = _DroneState.position[0] + cmd.Reference_State.velocity_ref[0] * dt;
-            ref_pose.pose.position.y = _DroneState.position[1] + cmd.Reference_State.velocity_ref[1] * dt;
-            ref_pose.pose.position.z = cmd.Reference_State.position_ref[2];
-        }
-        else if(Command_Now.Reference_State.Move_mode  & 0b11 ){
-            // VEL
-            ref_pose.pose.position.x = _DroneState.position[0] + cmd.Reference_State.velocity_ref[0] * dt;
-            ref_pose.pose.position.y = _DroneState.position[1] + cmd.Reference_State.velocity_ref[1] * dt;
-            ref_pose.pose.position.z = _DroneState.position[2] + cmd.Reference_State.velocity_ref[2] * dt;
-        }
-        else if(Command_Now.Reference_State.Move_mode  & 0b100 ){
-            // ACC
-            ref_pose.pose.position.x = _DroneState.position[0] + cmd.Reference_State.velocity_ref[0] * dt + 0.5 * cmd.Reference_State.acceleration_ref[0] * dt * dt;
-            ref_pose.pose.position.y = _DroneState.position[1] + cmd.Reference_State.velocity_ref[1] * dt + 0.5 * cmd.Reference_State.acceleration_ref[1] * dt * dt;
-            ref_pose.pose.position.z = _DroneState.position[2] + cmd.Reference_State.velocity_ref[2] * dt + 0.5 * cmd.Reference_State.acceleration_ref[2] * dt * dt;
-        }
-        else if(Command_Now.Reference_State.Move_mode  & 0b101 ) {
-            // Trajectory
-            ref_pose.pose.position.x = cmd.Reference_State.position_ref[0];
-            ref_pose.pose.position.y = cmd.Reference_State.position_ref[1];
-            ref_pose.pose.position.z = cmd.Reference_State.position_ref[2];
-        }
-        else if(Command_Now.Reference_State.Move_mode  & 0b110){
-            // TODO: POS_VEL_ACC
-            ref_pose.pose.position.x = cmd.Reference_State.position_ref[0];
-            ref_pose.pose.position.y = cmd.Reference_State.position_ref[1];
-            ref_pose.pose.position.z = cmd.Reference_State.position_ref[2];
-        }
-        ref_pose.pose.orientation = att_ref.desired_att_q;
-    }
-    else{
-        ref_pose.pose.position.x = _DroneState.position[0];
-        ref_pose.pose.position.y = _DroneState.position[1];
-        ref_pose.pose.position.z = _DroneState.position[2];
-        ref_pose.pose.orientation = _DroneState.attitude_q;
-    }
-
-    return ref_pose;
 }
