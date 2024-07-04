@@ -73,7 +73,7 @@ add_dependencies(px4_pos_estimator ${PROJECT_NAME}_gencpp)
 target_link_libraries(px4_pos_estimator ${catkin_LIBRARIES})
 target_link_libraries(px4_pos_estimator OptiTrackFeedbackRigidBody)
 
-add_executable(joy_node src/Utilities/joy_node.cpp)
+add_executable(joy_node src/joy_node.cpp)
 target_link_libraries(joy_node ${catkin_LIBRARIES})
 
 add_library(KeyboardEvent src/lib/KeyboardEvent.cpp)

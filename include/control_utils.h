@@ -3,13 +3,17 @@
 *
 * Author: Qyp
 * Maintainer: Eason Hua
-* Update Time: 2024.5.30
+* Update Time: 2024.07.04
 ***************************************************************************************************************************/
 #ifndef CONTORL_UTILS_H
 #define CONTORL_UTILS_H
 
 #include <Eigen/Eigen>
 #include <math.h>
+
+#include <nav_msgs/Odometry.h>
+#include <nav_msgs/Path.h>
+
 #include <math_utils.h>
 #include <command_to_mavros.h>
 #include <easondrone_msgs/Message.h>
@@ -18,8 +22,6 @@
 #include <easondrone_msgs/PositionReference.h>
 #include <easondrone_msgs/AttitudeReference.h>
 #include <easondrone_msgs/ControlOutput.h>
-#include <nav_msgs/Odometry.h>
-#include <nav_msgs/Path.h>
 #include "station_utils.h"
 
 using namespace std;
@@ -35,24 +37,20 @@ using namespace std;
 
 #define thrust_max_single_motor 6.0
 
-namespace control_utils
-{
+namespace control_utils{
 // 【坐标系旋转函数】- 机体系到enu系
 // body_frame是机体系,enu_frame是惯性系，yaw_angle是当前偏航角[rad]
-void rotation_yaw(float yaw_angle, float body_frame[2], float enu_frame[2])
-{
+void rotation_yaw(float yaw_angle, float body_frame[2], float enu_frame[2]){
     enu_frame[0] = body_frame[0] * cos(yaw_angle) - body_frame[1] * sin(yaw_angle);
     enu_frame[1] = body_frame[0] * sin(yaw_angle) + body_frame[1] * cos(yaw_angle);
 }
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 控 制 辅 助 函 数 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< 
 //计算位置误差
-Eigen::Vector3f cal_pos_error(const easondrone_msgs::DroneState& _DroneState, const easondrone_msgs::PositionReference& _Reference_State)
-{
+Eigen::Vector3f cal_pos_error(const easondrone_msgs::DroneState& _DroneState, const easondrone_msgs::PositionReference& _Reference_State){
     Eigen::Vector3f pos_error;
 
-    for (int i=0; i<3; i++)
-    {
+    for (int i=0; i<3; i++){
         pos_error[i] = _Reference_State.position_ref[i] - _DroneState.position[i];
     }
 
@@ -60,8 +58,7 @@ Eigen::Vector3f cal_pos_error(const easondrone_msgs::DroneState& _DroneState, co
 }
 
 //计算速度误差
-Eigen::Vector3f cal_vel_error(const easondrone_msgs::DroneState& _DroneState, const easondrone_msgs::PositionReference& _Reference_State)
-{
+Eigen::Vector3f cal_vel_error(const easondrone_msgs::DroneState& _DroneState, const easondrone_msgs::PositionReference& _Reference_State){
     Eigen::Vector3f vel_error;
 
     for (int i=0; i<3; i++)
@@ -72,8 +69,7 @@ Eigen::Vector3f cal_vel_error(const easondrone_msgs::DroneState& _DroneState, co
     return vel_error;
 }
 
-Eigen::Vector3d accelToThrust(const Eigen::Vector3d& accel_sp, float mass, float tilt_max)
-{
+Eigen::Vector3d accelToThrust(const Eigen::Vector3d& accel_sp, float mass, float tilt_max){
     Eigen::Vector3d thrust_sp;
 
     //除以电机个数得到单个电机的期望推力
@@ -84,8 +80,7 @@ Eigen::Vector3d accelToThrust(const Eigen::Vector3d& accel_sp, float mass, float
     float thrust_max_XY = sqrtf(thrust_max_single_motor * thrust_max_single_motor - pow(thrust_sp[2],2));
     thrust_max_XY = min(thrust_max_XY_tilt, thrust_max_XY);
 
-    if ((pow(thrust_sp[0],2) + pow(thrust_sp[1],2)) > pow(thrust_max_XY,2)) 
-    {
+    if ((pow(thrust_sp[0],2) + pow(thrust_sp[1],2)) > pow(thrust_max_XY,2)){
         float mag = sqrtf((pow(thrust_sp[0],2) + pow(thrust_sp[1],2)));
         thrust_sp[0] = thrust_sp[0] / mag * thrust_max_XY;
         thrust_sp[1] = thrust_sp[1] / mag * thrust_max_XY;
@@ -94,13 +89,11 @@ Eigen::Vector3d accelToThrust(const Eigen::Vector3d& accel_sp, float mass, float
     return thrust_sp;   
 }
 
-Eigen::Vector3d thrustToThrottle(const Eigen::Vector3d& thrust_sp)
-{
+Eigen::Vector3d thrustToThrottle(const Eigen::Vector3d& thrust_sp){
     Eigen::Vector3d throttle_sp;
 
     //电机模型，可通过辨识得到，推力-油门曲线
-    for (int i=0; i<3; i++)
-    {
+    for (int i=0; i<3; i++){
         throttle_sp[i] = MOTOR_P1 * pow(thrust_sp[i],4) + MOTOR_P2 * pow(thrust_sp[i],3) + MOTOR_P3 * pow(thrust_sp[i],2) + MOTOR_P4 * thrust_sp[i] + MOTOR_P5;
         // PX4内部默认假设 0.5油门为悬停推力 ， 在无人机重量为1kg时，直接除20得到0.5
         // throttle_sp[i] = thrust_sp[i]/20；
@@ -128,7 +121,8 @@ easondrone_msgs::AttitudeReference ThrottleToAttitude(const Eigen::Vector3d& thr
     if (thr_sp_length > 0.00001f) {
             body_z = thr_sp.normalized();
 
-    } else {
+    }
+    else {
             // no thrust, set Z axis to safe value
             body_z = Eigen::Vector3d(0.0f, 0.0f, 1.0f);
     }
@@ -147,7 +141,8 @@ easondrone_msgs::AttitudeReference ThrottleToAttitude(const Eigen::Vector3d& thr
 
             body_x.normalize();
 
-    } else {
+    }
+    else {
             // desired thrust is in XY plane, set X downside to construct correct matrix,
             // but yaw component will not be used actually
             body_x = Eigen::Vector3d(0.0f, 0.0f, 0.0f);
@@ -195,18 +190,6 @@ easondrone_msgs::AttitudeReference ThrottleToAttitude(const Eigen::Vector3d& thr
     _AttitudeReference.desired_attitude[2] = att_sp[2]; 
 
     return _AttitudeReference;
-}
-
-//random number Generation
-//if a = 0 b =0, random_num = [-1,1]
-//rand函数，C语言中用来产生一个随机数的函数
-float random_num(float a, float b)
-{
-    float random_num;
-    
-    random_num = a * 2 * (((float)(rand() % 100))/100 - 0.5) + b;
-
-    return random_num;
 }
 }
 #endif

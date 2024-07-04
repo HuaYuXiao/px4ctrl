@@ -32,7 +32,6 @@
 
 #include <memory>
 #include <string>
-
 #include <dirent.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -41,9 +40,9 @@
 #include <math.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
 #include <diagnostic_updater/diagnostic_updater.h>
 #include <ros/ros.h>
+
 #include <sensor_msgs/Joy.h>
 #include <sensor_msgs/JoyFeedbackArray.h>
 #include <mavros_msgs/RCIn.h>
@@ -72,7 +71,6 @@ private:
   std::string joy_dev_;
   std::string joy_dev_name_;
   std::string joy_dev_ff_;
-  int agent_num;
   double deadzone_;
   double autorepeat_rate_;   // in Hz.  0 for no repeat.
   double coalesce_interval_; // Defaults to 100 Hz rate limit.
@@ -81,7 +79,7 @@ private:
   ros::Publisher pub_;
   double lastDiagTime_;
 
-  ros::Publisher pub_fake_rc_in[100];
+  ros::Publisher pub_fake_rc_in;
   mavros_msgs::RCIn fake_rc_in;
   ros::Publisher pub_rc_override;
   mavros_msgs::OverrideRCIn rc_override;
@@ -328,22 +326,17 @@ public:
     nh_param.param<std::string>("dev", joy_dev_, "/dev/input/js0");
     nh_param.param<std::string>("dev_ff", joy_dev_ff_, "/dev/input/event0");
     nh_param.param<std::string>("dev_name", joy_dev_name_, "");
-    nh_param.param<int>("agent_num", agent_num, 1);
     nh_param.param<double>("deadzone", deadzone_, 0.05);
     nh_param.param<double>("autorepeat_rate", autorepeat_rate_, 0);
     nh_param.param<double>("coalesce_interval", coalesce_interval_, 0.001);
     nh_param.param<bool>("default_trig_val", default_trig_val_, false);
     nh_param.param<bool>("sticky_buttons", sticky_buttons_, false);
-    std::string agent_name = "/uav1";
-    pub_ = nh_.advertise<sensor_msgs::Joy>(agent_name + "/joy", 1);
-    for (size_t i = 1; i <= agent_num; i++)
-    {
-      agent_name = "/uav" + std::to_string(i);
-      pub_fake_rc_in[i] = nh_.advertise<mavros_msgs::RCIn>(agent_name + "/easondrone/fake_rc_in", 1);
-    }
 
-    // pub_rc_override = nh_.advertise<mavros_msgs::OverrideRCIn>(agent_name + "/mavros/rc/override", 1);
-    // pub_manual_control = nh_.advertise<mavros_msgs::ManualControl>(agent_name + "/mavros/manual_control/send", 1);
+    pub_ = nh_.advertise<sensor_msgs::Joy>("/joy", 1);
+      pub_fake_rc_in = nh_.advertise<mavros_msgs::RCIn>("/easondrone/fake_rc_in", 1);
+
+    // pub_rc_override = nh_.advertise<mavros_msgs::OverrideRCIn>("/mavros/rc/override", 1);
+    // pub_manual_control = nh_.advertise<mavros_msgs::ManualControl>("/mavros/manual_control/send", 1);
 
     // 不清楚作用，人工屏蔽
     ros::Subscriber sub = nh_.subscribe("joy/set_feedback", 10, &Joystick::set_feedback, this);
@@ -865,11 +858,7 @@ public:
         }
 
         // always pub fake_rc_in 没有遥控器输入时，1Hz发布
-        for (size_t i = 1; i <= agent_num; i++)
-        {
-          // 即使是多个飞机,也只是发布同样的遥控器指令,仅仅是为了仿真方便
-          pub_fake_rc_in[i].publish(fake_rc_in);
-        }
+          pub_fake_rc_in.publish(fake_rc_in);
 
         // pub_rc_override.publish(rc_override);
         // pub_manual_control.publish(manual_control);

@@ -41,10 +41,11 @@ roslaunch easondrone_control control_iris_indoor.launch
 
 ## Release Note
 
-- v3.5.1: 
+- v3.4.3: 
   - remove: move along with trajectory
   - remove: move publisher to rviz
-- v3.5.0: add support for `keyboard_control`
+  - remove: agent_num in joy_node
+  - remove: keyboard_control
 - v3.4.2: update odometry source of gazebo
 - v3.4.1: remove `message_pub`
 - v3.4.0: support PID controller with `POS+VEL` loop

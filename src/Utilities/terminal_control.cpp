@@ -9,13 +9,13 @@
 ***************************************************************************************************************************/
 #include <ros/ros.h>
 #include <iostream>
+#include <Eigen/Eigen>
 
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
 #include <nav_msgs/Path.h>
 
-#include "controller_test.h"
 #include "KeyboardEvent.h"
 #include <easondrone_msgs/ControlCommand.h>
 
@@ -41,8 +41,8 @@ Eigen::Vector2f geo_fence_z;
 ros::Publisher move_pub;
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>　函数声明　<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-void mainloop1();
-void mainloop2();
+void mainloop();
+
 void generate_com(int Move_mode, float state_desired[4]);
 
 void timerCallback(const ros::TimerEvent& e){
@@ -74,17 +74,6 @@ int main(int argc, char **argv){
     Command_to_pub.source = NODE_NAME;
     Command_to_pub.Reference_State.Move_mode           = easondrone_msgs::PositionReference::XYZ_POS;
     Command_to_pub.Reference_State.Move_frame          = easondrone_msgs::PositionReference::ENU_FRAME;
-    Command_to_pub.Reference_State.position_ref[0]     = 0.0;
-    Command_to_pub.Reference_State.position_ref[1]     = 0.0;
-    Command_to_pub.Reference_State.position_ref[2]     = 0.0;
-    Command_to_pub.Reference_State.velocity_ref[0]     = 0.0;
-    Command_to_pub.Reference_State.velocity_ref[1]     = 0.0;
-    Command_to_pub.Reference_State.velocity_ref[2]     = 0.0;
-    Command_to_pub.Reference_State.acceleration_ref[0] = 0.0;
-    Command_to_pub.Reference_State.acceleration_ref[1] = 0.0;
-    Command_to_pub.Reference_State.acceleration_ref[2] = 0.0;
-    Command_to_pub.Reference_State.yaw_ref             = 0.0;
-    Command_to_pub.Reference_State.yaw_rate_ref        = 0.0;
 
     //固定的浮点显示
     cout.setf(ios::fixed);
@@ -97,39 +86,12 @@ int main(int argc, char **argv){
     // 强制显示符号
     //cout.setf(ios::showpos);
 
-    // 选择通过终端输入控制或键盘控制
-    int Remote_Mode;
-    bool valid_Remote_Mode = false;
+    mainloop();
 
-    while (!valid_Remote_Mode) {
-        cout << ">>>>>>>>>>>>>>>> Welcome to use EasonDrone Terminal Control <<<<<<<<<<<<<<<<" << endl;
-        cout << "Please choose the Remote Mode: 0 for COMMAND input control, 1 for KEYBOARD input control" << endl;
-        if (cin >> Remote_Mode) {
-            if (Remote_Mode == 0) {
-                valid_Remote_Mode = true;
-                cout << "COMMAND input control mode" << endl;
-                mainloop1();
-            } else if (Remote_Mode == 1) {
-                valid_Remote_Mode = true;
-                ros::Timer timer = nh.createTimer(ros::Duration(30.0), timerCallback);
-                cout << "KEYBOARD input control mode" << endl;
-                mainloop2();
-            } else {
-                cout << "Invalid input! Please enter 0 or 1." << endl;
-            }
-        } else {
-            // Clear error flags
-            cin.clear();
-            // Discard invalid input
-            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            cout << "Invalid input! Please enter an integer." << endl;
-        }
-    }
-    
     return 0;
 }
 
-void mainloop1(){
+void mainloop(){
     int Control_Mode = 0;
     bool valid_Control_Mode = false;
     int Move_mode = 0;
@@ -142,13 +104,9 @@ void mainloop1(){
     bool valid_z_input = false;
     bool valid_yaw_input = false;
 
-    //用于控制器测试的类，功能例如：生成圆形轨迹，８字轨迹等
-    Controller_Test Controller_Test;    // 打印参数
-    Controller_Test.printf_param();
-
     while(ros::ok()){
         while (!valid_Control_Mode){
-            cout << ">>>>>>>>>>>>>>>> Welcome to use EasonDrone Terminal Control <<<<<<<<<<<<<<<<" << endl;
+            cout << "-------- Welcome to EasonDrone Terminal Control --------" << endl;
             cout << "Please choose the Command.Mode: 0 for IDLE, 1 for TAKEOFF, 2 for HOLD, 3 for LAND, 4 for MOVE, 5 for DISARM" << endl;
             cout << "Input 999 to switch to OFFBOARD mode and ARM the drone" << endl;
             if (cin >> Control_Mode) {
@@ -184,7 +142,6 @@ void mainloop1(){
                 break;
             }
 
-
             case easondrone_msgs::ControlCommand::Takeoff:{
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = easondrone_msgs::ControlCommand::Takeoff;
@@ -194,7 +151,6 @@ void mainloop1(){
 
                 break;
             }
-
 
             case easondrone_msgs::ControlCommand::Hold:{
                 Command_to_pub.header.stamp = ros::Time::now();
@@ -206,7 +162,6 @@ void mainloop1(){
                 break;
             }
 
-
             case easondrone_msgs::ControlCommand::Land:{
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = easondrone_msgs::ControlCommand::Land;
@@ -216,7 +171,6 @@ void mainloop1(){
 
                 break;
             }
-
 
             case easondrone_msgs::ControlCommand::Move:
                 while (!valid_move_mode) {
@@ -351,107 +305,7 @@ void mainloop1(){
 
                 break;
 
-            case easondrone_msgs::ControlCommand::Disarm:
-                Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Disarm;
-                Command_to_pub.Command_ID += 1;
-                Command_to_pub.source = NODE_NAME;
-                move_pub.publish(Command_to_pub);
-                break;
-
-            case 999:
-                Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Idle;
-                Command_to_pub.Command_ID += 1;
-                Command_to_pub.source = NODE_NAME;
-                Command_to_pub.Reference_State.yaw_ref = 999;
-                move_pub.publish(Command_to_pub);
-                Command_to_pub.Reference_State.yaw_ref = 0.0;
-                break;
-        }
-
-        cout << ">>>>>>>>> MISSION RECEIVED <<<<<<<<\n" << endl;
-    }
-}
-
-void mainloop2(){
-    KeyboardEvent keyboardcontrol;
-    // 轨迹追踪总时长，键盘控制时固定时长，指令输入控制可调
-    float trajectory_total_time = 50.0;
-    Controller_Test Controller_Test;
-
-    char key_now;
-    char key_last;
-
-    cout << ">>>>>>>>>>>>>>>> Welcome to use EasonDrone Terminal Control <<<<<<<<<<<<<<<<"<< endl;
-    cout << "ENTER key to control the drone: " <<endl;
-    cout << "1 for Arm, Space for Takeoff, L for Land, H for Hold, 0 for Disarm," <<endl;
-    cout << "Move mode is fixed (XYZ_VEL,BODY_FRAME): w/s for body_x, a/d for body_y, k/m for z, q/e for body_yaw" <<endl;
-    cout << "CTRL-C to quit." <<endl;
-
-    while (ros::ok()){
-        keyboardcontrol.RosWhileLoopRun();
-        key_now = keyboardcontrol.GetPressedKey();
-        switch (key_now){
-
-            //悬停, 应当只发送一次, 不需要循环发送
-            case U_KEY_NONE:
-
-                if (key_last != U_KEY_NONE){
-                    //to be continued.
-                }
-                sleep(0.5);
-
-                break;
-
-                // 数字1（非小键盘数字）：解锁及切换到OFFBOARD模式
-            case U_KEY_1:
-                cout << " " <<endl;
-                cout << "Arm and Switch to OFFBOARD." <<endl;
-
-                Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Idle;
-                Command_to_pub.Command_ID += 1;
-                Command_to_pub.source = NODE_NAME;
-                Command_to_pub.Reference_State.yaw_ref = 999;
-                move_pub.publish(Command_to_pub);
-                sleep(1.0);
-                break;
-
-                // 空格：起飞
-            case U_KEY_SPACE:
-                cout << " " <<endl;
-                cout << "Switch to Takeoff Mode." <<endl;
-
-                Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Takeoff;
-                Command_to_pub.Command_ID += 1;
-                Command_to_pub.Reference_State.yaw_ref = 0.0;
-                Command_to_pub.source = NODE_NAME;
-                move_pub.publish(Command_to_pub);
-
-                sleep(1.0);
-
-                break;
-
-                // 键盘L：降落
-            case U_KEY_L:
-                cout << " " <<endl;
-                cout << "Switch to Land Mode." <<endl;
-
-                Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Land;
-                Command_to_pub.Command_ID += 1;
-                Command_to_pub.source = NODE_NAME;
-                move_pub.publish(Command_to_pub);
-
-                break;
-
-                // 键盘0（非小键盘数字）：紧急停止
-            case U_KEY_0:
-                cout << " " <<endl;
-                cout << "Switch to Disarm Mode." <<endl;
-
+            case easondrone_msgs::ControlCommand::Disarm:{
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = easondrone_msgs::ControlCommand::Disarm;
                 Command_to_pub.Command_ID += 1;
@@ -459,209 +313,24 @@ void mainloop2(){
                 move_pub.publish(Command_to_pub);
 
                 break;
+            }
 
-                //起飞要维持起飞的模式?
-            case U_KEY_T:
-                cout << " " <<endl;
-                cout << "Switch to Takeoff Mode." <<endl;
-
+            case 999:{
                 Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Takeoff;
+                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Idle;
                 Command_to_pub.Command_ID += 1;
                 Command_to_pub.source = NODE_NAME;
+                Command_to_pub.Reference_State.yaw_ref = 999;
                 move_pub.publish(Command_to_pub);
-
-                sleep(2.0);
+                Command_to_pub.Reference_State.yaw_ref = 0.0;
 
                 break;
-
-                //起飞要维持起飞的模式?
-            case U_KEY_H:
-                cout << " " <<endl;
-                cout << "Switch to Hold Mode." <<endl;
-
-                Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Hold;
-                Command_to_pub.Command_ID += 1;
-                Command_to_pub.source = NODE_NAME;
-                Command_to_pub.Reference_State.position_ref[0]     = 0.0;
-                Command_to_pub.Reference_State.position_ref[1]     = 0.0;
-                Command_to_pub.Reference_State.position_ref[2]     = 0.0;
-                Command_to_pub.Reference_State.velocity_ref[0]     = 0.0;
-                Command_to_pub.Reference_State.velocity_ref[1]     = 0.0;
-                Command_to_pub.Reference_State.velocity_ref[2]     = 0.0;
-                Command_to_pub.Reference_State.acceleration_ref[0] = 0.0;
-                Command_to_pub.Reference_State.acceleration_ref[1] = 0.0;
-                Command_to_pub.Reference_State.acceleration_ref[2] = 0.0;
-                move_pub.publish(Command_to_pub);
-
-                sleep(1.0);
-
-                break;
-
-                // 向前匀速运动
-            case U_KEY_W:
-
-                Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
-                Command_to_pub.Command_ID += 1;
-                Command_to_pub.source = NODE_NAME;
-                Command_to_pub.Reference_State.Move_mode       = easondrone_msgs::PositionReference::XYZ_VEL;
-                Command_to_pub.Reference_State.Move_frame      = easondrone_msgs::PositionReference::BODY_FRAME;
-                Command_to_pub.Reference_State.velocity_ref[0]     += VEL_XY_STEP_SIZE;
-                move_pub.publish(Command_to_pub);
-
-                cout << " " <<endl;
-                cout << "Current Velocity [X Y Z]: " << Command_to_pub.Reference_State.velocity_ref[0] << " [m/s] " << Command_to_pub.Reference_State.velocity_ref[1] << " [m/s] " << Command_to_pub.Reference_State.velocity_ref[2] << " [m/s] "<<endl;
-
-                sleep(0.1);
-
-                break;
-
-                // 向后匀速运动
-            case U_KEY_S:
-
-
-                Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
-                Command_to_pub.Command_ID += 1;
-                Command_to_pub.source = NODE_NAME;
-                Command_to_pub.Reference_State.Move_mode       = easondrone_msgs::PositionReference::XYZ_VEL;
-                Command_to_pub.Reference_State.Move_frame      = easondrone_msgs::PositionReference::BODY_FRAME;
-                Command_to_pub.Reference_State.velocity_ref[0]     -= VEL_XY_STEP_SIZE;
-                move_pub.publish(Command_to_pub);
-                cout << " " <<endl;
-                cout << "Current Velocity [X Y Z]: " << Command_to_pub.Reference_State.velocity_ref[0] << " [m/s] " << Command_to_pub.Reference_State.velocity_ref[1] << " [m/s] " << Command_to_pub.Reference_State.velocity_ref[2] << " [m/s] "<<endl;
-
-                sleep(0.1);
-
-                break;
-
-                // 向左匀速运动
-            case U_KEY_A:
-
-                Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
-                Command_to_pub.Command_ID += 1;
-                Command_to_pub.source = NODE_NAME;
-                Command_to_pub.Reference_State.Move_mode       = easondrone_msgs::PositionReference::XYZ_VEL;
-                Command_to_pub.Reference_State.Move_frame      = easondrone_msgs::PositionReference::BODY_FRAME;
-                Command_to_pub.Reference_State.velocity_ref[1]     += VEL_XY_STEP_SIZE;
-                move_pub.publish(Command_to_pub);
-
-                cout << " " <<endl;
-                cout << "Current Velocity [X Y Z]: " << Command_to_pub.Reference_State.velocity_ref[0] << " [m/s] " << Command_to_pub.Reference_State.velocity_ref[1] << " [m/s] " << Command_to_pub.Reference_State.velocity_ref[2] << " [m/s] "<<endl;
-
-                sleep(0.1);
-
-                break;
-
-                // 向右匀速运动
-            case U_KEY_D:
-
-                Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
-                Command_to_pub.Command_ID += 1;
-                Command_to_pub.source = NODE_NAME;
-                Command_to_pub.Reference_State.Move_mode       = easondrone_msgs::PositionReference::XYZ_VEL;
-                Command_to_pub.Reference_State.Move_frame      = easondrone_msgs::PositionReference::BODY_FRAME;
-                Command_to_pub.Reference_State.velocity_ref[1]     -= VEL_XY_STEP_SIZE;
-                move_pub.publish(Command_to_pub);
-
-                cout << " " <<endl;
-                cout << "Current Velocity [X Y Z]: " << Command_to_pub.Reference_State.velocity_ref[0] << " [m/s] " << Command_to_pub.Reference_State.velocity_ref[1] << " [m/s] " << Command_to_pub.Reference_State.velocity_ref[2] << " [m/s] "<<endl;
-
-                sleep(0.1);
-
-                break;
-
-                // 向上运动
-            case U_KEY_K:
-
-
-                Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
-                Command_to_pub.Command_ID += 1;
-                Command_to_pub.source = NODE_NAME;
-                Command_to_pub.Reference_State.Move_mode       = easondrone_msgs::PositionReference::XYZ_VEL;
-                Command_to_pub.Reference_State.Move_frame      = easondrone_msgs::PositionReference::BODY_FRAME;
-                Command_to_pub.Reference_State.velocity_ref[2]     += VEL_Z_STEP_SIZE;
-                move_pub.publish(Command_to_pub);
-
-                cout << " " <<endl;
-                cout << "Current Velocity [X Y Z]: " << Command_to_pub.Reference_State.velocity_ref[0] << " [m/s] " << Command_to_pub.Reference_State.velocity_ref[1] << " [m/s] " << Command_to_pub.Reference_State.velocity_ref[2] << " [m/s] "<<endl;
-
-                sleep(0.1);
-
-                break;
-
-                // 向下运动
-            case U_KEY_M:
-
-
-                Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
-                Command_to_pub.Command_ID += 1;
-                Command_to_pub.source = NODE_NAME;
-                Command_to_pub.Reference_State.Move_mode       = easondrone_msgs::PositionReference::XYZ_VEL;
-                Command_to_pub.Reference_State.Move_frame      = easondrone_msgs::PositionReference::BODY_FRAME;
-                Command_to_pub.Reference_State.velocity_ref[2]     -= VEL_Z_STEP_SIZE;
-                move_pub.publish(Command_to_pub);
-
-                cout << " " <<endl;
-                cout << "Current Velocity [X Y Z]: " << Command_to_pub.Reference_State.velocity_ref[0] << " [m/s] " << Command_to_pub.Reference_State.velocity_ref[1] << " [m/s] " << Command_to_pub.Reference_State.velocity_ref[2] << " [m/s] "<<endl;
-
-                sleep(0.1);
-
-                break;
-
-                // 偏航运动，左转 （这个里偏航控制的是位置 不是速度）
-            case U_KEY_Q:
-
-
-                Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
-                Command_to_pub.Command_ID += 1;
-                Command_to_pub.source = NODE_NAME;
-                Command_to_pub.Reference_State.Move_mode       = easondrone_msgs::PositionReference::XYZ_VEL;
-                Command_to_pub.Reference_State.Move_frame      = easondrone_msgs::PositionReference::BODY_FRAME;
-                Command_to_pub.Reference_State.yaw_ref             = YAW_STEP_SIZE;
-                move_pub.publish(Command_to_pub);
-
-                cout << " " <<endl;
-                cout << "Increase the Yaw angle." <<endl;
-
-                sleep(0.1);
-
-                break;
-
-                // 偏航运动，右转
-            case U_KEY_E:
-
-
-                Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
-                Command_to_pub.Command_ID += 1;
-                Command_to_pub.source = NODE_NAME;
-                Command_to_pub.Reference_State.Move_mode       = easondrone_msgs::PositionReference::XYZ_POS;
-                Command_to_pub.Reference_State.Move_frame      = easondrone_msgs::PositionReference::BODY_FRAME;
-                Command_to_pub.Reference_State.yaw_ref             = YAW_STEP_SIZE;
-                move_pub.publish(Command_to_pub);
-
-                cout << " " <<endl;
-                cout << "Decrease the Yaw angle." <<endl;
-
-                sleep(0.1);
-
-                break;
+            }
         }
 
-        key_last = key_now;
-        ros::spinOnce();
-        sleep(0.1);
+        cout << "-------- MISSION RECEIVED --------\n" << endl;
     }
 }
-
 
 void generate_com(int Move_mode, float state_desired[4]){
     //# Move_mode 2-bit value:
@@ -673,13 +342,15 @@ void generate_com(int Move_mode, float state_desired[4]){
     if(Move_mode == easondrone_msgs::PositionReference::XYZ_ACC){
         cout << "ACC control not support yet." <<endl;
     }
+
     if((Move_mode & 0b10) == 0) //xy channel
     {
         Command_to_pub.Reference_State.position_ref[0] = state_desired[0];
         Command_to_pub.Reference_State.position_ref[1] = state_desired[1];
         Command_to_pub.Reference_State.velocity_ref[0] = 0;
         Command_to_pub.Reference_State.velocity_ref[1] = 0;
-    }else{
+    }
+    else{
         Command_to_pub.Reference_State.position_ref[0] = 0;
         Command_to_pub.Reference_State.position_ref[1] = 0;
         Command_to_pub.Reference_State.velocity_ref[0] = state_desired[0];
@@ -690,7 +361,8 @@ void generate_com(int Move_mode, float state_desired[4]){
     {
         Command_to_pub.Reference_State.position_ref[2] = state_desired[2];
         Command_to_pub.Reference_State.velocity_ref[2] = 0;
-    }else{
+    }
+    else{
         Command_to_pub.Reference_State.position_ref[2] = 0;
         Command_to_pub.Reference_State.velocity_ref[2] = state_desired[2];
     }
@@ -701,7 +373,8 @@ void generate_com(int Move_mode, float state_desired[4]){
 
     if(Command_to_pub.Reference_State.Yaw_Rate_Mode == 1){
         Command_to_pub.Reference_State.yaw_rate_ref = state_desired[3];
-    }else{
+    }
+    else{
         Command_to_pub.Reference_State.yaw_ref = state_desired[3]/180.0*M_PI;
     }
 }
