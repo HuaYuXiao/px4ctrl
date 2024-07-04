@@ -3,7 +3,7 @@
 *
 * Author: Qyp
 * Maintainer: Eason Hua
-* Update Time: 2024.05.30
+* Update Time: 2024.07.04
 *
 * 主要功能：
 *    本库函数主要用于连接control与mavros两个功能包。
@@ -18,25 +18,28 @@
 
 #include <ros/ros.h>
 #include <bitset>
-#include <math_utils.h>
+
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
 #include <mavros_msgs/ExtendedState.h>
 #include <mavros_msgs/AttitudeTarget.h>
 #include <mavros_msgs/PositionTarget.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/TwistStamped.h>
 #include <mavros_msgs/ActuatorControl.h>
 #include <sensor_msgs/Imu.h>
-#include <easondrone_msgs/DroneState.h>
-#include <easondrone_msgs/AttitudeReference.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
 #include <std_msgs/Float64.h>
 #include <tf2_msgs/TFMessage.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/TwistStamped.h>
+
 #include <tf/transform_listener.h>
+
+#include <math_utils.h>
+#include <easondrone_msgs/DroneState.h>
+#include <easondrone_msgs/AttitudeReference.h>
 
 using namespace std;
 
@@ -47,49 +50,42 @@ class state_from_mavros
     state_from_mavros(void):
         state_nh("~")
     {
-        state_nh.param<string>("uav_name", uav_name, "/uav0");
-
-        if (uav_name == "/uav0")
-        {
-            uav_name = "";
-        }
-
         // 【订阅】无人机当前状态 - 来自飞控
         //  本话题来自飞控(通过Mavros功能包 /plugins/sys_status.cpp)
-        state_sub = state_nh.subscribe<mavros_msgs::State>(uav_name + "/mavros/state", 10, &state_from_mavros::state_cb,this);
+        state_sub = state_nh.subscribe<mavros_msgs::State>
+                ("/mavros/state", 10, &state_from_mavros::state_cb,this);
 
         // 【订阅】无人机当前状态 - 来自飞控
-        extended_state_sub = state_nh.subscribe<mavros_msgs::ExtendedState>(uav_name + "/mavros/extended_state", 10, &state_from_mavros::extended_state_cb,this);
+        extended_state_sub = state_nh.subscribe<mavros_msgs::ExtendedState>
+                ("/mavros/extended_state", 10, &state_from_mavros::extended_state_cb,this);
 
         // 【订阅】无人机当前位置 坐标系:ENU系 （此处注意，所有状态量在飞控中均为NED系，但在ros中mavros将其转换为ENU系处理。所以，在ROS中，所有和mavros交互的量都为ENU系）
         //  本话题来自飞控(通过Mavros功能包 /plugins/local_position.cpp读取), 对应Mavlink消息为LOCAL_POSITION_NED (#32), 对应的飞控中的uORB消息为vehicle_local_position.msg
-        position_sub = state_nh.subscribe<geometry_msgs::PoseStamped>(uav_name + "/mavros/local_position/pose", 10, &state_from_mavros::pos_cb,this);
+        position_sub = state_nh.subscribe<geometry_msgs::PoseStamped>
+                ("/mavros/local_position/pose", 10, &state_from_mavros::pos_cb,this);
 
         // 【订阅】无人机当前速度 坐标系:ENU系
         //  本话题来自飞控(通过Mavros功能包 /plugins/local_position.cpp读取), 对应Mavlink消息为LOCAL_POSITION_NED (#32), 对应的飞控中的uORB消息为vehicle_local_position.msg
-        velocity_sub = state_nh.subscribe<geometry_msgs::TwistStamped>(uav_name + "/mavros/local_position/velocity_local", 10, &state_from_mavros::vel_cb,this);
+        velocity_sub = state_nh.subscribe<geometry_msgs::TwistStamped>
+                ("/mavros/local_position/velocity_local", 10, &state_from_mavros::vel_cb,this);
 
         // 【订阅】无人机当前欧拉角 坐标系:ENU系
         //  本话题来自飞控(通过Mavros功能包 /plugins/imu.cpp读取), 对应Mavlink消息为ATTITUDE (#30), 对应的飞控中的uORB消息为vehicle_attitude.msg
-        attitude_sub = state_nh.subscribe<sensor_msgs::Imu>(uav_name + "/mavros/imu/data", 10, &state_from_mavros::att_cb,this); 
+        attitude_sub = state_nh.subscribe<sensor_msgs::Imu>
+                ("/mavros/imu/data", 10, &state_from_mavros::att_cb,this);
 
         // 【订阅】无人机相对高度 此订阅仅针对户外实验
-        alt_sub = state_nh.subscribe<std_msgs::Float64>(uav_name + "/mavros/global_position/rel_alt", 10, &state_from_mavros::alt_cb,this);
+        alt_sub = state_nh.subscribe<std_msgs::Float64>
+                ("/mavros/global_position/rel_alt", 10, &state_from_mavros::alt_cb,this);
     }
 
     //变量声明 
     easondrone_msgs::DroneState _DroneState;
-    string uav_name;
     
     private:
-
         ros::NodeHandle state_nh;
 
-        ros::Subscriber state_sub;
-        ros::Subscriber position_sub;
-        ros::Subscriber velocity_sub;
-        ros::Subscriber attitude_sub, alt_sub;
-        ros::Subscriber extended_state_sub;
+        ros::Subscriber state_sub, position_sub, velocity_sub, attitude_sub, alt_sub, extended_state_sub;
         ros::Publisher trajectory_pub;
 
         void state_cb(const mavros_msgs::State::ConstPtr &msg)
@@ -101,17 +97,15 @@ class state_from_mavros
 
         void extended_state_cb(const mavros_msgs::ExtendedState::ConstPtr &msg)
         {
-            if(msg->landed_state == msg->LANDED_STATE_ON_GROUND)
-            {
+            if(msg->landed_state == msg->LANDED_STATE_ON_GROUND){
                 _DroneState.landed = true;
-            }else
-            {
+            }
+            else{
                 _DroneState.landed = false;
             }
         }
 
-        void pos_cb(const geometry_msgs::PoseStamped::ConstPtr &msg)
-        {
+        void pos_cb(const geometry_msgs::PoseStamped::ConstPtr &msg){
             _DroneState.position[0] = msg->pose.position.x;
             _DroneState.position[1] = msg->pose.position.y;
             _DroneState.position[2] = msg->pose.position.z;
@@ -148,8 +142,6 @@ class state_from_mavros
         {
             _DroneState.rel_alt = msg->data;
         }
-
 };
 
-    
 #endif

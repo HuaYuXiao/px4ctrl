@@ -3,7 +3,7 @@
 *
 * Author: Qyp
 * Maintainer: Eason Hua
-* Update Time: 2024.5.30
+* Update Time: 2024.07.04
 *
 * Introduction:  Drone control command send class using Mavros package
 *         1. Ref to the Mavros plugins (setpoint_raw, loca_position, imu and etc..)
@@ -23,7 +23,8 @@
 #define COMMAND_TO_MAVROS_H
 
 #include <ros/ros.h>
-#include <math_utils.h>
+#include <bitset>
+
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
@@ -33,26 +34,19 @@
 #include <geometry_msgs/TwistStamped.h>
 #include <mavros_msgs/ActuatorControl.h>
 #include <sensor_msgs/Imu.h>
+
 #include <easondrone_msgs/DroneState.h>
-#include <bitset>
 #include <easondrone_msgs/AttitudeReference.h>
-#include <easondrone_msgs/DroneState.h>
+#include <math_utils.h>
+
 using namespace std;
 
-class command_to_mavros
-{
+class command_to_mavros{
     public:
     //constructed function 1
     command_to_mavros(void):
         command_nh("~")
-    {
-        command_nh.param<string>("uav_name", uav_name, "/uav0");
-
-        if (uav_name == "/uav0")
-        {
-            uav_name = "";
-        }
-        
+    {        
         pos_drone_fcu_target    = Eigen::Vector3d(0.0,0.0,0.0);
         vel_drone_fcu_target    = Eigen::Vector3d(0.0,0.0,0.0);
         accel_drone_fcu_target  = Eigen::Vector3d(0.0,0.0,0.0);
@@ -63,85 +57,45 @@ class command_to_mavros
 
         // 【订阅】无人机期望位置/速度/加速度 坐标系:ENU系
         //  本话题来自飞控(通过Mavros功能包 /plugins/setpoint_raw.cpp读取), 对应Mavlink消息为POSITION_TARGET_LOCAL_NED, 对应的飞控中的uORB消息为vehicle_local_position_setpoint.msg
-        position_target_sub = command_nh.subscribe<mavros_msgs::PositionTarget>(uav_name + "/mavros/setpoint_raw/target_local", 10, &command_to_mavros::pos_target_cb,this);
+        position_target_sub = command_nh.subscribe<mavros_msgs::PositionTarget>
+                ("/mavros/setpoint_raw/target_local", 10, &command_to_mavros::pos_target_cb,this);
 
         // 【订阅】无人机期望角度/角速度 坐标系:ENU系
         //  本话题来自飞控(通过Mavros功能包 /plugins/setpoint_raw.cpp读取), 对应Mavlink消息为ATTITUDE_TARGET (#83), 对应的飞控中的uORB消息为vehicle_attitude_setpoint.msg
-        attitude_target_sub = command_nh.subscribe<mavros_msgs::AttitudeTarget>(uav_name + "/mavros/setpoint_raw/target_attitude", 10, &command_to_mavros::att_target_cb,this);
+        attitude_target_sub = command_nh.subscribe<mavros_msgs::AttitudeTarget>
+                ("/mavros/setpoint_raw/target_attitude", 10, &command_to_mavros::att_target_cb,this);
 
         // 【订阅】无人机底层控制量（Mx My Mz 及 F） [0][1][2][3]分别对应 roll pitch yaw控制量 及 油门推力
         //  本话题来自飞控(通过Mavros功能包 /plugins/actuator_control.cpp读取), 对应Mavlink消息为ACTUATOR_CONTROL_TARGET, 对应的飞控中的uORB消息为actuator_controls.msg
-        actuator_target_sub = command_nh.subscribe<mavros_msgs::ActuatorControl>(uav_name + "/mavros/target_actuator_control", 10, &command_to_mavros::actuator_target_cb,this);
+        actuator_target_sub = command_nh.subscribe<mavros_msgs::ActuatorControl>
+                ("/mavros/target_actuator_control", 10, &command_to_mavros::actuator_target_cb,this);
 
         // 【发布】位置/速度/加速度期望值 坐标系 ENU系
         //  本话题要发送至飞控(通过Mavros功能包 /plugins/setpoint_raw.cpp发送), 对应Mavlink消息为SET_POSITION_TARGET_LOCAL_NED (#84), 对应的飞控中的uORB消息为position_setpoint_triplet.msg
-        setpoint_raw_local_pub = command_nh.advertise<mavros_msgs::PositionTarget>(uav_name + "/mavros/setpoint_raw/local", 10);
+        setpoint_raw_local_pub = command_nh.advertise<mavros_msgs::PositionTarget>
+                ("/mavros/setpoint_raw/local", 10);
 
         // 【发布】角度/角速度期望值 坐标系 ENU系
         //  本话题要发送至飞控(通过Mavros功能包 /plugins/setpoint_raw.cpp发送), 对应Mavlink消息为SET_ATTITUDE_TARGET (#82), 对应的飞控中的uORB消息为vehicle_attitude_setpoint.msg（角度） 或vehicle_rates_setpoint.msg（角速度）
-        setpoint_raw_attitude_pub = command_nh.advertise<mavros_msgs::AttitudeTarget>(uav_name + "/mavros/setpoint_raw/attitude", 10);
+        setpoint_raw_attitude_pub = command_nh.advertise<mavros_msgs::AttitudeTarget>
+                ("/mavros/setpoint_raw/attitude", 10);
 
         // 【发布】底层控制量（Mx My Mz 及 F） [0][1][2][3]分别对应 roll pitch yaw控制量 及 油门推力 注意 这里是NED系的！！
         //  本话题要发送至飞控(通过Mavros功能包 /plugins/actuator_control.cpp发送), 对应Mavlink消息为SET_ACTUATOR_CONTROL_TARGET, 对应的飞控中的uORB消息为actuator_controls.msg
-        actuator_setpoint_pub = command_nh.advertise<mavros_msgs::ActuatorControl>(uav_name + "/mavros/actuator_control", 10);
+        actuator_setpoint_pub = command_nh.advertise<mavros_msgs::ActuatorControl>
+                ("/mavros/actuator_control", 10);
 
         // 【服务】解锁/上锁
         //  本服务通过Mavros功能包 /plugins/command.cpp 实现
-        arming_client = command_nh.serviceClient<mavros_msgs::CommandBool>(uav_name + "/mavros/cmd/arming");
+        arming_client = command_nh.serviceClient<mavros_msgs::CommandBool>
+                ("/mavros/cmd/arming");
 
         // 【服务】修改系统模式
         //  本服务通过Mavros功能包 /plugins/command.cpp 实现
-        set_mode_client = command_nh.serviceClient<mavros_msgs::SetMode>(uav_name + "/mavros/set_mode");
+        set_mode_client = command_nh.serviceClient<mavros_msgs::SetMode>
+                ("/mavros/set_mode");
     }
 
-		//constructed function 2
-    command_to_mavros(string Uav_name):
-        command_nh("")
-    {
-        uav_name = Uav_name;
-        
-        pos_drone_fcu_target    = Eigen::Vector3d(0.0,0.0,0.0);
-        vel_drone_fcu_target    = Eigen::Vector3d(0.0,0.0,0.0);
-        accel_drone_fcu_target  = Eigen::Vector3d(0.0,0.0,0.0);
-        q_fcu_target            = Eigen::Quaterniond(0.0,0.0,0.0,0.0);
-        euler_fcu_target        = Eigen::Vector3d(0.0,0.0,0.0);
-        rates_fcu_target        = Eigen::Vector3d(0.0,0.0,0.0);
-        Thrust_target           = 0.0;
-
-        // 【订阅】无人机期望位置/速度/加速度 坐标系:ENU系
-        //  本话题来自飞控(通过Mavros功能包 /plugins/setpoint_raw.cpp读取), 对应Mavlink消息为POSITION_TARGET_LOCAL_NED, 对应的飞控中的uORB消息为vehicle_local_position_setpoint.msg
-        position_target_sub = command_nh.subscribe<mavros_msgs::PositionTarget>(uav_name + "/mavros/setpoint_raw/target_local", 10, &command_to_mavros::pos_target_cb,this);
-
-        // 【订阅】无人机期望角度/角速度 坐标系:ENU系
-        //  本话题来自飞控(通过Mavros功能包 /plugins/setpoint_raw.cpp读取), 对应Mavlink消息为ATTITUDE_TARGET (#83), 对应的飞控中的uORB消息为vehicle_attitude_setpoint.msg
-        attitude_target_sub = command_nh.subscribe<mavros_msgs::AttitudeTarget>(uav_name + "/mavros/setpoint_raw/target_attitude", 10, &command_to_mavros::att_target_cb,this);
-
-        // 【订阅】无人机底层控制量（Mx My Mz 及 F） [0][1][2][3]分别对应 roll pitch yaw控制量 及 油门推力
-        //  本话题来自飞控(通过Mavros功能包 /plugins/actuator_control.cpp读取), 对应Mavlink消息为ACTUATOR_CONTROL_TARGET, 对应的飞控中的uORB消息为actuator_controls.msg
-        actuator_target_sub = command_nh.subscribe<mavros_msgs::ActuatorControl>(uav_name + "/mavros/target_actuator_control", 10, &command_to_mavros::actuator_target_cb,this);
-
-        // 【发布】位置/速度/加速度期望值 坐标系 ENU系
-        //  本话题要发送至飞控(通过Mavros功能包 /plugins/setpoint_raw.cpp发送), 对应Mavlink消息为SET_POSITION_TARGET_LOCAL_NED (#84), 对应的飞控中的uORB消息为position_setpoint_triplet.msg
-        setpoint_raw_local_pub = command_nh.advertise<mavros_msgs::PositionTarget>(uav_name + "/mavros/setpoint_raw/local", 10);
-
-        // 【发布】角度/角速度期望值 坐标系 ENU系
-        //  本话题要发送至飞控(通过Mavros功能包 /plugins/setpoint_raw.cpp发送), 对应Mavlink消息为SET_ATTITUDE_TARGET (#82), 对应的飞控中的uORB消息为vehicle_attitude_setpoint.msg（角度） 或vehicle_rates_setpoint.msg（角速度）
-        setpoint_raw_attitude_pub = command_nh.advertise<mavros_msgs::AttitudeTarget>(uav_name + "/mavros/setpoint_raw/attitude", 10);
-
-        // 【发布】底层控制量（Mx My Mz 及 F） [0][1][2][3]分别对应 roll pitch yaw控制量 及 油门推力 注意 这里是NED系的！！
-        //  本话题要发送至飞控(通过Mavros功能包 /plugins/actuator_control.cpp发送), 对应Mavlink消息为SET_ACTUATOR_CONTROL_TARGET, 对应的飞控中的uORB消息为actuator_controls.msg
-        actuator_setpoint_pub = command_nh.advertise<mavros_msgs::ActuatorControl>(uav_name + "/mavros/actuator_control", 10);
-
-        // 【服务】解锁/上锁
-        //  本服务通过Mavros功能包 /plugins/command.cpp 实现
-        arming_client = command_nh.serviceClient<mavros_msgs::CommandBool>(uav_name + "/mavros/cmd/arming");
-
-        // 【服务】修改系统模式
-        //  本服务通过Mavros功能包 /plugins/command.cpp 实现
-        set_mode_client = command_nh.serviceClient<mavros_msgs::SetMode>(uav_name + "/mavros/set_mode");
-    }
-
-    string uav_name;
     //Target pos of the drone [from fcu]
     Eigen::Vector3d pos_drone_fcu_target;
     //Target vel of the drone [from fcu]
@@ -166,16 +120,50 @@ class command_to_mavros
     ros::ServiceClient set_mode_client;
 
     //Idle. Do nothing.
-    void idle();
+    inline void idle(){
+        mavros_msgs::PositionTarget pos_setpoint;
+
+        //飞控如何接收该信号请见mavlink_receiver.cpp
+        //飞控如何执行该指令请见FlightTaskOffboard.cpp
+        pos_setpoint.type_mask = 0x4000;
+
+        setpoint_raw_local_pub.publish(pos_setpoint);
+    };
 
     //px4 takeoff
-    void takeoff();
+    inline void takeoff(){
+        mavros_msgs::PositionTarget pos_setpoint;
+
+        //飞控如何接收该信号请见mavlink_receiver.cpp
+        //飞控如何执行该指令请见FlightTaskOffboard.cpp
+        //需要在QGC设置起飞高度
+        pos_setpoint.type_mask = 0x1000;
+
+        setpoint_raw_local_pub.publish(pos_setpoint);
+    };
 
     //px4 loiter
-    void loiter();
+    inline void loiter(){
+        mavros_msgs::PositionTarget pos_setpoint;
+
+        //飞控如何接收该信号请见mavlink_receiver.cpp
+        //飞控如何执行该指令请见FlightTaskOffboard.cpp
+        pos_setpoint.type_mask = 0x3000;
+
+        setpoint_raw_local_pub.publish(pos_setpoint);
+    };
 
     // px4 land
-    void land();
+    inline void land(){
+        mavros_msgs::PositionTarget pos_setpoint;
+
+        //飞控如何接收该信号请见mavlink_receiver.cpp
+        //飞控如何执行该指令请见FlightTaskOffboard.cpp
+        //需要在QGC设置降落速度
+        pos_setpoint.type_mask = 0x2000;
+
+        setpoint_raw_local_pub.publish(pos_setpoint);
+    };
 
     //发送位置期望值至飞控（输入：期望xyz,期望yaw）
     void send_pos_setpoint(const Eigen::Vector3d& pos_sp, float yaw_sp);
@@ -206,7 +194,6 @@ class command_to_mavros
     void send_actuator_setpoint(const Eigen::Vector4d& actuator_sp);
 
     private:
-
         ros::NodeHandle command_nh;
 
         ros::Subscriber position_target_sub;
@@ -242,55 +229,7 @@ class command_to_mavros
         {
             actuator_target = *msg;
         }
-
-
 };
-
-void command_to_mavros::takeoff()
-{
-    mavros_msgs::PositionTarget pos_setpoint;
-
-    //飞控如何接收该信号请见mavlink_receiver.cpp
-    //飞控如何执行该指令请见FlightTaskOffboard.cpp
-    //需要在QGC设置起飞高度
-    pos_setpoint.type_mask = 0x1000;
-
-    setpoint_raw_local_pub.publish(pos_setpoint);
-}
-
-void command_to_mavros::land()
-{
-    mavros_msgs::PositionTarget pos_setpoint;
-
-    //飞控如何接收该信号请见mavlink_receiver.cpp
-    //飞控如何执行该指令请见FlightTaskOffboard.cpp
-    //需要在QGC设置降落速度
-    pos_setpoint.type_mask = 0x2000;
-
-    setpoint_raw_local_pub.publish(pos_setpoint);
-}
-
-void command_to_mavros::loiter()
-{
-    mavros_msgs::PositionTarget pos_setpoint;
-
-    //飞控如何接收该信号请见mavlink_receiver.cpp
-    //飞控如何执行该指令请见FlightTaskOffboard.cpp
-    pos_setpoint.type_mask = 0x3000;
-
-    setpoint_raw_local_pub.publish(pos_setpoint);
-}
-
-void command_to_mavros::idle()
-{
-    mavros_msgs::PositionTarget pos_setpoint;
-
-    //飞控如何接收该信号请见mavlink_receiver.cpp
-    //飞控如何执行该指令请见FlightTaskOffboard.cpp
-    pos_setpoint.type_mask = 0x4000;
-
-    setpoint_raw_local_pub.publish(pos_setpoint);
-}
 
 //发送位置期望值至飞控（输入：期望xyz,期望yaw）
 void command_to_mavros::send_pos_setpoint(const Eigen::Vector3d& pos_sp, float yaw_sp)
@@ -310,11 +249,6 @@ void command_to_mavros::send_pos_setpoint(const Eigen::Vector3d& pos_sp, float y
     pos_setpoint.yaw = yaw_sp;
 
     setpoint_raw_local_pub.publish(pos_setpoint);
-
-    // 检查飞控是否收到控制量
-    // cout <<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>command_to_mavros<<<<<<<<<<<<<<<<<<<<<<<<<<<" <<endl;
-    // cout << "Pos_target [X Y Z] : " << pos_drone_fcu_target[0] << " [ m ] "<< pos_drone_fcu_target[1]<<" [ m ] "<<pos_drone_fcu_target[2]<<" [ m ] "<<endl;
-    // cout << "Yaw_target : " << euler_fcu_target[2] * 180/M_PI<<" [deg] "<<endl;
 }
 
 //发送速度期望值至飞控（输入：期望vxvyvz,期望yaw）
@@ -333,11 +267,6 @@ void command_to_mavros::send_vel_setpoint(const Eigen::Vector3d& vel_sp, float y
     pos_setpoint.yaw = yaw_sp;
 
     setpoint_raw_local_pub.publish(pos_setpoint);
-    
-    // 检查飞控是否收到控制量
-    // cout <<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>command_to_mavros<<<<<<<<<<<<<<<<<<<<<<<<<<<" <<endl;
-    // cout << "Vel_target [X Y Z] : " << vel_drone_fcu_target[0] << " [m/s] "<< vel_drone_fcu_target[1]<<" [m/s] "<<vel_drone_fcu_target[2]<<" [m/s] "<<endl;
-    // cout << "Yaw_target : " << euler_fcu_target[2] * 180/M_PI<<" [deg] "<<endl;
 }
 
 //发送速度期望值至飞控（机体系）（输入：期望vxvyvz,期望yaw）
@@ -358,11 +287,6 @@ void command_to_mavros::send_vel_setpoint_body(const Eigen::Vector3d& vel_sp, fl
     pos_setpoint.yaw = yaw_sp;
 
     setpoint_raw_local_pub.publish(pos_setpoint);
-
-    // // 检查飞控是否收到控制量
-    // cout <<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>command_to_mavros<<<<<<<<<<<<<<<<<<<<<<<<<<<" <<endl;
-    // cout << "Vel_target [X Y Z] : " << vel_drone_fcu_target[0] << " [m/s] "<< vel_drone_fcu_target[1]<<" [m/s] "<<vel_drone_fcu_target[2]<<" [m/s] "<<endl;
-    // cout << "Yaw_target : " << euler_fcu_target[2] * 180/M_PI<<" [deg] "<<endl;
 }
 
 void command_to_mavros::send_vel_xy_pos_z_setpoint(const Eigen::Vector3d& state_sp, float yaw_sp)
@@ -382,11 +306,6 @@ void command_to_mavros::send_vel_xy_pos_z_setpoint(const Eigen::Vector3d& state_
     pos_setpoint.yaw = yaw_sp;
 
     setpoint_raw_local_pub.publish(pos_setpoint);
-    
-    // 检查飞控是否收到控制量
-    // cout <<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>command_to_mavros<<<<<<<<<<<<<<<<<<<<<<<<<<<" <<endl;
-    // cout << "Vel_target [X Y Z] : " << vel_drone_fcu_target[0] << " [m/s] "<< vel_drone_fcu_target[1]<<" [m/s] "<<vel_drone_fcu_target[2]<<" [m/s] "<<endl;
-    // cout << "Yaw_target : " << euler_fcu_target[2] * 180/M_PI<<" [deg] "<<endl;
 }
 
 void command_to_mavros::send_pos_vel_xyz_setpoint(const Eigen::Vector3d& pos_sp, const Eigen::Vector3d& vel_sp, float yaw_sp)
@@ -428,12 +347,6 @@ void command_to_mavros::send_acc_xyz_setpoint(const Eigen::Vector3d& accel_sp, f
     pos_setpoint.yaw = yaw_sp;
 
     setpoint_raw_local_pub.publish(pos_setpoint);
-
-    // 检查飞控是否收到控制量
-    // cout <<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>command_to_mavros<<<<<<<<<<<<<<<<<<<<<<<<<<<" <<endl;
-    // cout << "Acc_target [X Y Z] : " << accel_drone_fcu_target[0] << " [m/s^2] "<< accel_drone_fcu_target[1]<<" [m/s^2] "<<accel_drone_fcu_target[2]<<" [m/s^2] "<<endl;
-    // cout << "Yaw_target : " << euler_fcu_target[2] * 180/M_PI<<" [deg] "<<endl;
-
 }
 
 //发送角度期望值至飞控（输入：期望角度-四元数,期望推力）
@@ -454,11 +367,6 @@ void command_to_mavros::send_attitude_setpoint(const easondrone_msgs::AttitudeRe
     att_setpoint.thrust = _AttitudeReference.desired_throttle;
 
     setpoint_raw_attitude_pub.publish(att_setpoint);
-
-    // 检查飞控是否收到控制量
-    // cout <<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>command_to_mavros<<<<<<<<<<<<<<<<<<<<<<<<<<<" <<endl;
-    // cout << "Att_target [R P Y] : " << euler_fcu_target[0] * 180/M_PI <<" [deg] "<<euler_fcu_target[1] * 180/M_PI << " [deg] "<< euler_fcu_target[2] * 180/M_PI<<" [deg] "<<endl;
-    // cout << "Thr_target [0 - 1] : " << Thrust_target <<endl;
 }
 
 //发送角度期望值至飞控（输入：期望角速度,期望推力）
@@ -478,11 +386,6 @@ void command_to_mavros::send_attitude_rate_setpoint(const Eigen::Vector3d& attit
     att_setpoint.thrust = thrust_sp;
 
     setpoint_raw_attitude_pub.publish(att_setpoint);
-
-    // 检查飞控是否收到控制量
-    // cout <<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>command_to_mavros<<<<<<<<<<<<<<<<<<<<<<<<<<<" <<endl;
-    // cout << "Att_rate_target [R P Y] : " << rates_fcu_target[0] * 180/M_PI <<" [deg/s] "<<rates_fcu_target[1] * 180/M_PI << " [deg/s] "<< rates_fcu_target[2] * 180/M_PI<<" [deg/s] "<<endl;
-    // cout << "Thr_target [0 - 1] : " << Thrust_target <<endl;
 }
 
 //发送底层至飞控（输入：MxMyMz,期望推力）
@@ -501,17 +404,6 @@ void command_to_mavros::send_actuator_setpoint(const Eigen::Vector4d& actuator_s
     actuator_setpoint.controls[7] = 0.0;
 
     actuator_setpoint_pub.publish(actuator_setpoint);
-
-    // // 检查飞控是否收到控制量
-    // cout <<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>command_to_mavros<<<<<<<<<<<<<<<<<<<<<<<<<<<" <<endl;
-    // //ned to enu
-    // cout << "actuator_target [0 1 2 3] : " << actuator_target.controls[0] << " [ ] "<< -actuator_target.controls[1] <<" [ ] "<<-actuator_target.controls[2]<<" [ ] "<<actuator_target.controls[3] <<" [ ] "<<endl;
-
-    // cout << "actuator_target [4 5 6 7] : " << actuator_target.controls[4] << " [ ] "<< actuator_target.controls[5] <<" [ ] "<<actuator_target.controls[6]<<" [ ] "<<actuator_target.controls[7] <<" [ ] "<<endl;
-
 }
 
-
 #endif
-
-
