@@ -17,7 +17,6 @@
 #include <geometry_msgs/TwistStamped.h>
 #include <sensor_msgs/Imu.h>
 
-#include "state_from_mavros.h"
 #include "control_utils.h"
 #include "control_common.h"
 #include "Position_Controller/pos_controller_cascade_PID.h"
@@ -27,6 +26,8 @@
 #include "Position_Controller/pos_controller_Passivity.h"
 
 #define NODE_NAME "px4ctrl"
+#define TRA_WINDOW 1000
+#define dt 0.02
 
 using namespace std;
 
@@ -60,21 +61,21 @@ easondrone_msgs::ControlCommand Command_Last;                     //无人机上
 easondrone_msgs::ControlOutput _ControlOutput;
 easondrone_msgs::AttitudeReference _AttitudeReference;           //位置控制器输出，即姿态环参考量
 
-float dt = 0.02;
-
 Eigen::Vector3d throttle_sp;
 
+std::vector<geometry_msgs::PoseStamped> posehistory_vector_;
+
 ros::Subscriber Command_sub, station_command_sub, drone_state_sub, mavros_state_sub_, odom_sub_;
-ros::Publisher att_ref_pub, setpoint_raw_attitude_pub_;
+ros::Publisher att_ref_pub, setpoint_raw_attitude_pub_, trajectory_pub_;
 ros::ServiceClient set_mode_client_, arming_client_;
 
 bool check_safety(){
-    if (_DroneState.position[0] <= geo_fence_x[0] ||
-        _DroneState.position[0] >= geo_fence_x[1] ||
-        _DroneState.position[1] <= geo_fence_y[0] ||
-        _DroneState.position[1] >= geo_fence_y[1] ||
-        _DroneState.position[2] <= geo_fence_z[0] ||
-        _DroneState.position[2] >= geo_fence_z[1]){
+    if (odom_pos_(0) <= geo_fence_x[0] ||
+        odom_pos_(0) >= geo_fence_x[1] ||
+        odom_pos_(1) <= geo_fence_y[0] ||
+        odom_pos_(1) >= geo_fence_y[1] ||
+        odom_pos_(2) <= geo_fence_z[0] ||
+        odom_pos_(2) >= geo_fence_z[1]){
 
         cout << "[control] Out of geo fence, the drone is landing" << endl;
 
@@ -222,6 +223,31 @@ void odometryCallback(const nav_msgs::OdometryConstPtr &msg){
     odom_orient_.z() = msg->pose.pose.orientation.z;
 
     have_odom_ = true;
+
+    // 发布无人机运动轨迹，用于rviz显示
+    geometry_msgs::PoseStamped drone_pos;
+    drone_pos.header.stamp = ros::Time::now();
+    drone_pos.header.frame_id = "map";
+    drone_pos.pose.position.x = odom_pos_(0);
+    drone_pos.pose.position.y = odom_pos_(0);
+    drone_pos.pose.position.z = odom_pos_(0);
+
+    drone_pos.pose.orientation.w = msg->pose.pose.orientation.w;
+    drone_pos.pose.orientation.x = msg->pose.pose.orientation.x;
+    drone_pos.pose.orientation.y = msg->pose.pose.orientation.y;
+    drone_pos.pose.orientation.z = msg->pose.pose.orientation.z;
+
+    //发布无人机的位姿 和 轨迹 用作rviz中显示
+    posehistory_vector_.insert(posehistory_vector_.begin(), drone_pos);
+    if (posehistory_vector_.size() > TRA_WINDOW){
+        posehistory_vector_.pop_back();
+    }
+
+    nav_msgs::Path drone_trajectory;
+    drone_trajectory.header.stamp = ros::Time::now();
+    drone_trajectory.header.frame_id = "map";
+    drone_trajectory.poses = posehistory_vector_;
+    trajectory_pub_.publish(drone_trajectory);
 }
 
 #endif //EASONDRONE_CONTROL_PX4CTRL_H

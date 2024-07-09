@@ -3,7 +3,7 @@
  *
  * Author: Qyp
 * Maintainer: Eason Hua
-* Update Time: 2024.5.30
+* Update Time: 2024.07.09
  *
  * 说明: mavros位置估计程序
  *      1. 订阅激光SLAM (cartorgrapher_ros节点) 发布的位置信息,从laser坐标系转换至NED坐标系
@@ -16,19 +16,20 @@
 
 //头文件
 #include <ros/ros.h>
-#include <nav_msgs/Odometry.h>
-#include <geometry_msgs/TransformStamped.h>
 #include <iostream>
 #include <Eigen/Eigen>
 #include <Eigen/Dense>
-#include "state_from_mavros.h"
+
+#include <nav_msgs/Odometry.h>
+#include <geometry_msgs/TransformStamped.h>
+#include <tf2_msgs/TFMessage.h>
+
 #include "math_utils.h"
 #include "control_utils.h"
 #include "message_utils.h"
 
 using namespace std;
 
-#define TRA_WINDOW 1000
 #define TIMEOUT_MAX 0.05
 #define NODE_NAME "pos_estimator"
 
@@ -83,12 +84,9 @@ ros::Publisher trajectory_pub;
 
 easondrone_msgs::Message message;
 easondrone_msgs::DroneState Drone_State;
-//nav_msgs::Odometry Drone_odom;
-std::vector<geometry_msgs::PoseStamped> posehistory_vector_;
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>函数声明<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 void send_to_fcu();
-void pub_to_nodes(easondrone_msgs::DroneState State_from_fcu);
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>回调函数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 void vicon_cb(const geometry_msgs::TransformStamped::ConstPtr& msg){
@@ -264,17 +262,23 @@ int main(int argc, char **argv){
     nh.param<float>("offset_roll", roll_offset, 0.0);
 
     // VICON
-    ros::Subscriber vicon_sub = nh.subscribe<geometry_msgs::TransformStamped>("/vicon/" + subject_name + "/" + segment_name, 1000, vicon_cb);
+    ros::Subscriber vicon_sub = nh.subscribe<geometry_msgs::TransformStamped>
+            ("/vicon/" + subject_name + "/" + segment_name, 1000, vicon_cb);
     //  【订阅】t265估计位置
-    ros::Subscriber t265_sub = nh.subscribe<nav_msgs::Odometry>("/t265/odom/sample", 100, t265_cb);
+    ros::Subscriber t265_sub = nh.subscribe<nav_msgs::Odometry>
+            ("/t265/odom/sample", 100, t265_cb);
     // 【订阅】gazebo仿真真值
-    ros::Subscriber gazebo_sub = nh.subscribe<nav_msgs::Odometry>("/mavros/local_position/odom", 100, gazebo_cb);
+    ros::Subscriber gazebo_sub = nh.subscribe<nav_msgs::Odometry>
+            ("/mavros/local_position/odom", 100, gazebo_cb);
     // 【订阅】SLAM估计位姿
-    ros::Subscriber slam_sub = nh.subscribe<geometry_msgs::PoseStamped>("/slam/pose", 100, slam_cb);
+    ros::Subscriber slam_sub = nh.subscribe<geometry_msgs::PoseStamped>
+            ("/slam/pose", 100, slam_cb);
     // 【订阅】cartographer估计位置
-    ros::Subscriber laser_sub = nh.subscribe<tf2_msgs::TFMessage>("/tf", 100, laser_cb);
+    ros::Subscriber laser_sub = nh.subscribe<tf2_msgs::TFMessage>
+            ("/tf", 100, laser_cb);
     // 【订阅】optitrack估计位置
-    ros::Subscriber optitrack_sub = nh.subscribe<geometry_msgs::PoseStamped>("/vrpn_client_node/"+ object_name + "/pose", 100, optitrack_cb);
+    ros::Subscriber optitrack_sub = nh.subscribe<geometry_msgs::PoseStamped>
+            ("/vrpn_client_node/"+ object_name + "/pose", 100, optitrack_cb);
 
     // 【发布】无人机位置和偏航角 坐标系 ENU系
     //  本话题要发送飞控(通过mavros_extras/src/plugins/vision_pose_estimate.cpp发送),
@@ -285,11 +289,6 @@ int main(int argc, char **argv){
     drone_state_pub = nh.advertise<easondrone_msgs::DroneState>("/easondrone/drone_state", 10);
     //　发布】无人机odometry，用于RVIZ显示
     odom_pub = nh.advertise<nav_msgs::Odometry>("/easondrone/drone_odom", 10);
-    // 【发布】无人机移动轨迹，用于RVIZ显示
-    trajectory_pub = nh.advertise<nav_msgs::Path>("/easondrone/drone_trajectory", 10);
-
-    // 用于与mavros通讯的类，通过mavros接收来至飞控的消息【飞控->mavros->本程序】
-    state_from_mavros _state_from_mavros;
 
     // 频率
     ros::Rate rate(rate_hz_);
@@ -303,9 +302,6 @@ int main(int argc, char **argv){
 
         // 将采集的机载设备的定位信息及偏航角信息发送至飞控，根据参数input_source选择定位信息来源
         send_to_fcu();
-
-        // 发布无人机状态至其他节点，如px4_pos_controller.cpp节点
-        pub_to_nodes(_state_from_mavros._DroneState);
 
         rate.sleep();
     }
@@ -377,58 +373,4 @@ void send_to_fcu(){
 
     vision.header.stamp = ros::Time::now();
     vision_pub.publish(vision);
-}
-
-void pub_to_nodes(easondrone_msgs::DroneState State_from_fcu){
-    // 发布无人机状态，具体内容参见 easondrone_msgs::DroneState
-    Drone_State = State_from_fcu;
-    Drone_State.header.stamp = ros::Time::now();
-    // 户外情况，使用相对高度
-    if(input_source == 9){
-        Drone_State.position[2]  = Drone_State.rel_alt;
-    }
-    drone_state_pub.publish(Drone_State);
-
-    // 发布无人机当前odometry,用于导航及rviz显示
-    nav_msgs::Odometry Drone_odom;
-    Drone_odom.header.stamp = ros::Time::now();
-    Drone_odom.header.frame_id = "map";
-    Drone_odom.child_frame_id = "base_link";
-
-    Drone_odom.pose.pose.position.x = Drone_State.position[0];
-    Drone_odom.pose.pose.position.y = Drone_State.position[1];
-    Drone_odom.pose.pose.position.z = Drone_State.position[2];
-
-    // 导航算法规定 高度不能小于0
-    if (Drone_odom.pose.pose.position.z <= 0){
-        Drone_odom.pose.pose.position.z = 0.01;
-    }
-
-    Drone_odom.pose.pose.orientation = Drone_State.attitude_q;
-    Drone_odom.twist.twist.linear.x = Drone_State.velocity[0];
-    Drone_odom.twist.twist.linear.y = Drone_State.velocity[1];
-    Drone_odom.twist.twist.linear.z = Drone_State.velocity[2];
-    odom_pub.publish(Drone_odom);
-
-    // 发布无人机运动轨迹，用于rviz显示
-    geometry_msgs::PoseStamped drone_pos;
-    drone_pos.header.stamp = ros::Time::now();
-    drone_pos.header.frame_id = "map";
-    drone_pos.pose.position.x = Drone_State.position[0];
-    drone_pos.pose.position.y = Drone_State.position[1];
-    drone_pos.pose.position.z = Drone_State.position[2];
-
-    drone_pos.pose.orientation = Drone_State.attitude_q;
-
-    //发布无人机的位姿 和 轨迹 用作rviz中显示
-    posehistory_vector_.insert(posehistory_vector_.begin(), drone_pos);
-    if (posehistory_vector_.size() > TRA_WINDOW){
-        posehistory_vector_.pop_back();
-    }
-
-    nav_msgs::Path drone_trajectory;
-    drone_trajectory.header.stamp = ros::Time::now();
-    drone_trajectory.header.frame_id = "map";
-    drone_trajectory.poses = posehistory_vector_;
-    trajectory_pub.publish(drone_trajectory);
 }

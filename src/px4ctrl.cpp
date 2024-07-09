@@ -5,7 +5,7 @@
 * Maintainer: Eason Hua
 * Update Time: 2024.07.09
 *
-* Introduction:  PX4 Position Controller 
+* Introduction:
 *         1. 从应用层节点订阅/easondrone/control_command话题（ControlCommand.msg），接收来自上层的控制指令。
 *         2. 从px4_pos_estimator.cpp节点订阅无人机的状态信息（DroneState.msg）。
 *         3. 调用位置环控制算法，计算加速度控制量，并转换为期望角度。（可选择cascade_PID, PID, UDE, passivity-UDE, NE+UDE位置控制算法）
@@ -57,6 +57,10 @@ int main(int argc, char **argv){
     //  本话题要发送至飞控(通过Mavros功能包 /plugins/setpoint_raw.cpp发送), 对应Mavlink消息为SET_ATTITUDE_TARGET (#82), 对应的飞控中的uORB消息为vehicle_attitude_setpoint.msg（角度） 或vehicle_rates_setpoint.msg（角速度）
     setpoint_raw_attitude_pub_ = nh.advertise<mavros_msgs::AttitudeTarget>
             ("/mavros/setpoint_raw/attitude", 10);
+    // 【发布】无人机移动轨迹，用于RVIZ显示
+    trajectory_pub_ = nh.advertise<nav_msgs::Path>
+            ("/easondrone/drone_trajectory", 10);
+
 
     // 【服务】解锁/上锁 本服务通过Mavros功能包 /plugins/command.cpp 实现
     arming_client_ = nh.serviceClient<mavros_msgs::CommandBool>
@@ -110,8 +114,9 @@ int main(int argc, char **argv){
     while(ros::ok()){
         // 当前时间
         cur_time = station_utils::get_time_in_sec(begin_time);
-        dt = cur_time - last_time;
-        dt = constrain_function2(dt, 0.008, 0.012);
+        // TODO: dangerous
+//        dt = cur_time - last_time;
+//        dt = constrain_function2(dt, 0.008, 0.012);
         last_time = cur_time;
 
             if(controller_type_ == "default"){
