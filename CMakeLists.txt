@@ -61,10 +61,10 @@ include_directories(
 ##      声明可执行cpp文件     ##
 ###############################
 
-##px4_pos_controller.cpp
-add_executable(px4_pos_controller src/px4_pos_controller.cpp)
-add_dependencies(px4_pos_controller ${PROJECT_NAME}_gencpp)
-target_link_libraries(px4_pos_controller ${catkin_LIBRARIES})
+##px4ctrl.cpp
+add_executable(px4ctrl src/px4ctrl.cpp)
+add_dependencies(px4ctrl ${PROJECT_NAME}_gencpp)
+target_link_libraries(px4ctrl ${catkin_LIBRARIES})
 
 ##px4_pos_estimator.cpp
 add_library(OptiTrackFeedbackRigidBody src/lib/OptiTrackFeedBackRigidBody.cpp)

@@ -41,6 +41,8 @@ roslaunch easondrone_control control_iris_indoor.launch
 
 ## Release Note
 
+- v3.4.4:
+  - update `px4ctrl` to "cpp + h" format
 - v3.4.3: 
   - remove: move along with trajectory
   - remove: move publisher to rviz
