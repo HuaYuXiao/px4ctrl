@@ -38,6 +38,13 @@ Eigen::Vector2f geo_fence_z;
 Eigen::Vector3d Takeoff_position;                              // 起飞位置
 easondrone_msgs::DroneState _DroneState;                          //无人机状态量
 mavros_msgs::State mavros_state;
+Eigen::Vector3d odom_pos_, odom_vel_, odom_acc_; // odometry state
+Eigen::Quaterniond odom_orient_;
+bool have_odom_;
+
+//变量声明 - 服务
+mavros_msgs::SetMode offb_set_mode;
+mavros_msgs::CommandBool arm_cmd;
 
 easondrone_msgs::ControlCommand Command_Now;                      //无人机当前执行命令
 easondrone_msgs::ControlCommand Command_Last;                     //无人机上一条执行命令
@@ -46,9 +53,11 @@ easondrone_msgs::AttitudeReference _AttitudeReference;           //位置控制�
 
 float dt = 0.02;
 
-ros::Publisher att_ref_pub;
-
 Eigen::Vector3d throttle_sp;
+
+ros::Subscriber Command_sub, station_command_sub, drone_state_sub, mavros_state_sub_, odom_sub_;
+ros::Publisher att_ref_pub;
+ros::ServiceClient set_mode_client, arming_client;
 
 bool check_safety(){
     if (_DroneState.position[0] <= geo_fence_x[0] ||
@@ -180,6 +189,30 @@ void drone_state_cb(const easondrone_msgs::DroneState::ConstPtr& msg){
     _DroneState = *msg;
 
     _DroneState.time_from_start = cur_time;
+}
+
+void mavros_state_cb(const mavros_msgs::State::ConstPtr &msg){
+    mavros_state = *msg;
+}
+
+// 保存无人机当前里程计信息，包括位置、速度和姿态
+void odometryCallback(const nav_msgs::OdometryConstPtr &msg){
+    odom_pos_ << msg->pose.pose.position.x,
+            msg->pose.pose.position.y,
+            msg->pose.pose.position.z;
+
+    odom_vel_ << msg->twist.twist.linear.x,
+            msg->twist.twist.linear.y,
+            msg->twist.twist.linear.z;
+
+    //odom_acc_ = estimateAcc( msg );
+
+    odom_orient_.w() = msg->pose.pose.orientation.w;
+    odom_orient_.x() = msg->pose.pose.orientation.x;
+    odom_orient_.y() = msg->pose.pose.orientation.y;
+    odom_orient_.z() = msg->pose.pose.orientation.z;
+
+    have_odom_ = true;
 }
 
 #endif //EASONDRONE_CONTROL_PX4CTRL_H

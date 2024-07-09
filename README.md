@@ -41,6 +41,8 @@ roslaunch easondrone_control control_iris_indoor.launch
 
 ## Release Note
 
+- v3.5.0:
+  - implement: OFFBOARD & arming
 - v3.4.4:
   - update `px4ctrl` to "cpp + h" format
 - v3.4.3: 
