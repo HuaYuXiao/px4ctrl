@@ -42,7 +42,7 @@ roslaunch easondrone_control control_iris_indoor.launch
 ## Release Note
 
 - v3.5.0:
-  - implement: OFFBOARD & arming
+  - replace `_command_to_mavros` with `setpoint_raw_attitude_pub_`, `arming_client_`, `set_mode_client_`
 - v3.4.4:
   - update `px4ctrl` to "cpp + h" format
 - v3.4.3: 

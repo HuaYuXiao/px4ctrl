@@ -7,8 +7,17 @@
 
 #include <ros/ros.h>
 
+#include <mavros_msgs/CommandBool.h>
+#include <mavros_msgs/SetMode.h>
+#include <mavros_msgs/State.h>
+#include <mavros_msgs/AttitudeTarget.h>
+#include <mavros_msgs/PositionTarget.h>
+#include <mavros_msgs/ActuatorControl.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/TwistStamped.h>
+#include <sensor_msgs/Imu.h>
+
 #include "state_from_mavros.h"
-#include "command_to_mavros.h"
 #include "control_utils.h"
 #include "control_common.h"
 #include "Position_Controller/pos_controller_cascade_PID.h"
@@ -56,8 +65,8 @@ float dt = 0.02;
 Eigen::Vector3d throttle_sp;
 
 ros::Subscriber Command_sub, station_command_sub, drone_state_sub, mavros_state_sub_, odom_sub_;
-ros::Publisher att_ref_pub;
-ros::ServiceClient set_mode_client, arming_client;
+ros::Publisher att_ref_pub, setpoint_raw_attitude_pub_;
+ros::ServiceClient set_mode_client_, arming_client_;
 
 bool check_safety(){
     if (_DroneState.position[0] <= geo_fence_x[0] ||

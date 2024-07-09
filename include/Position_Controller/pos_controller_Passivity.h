@@ -12,7 +12,6 @@
 
 #include <Eigen/Eigen>
 #include <math.h>
-#include <command_to_mavros.h>
 #include <control_utils.h>
 #include <math_utils.h>
 #include <Filter/LowPassFilter.h>

@@ -12,7 +12,6 @@
 #define POS_CONTROLLER_PID_H
 
 #include <math.h>
-#include <command_to_mavros.h>
 #include <control_utils.h>
 #include <easondrone_msgs/DroneState.h>
 #include <easondrone_msgs/PositionReference.h>
