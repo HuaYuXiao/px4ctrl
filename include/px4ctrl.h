@@ -1,5 +1,6 @@
 //
 // Created by hyx020222 on 7/9/24.
+// last updated on 2024.07.10
 //
 
 #ifndef EASONDRONE_CONTROL_PX4CTRL_H
@@ -30,7 +31,6 @@ using namespace std;
 float rate_hz_;
 
 float cur_time;                                             //程序运行时间
-string controller_type_;                                      //控制器类型
 float Takeoff_height_;                                       //默认起飞高度
 float Disarm_height_;                                        //自动上锁高度
 float Land_speed_;                                           //降落速度
@@ -44,9 +44,11 @@ Eigen::Vector2f geo_fence_z;
 Eigen::Vector3d Takeoff_position;                              // 起飞位置
 easondrone_msgs::DroneState _DroneState;                          //无人机状态量
 mavros_msgs::State mavros_state;
+
+bool have_odom_;
 Eigen::Vector3d odom_pos_, odom_vel_, odom_acc_; // odometry state
 Eigen::Quaterniond odom_orient_;
-bool have_odom_;
+double odom_yaw_;
 
 //变量声明 - 服务
 mavros_msgs::SetMode offb_set_mode;
@@ -219,6 +221,8 @@ void odometryCallback(const nav_msgs::OdometryConstPtr &msg){
     odom_orient_.x() = msg->pose.pose.orientation.x;
     odom_orient_.y() = msg->pose.pose.orientation.y;
     odom_orient_.z() = msg->pose.pose.orientation.z;
+
+    odom_yaw_ = quaternion_to_euler(odom_orient_)[2];
 }
 
 #endif //EASONDRONE_CONTROL_PX4CTRL_H
