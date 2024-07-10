@@ -59,7 +59,8 @@ int main(int argc, char **argv){
     ros::NodeHandle nh;
 
     //　【发布】控制指令
-    move_pub = nh.advertise<easondrone_msgs::ControlCommand>("/easondrone/control_command", 10);
+    move_pub = nh.advertise<easondrone_msgs::ControlCommand>
+            ("/easondrone/control_command", 10);
 
     nh.param<float>("geo_fence/x_min", geo_fence_x[0], -8.0);
     nh.param<float>("geo_fence/x_max", geo_fence_x[1], 8.0);

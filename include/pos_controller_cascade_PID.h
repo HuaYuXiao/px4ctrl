@@ -118,11 +118,56 @@ class pos_controller_cascade_PID{
 
         easondrone_msgs::ControlOutput _ControlOutput;
 
-        //Printf the PID parameter
-        void printf_param();
+        //Printf the PID parameter 【打印参数函数】
+        void printf_param(){
+            cout <<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> PID Parameter <<<<<<<<<<<<<<<<<<<<<<<<<<<" <<endl;
+
+            cout <<"Position Loop:  " <<endl;
+            cout <<"Kp_xy : "<< Kp_xy << endl;
+            cout <<"Kp_z : "<< Kp_z << endl;
+            cout <<"Velocity Loop:  " <<endl;
+            cout <<"Kp_vxvy : "<< Kp_vxvy << endl;
+            cout <<"Kp_vz : "<< Kp_vz << endl;
+            cout <<"Ki_vxvy : "<< Ki_vxvy << endl;
+            cout <<"Ki_vz : "<< Ki_vz << endl;
+            cout <<"Kd_vxvy : "<< Kd_vxvy << endl;
+            cout <<"Kd_vz : "<< Kd_vz << endl;
+
+            cout <<"Limit:  " <<endl;
+            cout <<"MPC_XY_VEL_MAX : "<< MPC_XY_VEL_MAX << endl;
+            cout <<"MPC_Z_VEL_MAX : "<< MPC_Z_VEL_MAX << endl;
+            cout <<"tilt_max : "<< tilt_max << endl;
+            cout <<"MPC_THR_MIN : "<< MPC_THR_MIN << endl;
+            cout <<"MPC_THR_MAX : "<< MPC_THR_MAX << endl;
+            cout <<"Hover_throttle : "<< Hover_throttle << endl;
+        }
 
         //Printf the control result
-        void printf_result();
+        void printf_result(){
+            cout <<">>>>>>>>>>>>>>>>>>>  cascade PID Position Controller <<<<<<<<<<<<<<<<<<" <<endl;
+
+            //固定的浮点显示
+            cout.setf(ios::fixed);
+            //左对齐
+            cout.setf(ios::left);
+            // 强制显示小数点
+            cout.setf(ios::showpoint);
+            // 强制显示符号
+            cout.setf(ios::showpos);
+            cout<<setprecision(2);
+
+            // cout << "delta_time : " << delta_time<< " [s] " <<endl;
+
+            // cout << "Velocity_sp  [X Y Z] : " << vel_setpoint[0] << " [m/s] "<< vel_setpoint[1]<<" [m/s] "<<vel_setpoint[2]<<" [m/s] "<<endl;
+
+            // cout << "Vel_P_output [X Y Z] : " << vel_P_output[0] << " [m/s] "<< vel_P_output[1]<<" [m/s] "<<vel_P_output[2]<<" [m/s] "<<endl;
+
+            // cout << "Vel_I_output [X Y Z] : " << thurst_int[0] << " [m/s] "<< thurst_int[1]<<" [m/s] "<<thurst_int[2]<<" [m/s] "<<endl;
+
+            // cout << "Vel_D_output [X Y Z] : " << vel_D_output[0] << " [m/s] "<< vel_D_output[1]<<" [m/s] "<<vel_D_output[2]<<" [m/s] "<<endl;
+
+            cout << "thrust_sp    [X Y Z] : " << thrust_sp[0] << " [m/s^2] "<< thrust_sp[1]<<" [m/s^2] "<<thrust_sp[2]<<" [m/s^2] "<<endl;
+        }
 
         // Position control main function 
         // [Input: Current state, Reference state, _Move_mode, dt; Output: AttitudeReference;]
@@ -323,53 +368,4 @@ void pos_controller_cascade_PID::cal_vel_error_deriv(const Eigen::Vector3d& erro
     error_vel_dot_last = vel_error_deriv;
 }
 
-void pos_controller_cascade_PID::printf_result(){
-    cout <<">>>>>>>>>>>>>>>>>>>  cascade PID Position Controller <<<<<<<<<<<<<<<<<<" <<endl;
-
-    //固定的浮点显示
-    cout.setf(ios::fixed);
-    //左对齐
-    cout.setf(ios::left);
-    // 强制显示小数点
-    cout.setf(ios::showpoint);
-    // 强制显示符号
-    cout.setf(ios::showpos);
-    cout<<setprecision(2);
-
-    // cout << "delta_time : " << delta_time<< " [s] " <<endl;
-
-    // cout << "Velocity_sp  [X Y Z] : " << vel_setpoint[0] << " [m/s] "<< vel_setpoint[1]<<" [m/s] "<<vel_setpoint[2]<<" [m/s] "<<endl;
-
-    // cout << "Vel_P_output [X Y Z] : " << vel_P_output[0] << " [m/s] "<< vel_P_output[1]<<" [m/s] "<<vel_P_output[2]<<" [m/s] "<<endl;
-
-    // cout << "Vel_I_output [X Y Z] : " << thurst_int[0] << " [m/s] "<< thurst_int[1]<<" [m/s] "<<thurst_int[2]<<" [m/s] "<<endl;
-
-    // cout << "Vel_D_output [X Y Z] : " << vel_D_output[0] << " [m/s] "<< vel_D_output[1]<<" [m/s] "<<vel_D_output[2]<<" [m/s] "<<endl;
-
-    cout << "thrust_sp    [X Y Z] : " << thrust_sp[0] << " [m/s^2] "<< thrust_sp[1]<<" [m/s^2] "<<thrust_sp[2]<<" [m/s^2] "<<endl;
-}
-
-// 【打印参数函数】
-void pos_controller_cascade_PID::printf_param(){
-    cout <<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>PID Parameter <<<<<<<<<<<<<<<<<<<<<<<<<<<" <<endl;
-
-    cout <<"Position Loop:  " <<endl;
-    cout <<"Kp_xy : "<< Kp_xy << endl;
-    cout <<"Kp_z : "<< Kp_z << endl;
-    cout <<"Velocity Loop:  " <<endl;
-    cout <<"Kp_vxvy : "<< Kp_vxvy << endl;
-    cout <<"Kp_vz : "<< Kp_vz << endl;
-    cout <<"Ki_vxvy : "<< Ki_vxvy << endl;
-    cout <<"Ki_vz : "<< Ki_vz << endl;
-    cout <<"Kd_vxvy : "<< Kd_vxvy << endl;
-    cout <<"Kd_vz : "<< Kd_vz << endl;
-
-    cout <<"Limit:  " <<endl;
-    cout <<"MPC_XY_VEL_MAX : "<< MPC_XY_VEL_MAX << endl;
-    cout <<"MPC_Z_VEL_MAX : "<< MPC_Z_VEL_MAX << endl;
-    cout <<"tilt_max : "<< tilt_max << endl;
-    cout <<"MPC_THR_MIN : "<< MPC_THR_MIN << endl;
-    cout <<"MPC_THR_MAX : "<< MPC_THR_MAX << endl;
-    cout <<"Hover_throttle : "<< Hover_throttle << endl;
-}
 #endif

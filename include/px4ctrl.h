@@ -27,7 +27,6 @@ using namespace std;
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>变量声明<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 float rate_hz_;
-
 float cur_time;                                             //程序运行时间
 string controller_type_;                                      //控制器类型
 float Takeoff_height_;                                       //默认起飞高度
@@ -50,6 +49,7 @@ bool have_odom_;
 //变量声明 - 服务
 mavros_msgs::SetMode offb_set_mode;
 mavros_msgs::CommandBool arm_cmd;
+mavros_msgs::AttitudeTarget att_setpoint;
 
 easondrone_msgs::ControlCommand Command_Now;                      //无人机当前执行命令
 easondrone_msgs::ControlCommand Command_Last;                     //无人机上一条执行命令
@@ -61,7 +61,7 @@ Eigen::Vector3d throttle_sp;
 std::vector<geometry_msgs::PoseStamped> posehistory_vector_;
 
 ros::Subscriber Command_sub, station_command_sub, drone_state_sub, mavros_state_sub_, odom_sub_;
-ros::Publisher att_ref_pub, setpoint_raw_attitude_pub_, trajectory_pub_;
+ros::Publisher setpoint_raw_attitude_pub_;
 ros::ServiceClient set_mode_client_, arming_client_;
 
 // 【获取当前时间函数】 单位：秒
@@ -178,20 +178,11 @@ void Command_cb(const easondrone_msgs::ControlCommand::ConstPtr& msg){
     // CommandID必须递增才会被记录
     if( msg->Command_ID  >  Command_Now.Command_ID ){
         Command_Now = *msg;
-    }else{
+    }
+    else{
         cout << "[control] Wrong Command ID" << endl;
         cout << Command_Now << endl;
     }
-
-    // 无人机一旦接受到Disarm指令，则会屏蔽其他指令
-    if(Command_Last.Mode == easondrone_msgs::ControlCommand::Disarm){
-        Command_Now = Command_Last;
-    }
-}
-
-void station_command_cb(const easondrone_msgs::ControlCommand::ConstPtr& msg){
-    Command_Now = *msg;
-    cout << "[control] Get a command from Station" << endl;
 
     // 无人机一旦接受到Disarm指令，则会屏蔽其他指令
     if(Command_Last.Mode == easondrone_msgs::ControlCommand::Disarm){
@@ -227,31 +218,6 @@ void odometryCallback(const nav_msgs::OdometryConstPtr &msg){
     odom_orient_.z() = msg->pose.pose.orientation.z;
 
     have_odom_ = true;
-
-    // 发布无人机运动轨迹，用于rviz显示
-    geometry_msgs::PoseStamped drone_pos;
-    drone_pos.header.stamp = ros::Time::now();
-    drone_pos.header.frame_id = "map";
-    drone_pos.pose.position.x = odom_pos_(0);
-    drone_pos.pose.position.y = odom_pos_(0);
-    drone_pos.pose.position.z = odom_pos_(0);
-
-    drone_pos.pose.orientation.w = msg->pose.pose.orientation.w;
-    drone_pos.pose.orientation.x = msg->pose.pose.orientation.x;
-    drone_pos.pose.orientation.y = msg->pose.pose.orientation.y;
-    drone_pos.pose.orientation.z = msg->pose.pose.orientation.z;
-
-    //发布无人机的位姿 和 轨迹 用作rviz中显示
-    posehistory_vector_.insert(posehistory_vector_.begin(), drone_pos);
-    if (posehistory_vector_.size() > TRA_WINDOW){
-        posehistory_vector_.pop_back();
-    }
-
-    nav_msgs::Path drone_trajectory;
-    drone_trajectory.header.stamp = ros::Time::now();
-    drone_trajectory.header.frame_id = "map";
-    drone_trajectory.poses = posehistory_vector_;
-    trajectory_pub_.publish(drone_trajectory);
 }
 
-#endif //EASONDRONE_CONTROL_PX4CTRL_H
+#endif //PX4CTRL_H

@@ -37,18 +37,30 @@ int main(int argc, char **argv){
     nh.param<float>("geo_fence/z_max", geo_fence_z[1], 3.0);
 
     //【订阅】指令 本话题为任务模块生成的控制指令
-    ros::Subscriber Command_sub = nh.subscribe<easondrone_msgs::ControlCommand>("/easondrone/control_command", 10, Command_cb);
+    ros::Subscriber Command_sub = nh.subscribe<easondrone_msgs::ControlCommand>
+            ("/easondrone/control_command", 10, Command_cb);
     //【订阅】无人机状态 本话题来自px4_pos_estimator.cpp
-    ros::Subscriber drone_state_sub = nh.subscribe<easondrone_msgs::DroneState>("/easondrone/drone_state", 10, drone_state_cb);
+    ros::Subscriber drone_state_sub = nh.subscribe<easondrone_msgs::DroneState>
+            ("/easondrone/drone_state", 10, drone_state_cb);
+    mavros_state_sub_ = nh.subscribe<mavros_msgs::State>
+            ("/mavros/state", 10, mavros_state_cb);
+    odom_sub_ = nh.subscribe
+            ("/mavros/local_position/odom", 10, odometryCallback);
 
-    //【发布】位置控制器的输出量:期望姿态
-    att_ref_pub = nh.advertise<easondrone_msgs::AttitudeReference>("/easondrone/control/attitude_reference", 10);
+    // 【发布】角度/角速度期望值 坐标系 ENU系
+    //  本话题要发送至飞控(通过Mavros功能包 /plugins/setpoint_raw.cpp发送), 对应Mavlink消息为SET_ATTITUDE_TARGET (#82), 对应的飞控中的uORB消息为vehicle_attitude_setpoint.msg（角度） 或vehicle_rates_setpoint.msg（角速度）
+    setpoint_raw_attitude_pub_ = nh.advertise<mavros_msgs::AttitudeTarget>
+            ("/mavros/setpoint_raw/attitude", 10);
+
+    // 【服务】解锁/上锁 本服务通过Mavros功能包 /plugins/command.cpp 实现
+    arming_client_ = nh.serviceClient<mavros_msgs::CommandBool>
+            ("/mavros/cmd/arming");
+    // 【服务】修改系统模式 本服务通过Mavros功能包 /plugins/command.cpp 实现
+    set_mode_client_ = nh.serviceClient<mavros_msgs::SetMode>
+            ("/mavros/set_mode");
 
     // 位置控制一般选取为50Hz，主要取决于位置状态的更新频率
     ros::Rate rate(rate_hz_);
-
-    // 用于与mavros通讯的类，通过mavros发送控制指令至飞控【本程序->mavros->飞控】
-    command_to_mavros _command_to_mavros;
 
     // 位置控制器声明 可以设置自定义位置环控制算法
     pos_controller_cascade_PID pos_controller_cascade_pid;
@@ -67,6 +79,14 @@ int main(int argc, char **argv){
     Command_Now.Command_ID                          = 0;
     Command_Now.Reference_State.Move_mode           = easondrone_msgs::PositionReference::XYZ_POS;
     Command_Now.Reference_State.Move_frame          = easondrone_msgs::PositionReference::ENU_FRAME;
+
+    offb_set_mode.request.custom_mode = "OFFBOARD";
+
+    arm_cmd.request.value = true;
+
+    //Mappings: If any of these bits are set, the corresponding input should be ignored:
+    //bit 1: body roll rate, bit 2: body pitch rate, bit 3: body yaw rate. bit 4-bit 6: reserved, bit 7: throttle, bit 8: attitude
+    att_setpoint.type_mask = 0b00000111;
 
     // 记录启控时间
     ros::Time begin_time = ros::Time::now();
@@ -92,32 +112,33 @@ int main(int argc, char **argv){
 
         switch (Command_Now.Mode){
             // 【Idle】 怠速旋转，此时可以切入offboard模式，但不会起飞。
-            case easondrone_msgs::ControlCommand::Idle:
-                _command_to_mavros.idle();
-
+            case easondrone_msgs::ControlCommand::Idle:{
                 // 设定yaw_ref=999时，切换offboard模式，并解锁
                 if(Command_Now.Reference_State.yaw_ref == 999){
-                    if(_DroneState.mode != "OFFBOARD"){
-                        _command_to_mavros.mode_cmd.request.custom_mode = "OFFBOARD";
-                        _command_to_mavros.set_mode_client.call(_command_to_mavros.mode_cmd);
-                        cout << "[control] Setting to OFFBOARD Mode" << endl;
-                    }else{
-                        cout << "[control] Drone is in OFFBOARD" << endl;
+                    ROS_INFO("FSM_EXEC_STATE: IDLE");
+
+                    if (mavros_state.mode != "OFFBOARD") {
+                        offb_set_mode.request.custom_mode = "OFFBOARD";
+
+                        if (set_mode_client_.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                            ROS_INFO("Offboard enabled");
+                        }
                     }
 
-                    if(!_DroneState.armed){
-                        _command_to_mavros.arm_cmd.request.value = true;
-                        _command_to_mavros.arming_client.call(_command_to_mavros.arm_cmd);
-                        cout << "[control] Arming" << endl;
-                    }else{
-                        cout << "[control] Drone is armed" << endl;
+                    if (!mavros_state.armed) {
+                        arm_cmd.request.value = true;
+
+                        if (arming_client_.call(arm_cmd) && arm_cmd.response.success) {
+                            ROS_INFO("Vehicle armed");
+                        }
                     }
                 }
 
                 break;
+            }
 
                 // 【Takeoff】 从摆放初始位置原地起飞至指定高度，偏航角也保持当前角度
-            case easondrone_msgs::ControlCommand::Takeoff:
+            case easondrone_msgs::ControlCommand::Takeoff:{
                 //当无人机在空中时若受到起飞指令，则发出警告并悬停
                 // if (_DroneState.landed == false){
                 //     Command_Now.Mode = easondrone_msgs::ControlCommand::Hold;
@@ -141,9 +162,10 @@ int main(int argc, char **argv){
                 }
 
                 break;
+            }
 
                 // 【Hold】 悬停。当前位置悬停
-            case easondrone_msgs::ControlCommand::Hold:
+            case easondrone_msgs::ControlCommand::Hold:{
                 if (Command_Last.Mode != easondrone_msgs::ControlCommand::Hold){
                     Command_Now.Reference_State.Move_mode       = easondrone_msgs::PositionReference::XYZ_POS;
                     Command_Now.Reference_State.Move_frame      = easondrone_msgs::PositionReference::ENU_FRAME;
@@ -154,9 +176,10 @@ int main(int argc, char **argv){
                 }
 
                 break;
+            }
 
                 // 【Land】 降落。当前位置原地降落，降落后会自动上锁，且切换为mannual模式
-            case easondrone_msgs::ControlCommand::Land:
+            case easondrone_msgs::ControlCommand::Land:{
                 if (Command_Last.Mode != easondrone_msgs::ControlCommand::Land){
                     Command_Now.Reference_State.Move_mode       = easondrone_msgs::PositionReference::XY_POS_Z_VEL;
                     Command_Now.Reference_State.Move_frame      = easondrone_msgs::PositionReference::ENU_FRAME;
@@ -168,11 +191,13 @@ int main(int argc, char **argv){
 
                 //如果距离起飞高度小于10厘米，则直接切换为land模式；
                 if(abs(_DroneState.position[2] - Takeoff_position[2]) < Disarm_height_){
-                    if(_DroneState.mode != "AUTO.LAND"){
+                    if (mavros_state.mode != "AUTO.LAND") {
                         //此处切换会manual模式是因为:PX4默认在offboard模式且有控制的情况下没法上锁,直接使用飞控中的land模式
-                        _command_to_mavros.mode_cmd.request.custom_mode = "AUTO.LAND";
-                        _command_to_mavros.set_mode_client.call(_command_to_mavros.mode_cmd);
-                        cout << "[control] LAND: inter AUTO LAND filght mode" << endl;
+                        offb_set_mode.request.custom_mode = "AUTO.LAND";
+
+                        if (set_mode_client_.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                            ROS_INFO("AUTO.LAND enabled");
+                        }
                     }
                 }
 
@@ -181,30 +206,40 @@ int main(int argc, char **argv){
                 }
 
                 break;
+            }
 
                 // 【Move】 ENU系移动。只有PID算法中才有追踪速度的选项，其他控制只能追踪位置
-            case easondrone_msgs::ControlCommand::Move:
+            case easondrone_msgs::ControlCommand::Move:{
                 //对于机体系的指令,需要转换成ENU坐标系执行,且同一ID号内,只执行一次.
                 if(Command_Now.Reference_State.Move_frame != easondrone_msgs::PositionReference::ENU_FRAME && Command_Now.Command_ID  >  Command_Last.Command_ID ){
                     Body_to_ENU();
                 }
 
                 break;
+            }
 
                 // 【Disarm】 上锁
-            case easondrone_msgs::ControlCommand::Disarm:
+            case easondrone_msgs::ControlCommand::Disarm:{
                 cout << "[control] Disarm: switch to MANUAL" << endl;
-                if(_DroneState.mode == "OFFBOARD"){
-                    _command_to_mavros.mode_cmd.request.custom_mode = "MANUAL";
-                    _command_to_mavros.set_mode_client.call(_command_to_mavros.mode_cmd);
+
+                if (mavros_state.mode != "MANUAL") {
+                    offb_set_mode.request.custom_mode = "MANUAL";
+
+                    if (set_mode_client_.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                        ROS_INFO("MANUAL enabled");
+                    }
                 }
 
-                if(_DroneState.armed){
-                    _command_to_mavros.arm_cmd.request.value = false;
-                    _command_to_mavros.arming_client.call(_command_to_mavros.arm_cmd);
+                if (mavros_state.armed) {
+                    arm_cmd.request.value = false;
+
+                    if (arming_client_.call(arm_cmd) && arm_cmd.response.success) {
+                        ROS_INFO("Vehicle disarmed");
+                    }
                 }
 
                 break;
+            }
         }
 
         //执行控制
@@ -228,10 +263,14 @@ int main(int argc, char **argv){
         _AttitudeReference = control_utils::ThrottleToAttitude(throttle_sp, Command_Now.Reference_State.yaw_ref);
 
         //发送解算得到的期望姿态角至PX4
-        _command_to_mavros.send_attitude_setpoint(_AttitudeReference);
+        att_setpoint.type_mask = 0b00000111;
+        att_setpoint.orientation.x = _AttitudeReference.desired_att_q.x;
+        att_setpoint.orientation.y = _AttitudeReference.desired_att_q.y;
+        att_setpoint.orientation.z = _AttitudeReference.desired_att_q.z;
+        att_setpoint.orientation.w = _AttitudeReference.desired_att_q.w;
+        att_setpoint.thrust = _AttitudeReference.desired_throttle;
 
-        //发布期望姿态
-        att_ref_pub.publish(_AttitudeReference);
+        setpoint_raw_attitude_pub_.publish(att_setpoint);
 
         Command_Last = Command_Now;
         rate.sleep();
