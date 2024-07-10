@@ -15,6 +15,7 @@
 #include <nav_msgs/Path.h>
 
 #include <math_utils.h>
+#include <command_to_mavros.h>
 #include <easondrone_msgs/Message.h>
 #include <easondrone_msgs/ControlCommand.h>
 #include <easondrone_msgs/DroneState.h>

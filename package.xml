@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>easondrone_control</name>
+  <name>px4ctrl</name>
   <version>3.5.0</version>
   <description>
     A ROS package to estimate and control drone
@@ -11,7 +11,7 @@
 
   <license>Apache</license>
 
-  <url type="repository">https://github.com/HuaYuXiao/EasonDrone_Control.git</url>
+  <url type="repository">https://github.com/HuaYuXiao/px4ctrl.git</url>
 
   <buildtool_depend>catkin</buildtool_depend>
 

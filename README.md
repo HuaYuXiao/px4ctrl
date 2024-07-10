@@ -1,4 +1,4 @@
-# EasonDrone_Control
+# px4ctrl
 
 ![HitCount](https://img.shields.io/endpoint?url=https%3A%2F%2Fhits.dwyl.com%2FHuaYuXiao%2FEasonDrone_Control.json%3Fcolor%3Dpink)
 ![Static Badge](https://img.shields.io/badge/ROS-melodic-22314E?logo=ros)
@@ -12,7 +12,7 @@ A ROS package to estimate and control drone.
 ## Compilation
 
 ```bash
-catkin_make install --source Modules/EasonDrone_Control --build Modules/EasonDrone_Control/build
+catkin_make install --source Modules/px4ctrl --build Modules/px4ctrl/build
 ```
 
 
@@ -21,13 +21,13 @@ catkin_make install --source Modules/EasonDrone_Control --build Modules/EasonDro
 For p450:
 
 ```bash
-roslaunch easondrone_control control_p450_indoor.launch
+roslaunch px4ctrl control_p450_indoor.launch
 ```
 
 For isis:
 
 ```bash
-roslaunch easondrone_control control_iris_indoor.launch
+roslaunch px4ctrl control_iris_indoor.launch
 ```
 
 - Enter t to unlock the aircraft for takeoff.
@@ -44,6 +44,7 @@ roslaunch easondrone_control control_iris_indoor.launch
 - v3.5.0:
   - replace `command_to_mavros` with `setpoint_raw_attitude_pub_`, `arming_client_`, `set_mode_client_`
   - remove `state_from_mavros`
+  - remove `DroneState`
 - v3.4.4:
   - update `px4ctrl` to "cpp + h" format
 - v3.4.3: 
