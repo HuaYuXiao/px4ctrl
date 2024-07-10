@@ -2,8 +2,8 @@
 // Created by hyx020222 on 7/9/24.
 //
 
-#ifndef EASONDRONE_CONTROL_PX4CTRL_H
-#define EASONDRONE_CONTROL_PX4CTRL_H
+#ifndef PX4CTRL_H
+#define PX4CTRL_H
 
 #include <ros/ros.h>
 
@@ -18,16 +18,10 @@
 #include <sensor_msgs/Imu.h>
 
 #include "control_utils.h"
-#include "control_common.h"
-#include "Position_Controller/pos_controller_cascade_PID.h"
-#include "Position_Controller/pos_controller_PID.h"
-#include "Position_Controller/pos_controller_UDE.h"
-#include "Position_Controller/pos_controller_NE.h"
-#include "Position_Controller/pos_controller_Passivity.h"
+#include "pos_controller_cascade_PID.h"
 
 #define NODE_NAME "px4ctrl"
 #define TRA_WINDOW 1000
-#define dt 0.02
 
 using namespace std;
 
@@ -39,6 +33,7 @@ string controller_type_;                                      //控制器类型
 float Takeoff_height_;                                       //默认起飞高度
 float Disarm_height_;                                        //自动上锁高度
 float Land_speed_;                                           //降落速度
+float dt = 0.02;
 
 //Geigraphical fence 地理围栏
 Eigen::Vector2f geo_fence_x;
@@ -68,6 +63,15 @@ std::vector<geometry_msgs::PoseStamped> posehistory_vector_;
 ros::Subscriber Command_sub, station_command_sub, drone_state_sub, mavros_state_sub_, odom_sub_;
 ros::Publisher att_ref_pub, setpoint_raw_attitude_pub_, trajectory_pub_;
 ros::ServiceClient set_mode_client_, arming_client_;
+
+// 【获取当前时间函数】 单位：秒
+float get_time_in_sec(const ros::Time& begin_time)
+{
+    ros::Time time_now = ros::Time::now();
+    float currTimeSec = time_now.sec - begin_time.sec;
+    float currTimenSec = time_now.nsec / 1e9 - begin_time.nsec / 1e9;
+    return (currTimeSec + currTimenSec);
+}
 
 bool check_safety(){
     if (odom_pos_(0) <= geo_fence_x[0] ||

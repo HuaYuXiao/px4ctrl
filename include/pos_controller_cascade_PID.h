@@ -3,7 +3,7 @@
 *
 * Author: Qyp
 * Maintainer: Eason Hua
-* Update Time: 2024.5.12
+* Update Time: 2024.07.10
 *
 * Introduction:  Position Controller using PID (P for pos loop, pid for vel loop)
 *         1. Similiar to the position controller in PX4 (1.8.2)

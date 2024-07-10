@@ -3,7 +3,7 @@
 *
 * Author: Qyp
 * Maintainer: Eason Hua
-* Update Time: 2024.07.04
+* Update Time: 2024.07.10
 ***************************************************************************************************************************/
 #ifndef CONTORL_UTILS_H
 #define CONTORL_UTILS_H
@@ -22,7 +22,6 @@
 #include <easondrone_msgs/PositionReference.h>
 #include <easondrone_msgs/AttitudeReference.h>
 #include <easondrone_msgs/ControlOutput.h>
-#include "station_utils.h"
 
 using namespace std;
 

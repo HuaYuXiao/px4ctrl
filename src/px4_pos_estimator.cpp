@@ -3,7 +3,7 @@
  *
  * Author: Qyp
 * Maintainer: Eason Hua
-* Update Time: 2024.5.30
+* Update Time: 2024.07.10
  *
  * 说明: mavros位置估计程序
  *      1. 订阅激光SLAM (cartorgrapher_ros节点) 发布的位置信息,从laser坐标系转换至NED坐标系
@@ -325,9 +325,9 @@ void send_to_fcu(){
         vision.pose.orientation.w = q_mocap.w();
       
         // 此处时间主要用于监测动捕，T265设备是否正常工作
-        if(station_utils::get_time_in_sec(last_timestamp) > TIMEOUT_MAX){
-            cout << "[estimator] Mocap Timeout" << endl;
-        }
+//        if(station_utils::get_time_in_sec(last_timestamp) > TIMEOUT_MAX){
+//            cout << "[estimator] Mocap Timeout" << endl;
+//        }
     }else if(input_source == 6){
         // VICON
         vision.pose.position.x = pos_drone_vicon[0];

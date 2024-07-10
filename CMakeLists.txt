@@ -23,7 +23,6 @@ find_package(catkin REQUIRED COMPONENTS
         tf2_geometry_msgs
   mavros_msgs
         easondrone_msgs
-        easondrone_station
 )
 
 ################################################
@@ -76,7 +75,7 @@ add_executable(joy_node src/joy_node.cpp)
 target_link_libraries(joy_node ${catkin_LIBRARIES})
 
 add_library(KeyboardEvent src/lib/KeyboardEvent.cpp)
-add_executable(terminal_control src/Utilities/terminal_control.cpp)
+add_executable(terminal_control src/terminal_control.cpp)
 add_dependencies(terminal_control ${PROJECT_NAME}_gencpp)
 target_link_libraries(terminal_control ${catkin_LIBRARIES})
 target_link_libraries(terminal_control KeyboardEvent)
