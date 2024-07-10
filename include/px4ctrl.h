@@ -18,16 +18,10 @@
 #include <sensor_msgs/Imu.h>
 
 #include "control_utils.h"
-#include "control_common.h"
 #include "Position_Controller/pos_controller_cascade_PID.h"
-#include "Position_Controller/pos_controller_PID.h"
-#include "Position_Controller/pos_controller_UDE.h"
-#include "Position_Controller/pos_controller_NE.h"
-#include "Position_Controller/pos_controller_Passivity.h"
 
 #define NODE_NAME "px4ctrl"
 #define TRA_WINDOW 1000
-#define dt 0.02
 
 using namespace std;
 
@@ -39,6 +33,7 @@ string controller_type_;                                      //控制器类型
 float Takeoff_height_;                                       //默认起飞高度
 float Disarm_height_;                                        //自动上锁高度
 float Land_speed_;                                           //降落速度
+float dt;
 
 //Geigraphical fence 地理围栏
 Eigen::Vector2f geo_fence_x;
