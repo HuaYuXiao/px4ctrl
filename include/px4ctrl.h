@@ -16,6 +16,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/TwistStamped.h>
 #include <sensor_msgs/Imu.h>
+#include <nav_msgs/Odometry.h>
 
 #include "control_utils.h"
 #include "Position_Controller/pos_controller_cascade_PID.h"
@@ -61,7 +62,7 @@ Eigen::Vector3d throttle_sp;
 std::vector<geometry_msgs::PoseStamped> posehistory_vector_;
 
 ros::Subscriber Command_sub, station_command_sub, drone_state_sub, mavros_state_sub_, odom_sub_;
-ros::Publisher att_ref_pub, setpoint_raw_attitude_pub_, trajectory_pub_;
+ros::Publisher att_ref_pub, setpoint_raw_attitude_pub_;
 ros::ServiceClient set_mode_client_, arming_client_;
 
 bool check_safety(){
@@ -202,6 +203,8 @@ void mavros_state_cb(const mavros_msgs::State::ConstPtr &msg){
 
 // 保存无人机当前里程计信息，包括位置、速度和姿态
 void odometryCallback(const nav_msgs::OdometryConstPtr &msg){
+    have_odom_ = true;
+
     odom_pos_ << msg->pose.pose.position.x,
             msg->pose.pose.position.y,
             msg->pose.pose.position.z;
@@ -216,33 +219,6 @@ void odometryCallback(const nav_msgs::OdometryConstPtr &msg){
     odom_orient_.x() = msg->pose.pose.orientation.x;
     odom_orient_.y() = msg->pose.pose.orientation.y;
     odom_orient_.z() = msg->pose.pose.orientation.z;
-
-    have_odom_ = true;
-
-    // 发布无人机运动轨迹，用于rviz显示
-    geometry_msgs::PoseStamped drone_pos;
-    drone_pos.header.stamp = ros::Time::now();
-    drone_pos.header.frame_id = "map";
-    drone_pos.pose.position.x = odom_pos_(0);
-    drone_pos.pose.position.y = odom_pos_(0);
-    drone_pos.pose.position.z = odom_pos_(0);
-
-    drone_pos.pose.orientation.w = msg->pose.pose.orientation.w;
-    drone_pos.pose.orientation.x = msg->pose.pose.orientation.x;
-    drone_pos.pose.orientation.y = msg->pose.pose.orientation.y;
-    drone_pos.pose.orientation.z = msg->pose.pose.orientation.z;
-
-    //发布无人机的位姿 和 轨迹 用作rviz中显示
-    posehistory_vector_.insert(posehistory_vector_.begin(), drone_pos);
-    if (posehistory_vector_.size() > TRA_WINDOW){
-        posehistory_vector_.pop_back();
-    }
-
-    nav_msgs::Path drone_trajectory;
-    drone_trajectory.header.stamp = ros::Time::now();
-    drone_trajectory.header.frame_id = "map";
-    drone_trajectory.poses = posehistory_vector_;
-    trajectory_pub_.publish(drone_trajectory);
 }
 
 #endif //EASONDRONE_CONTROL_PX4CTRL_H
