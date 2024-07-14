@@ -41,8 +41,10 @@ roslaunch px4ctrl control_iris_indoor.launch
 
 ## Release Note
 
-- v3.6.0:
-  - OFFBOARD & arm with easondrone_msgs::ControlCommand::OFFBOARD_ARM
+- v3.5.2
+  - remove check for `Command_ID`
+- v3.5.1:
+  - OFFBOARD & arm with `easondrone_msgs::ControlCommand::OFFBOARD_ARM`
 - v3.5.0:
   - replace `command_to_mavros` with `setpoint_raw_attitude_pub_`, `arming_client_`, `set_mode_client_`
   - remove `state_from_mavros`

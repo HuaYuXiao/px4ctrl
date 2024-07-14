@@ -24,7 +24,6 @@ int main(int argc, char **argv){
     nh.param<float>("rate_hz", rate_hz_, 100);
 
     // 参数读取
-    nh.param<string>("control/controller_type", controller_type_, "cascade_pid");
     nh.param<float>("control/Takeoff_height", Takeoff_height_, 1.5);
     nh.param<float>("control/Disarm_height", Disarm_height_, 0.15);
     nh.param<float>("control/Land_speed", Land_speed_, 0.2);
@@ -66,7 +65,6 @@ int main(int argc, char **argv){
     pos_controller_cascade_PID pos_controller_cascade_pid;
 
     cout <<">>>>>>>>>>>>>>>>>>>>>>>> px4_pos_controller Parameter <<<<<<<<<<<<<<<<<<<<<<" <<endl;
-    cout << "controller_type: "<< controller_type_ <<endl;
     cout << "Takeoff_height   : "<< Takeoff_height_<<" [m] "<<endl;
     cout << "Disarm_height    : "<< Disarm_height_ <<" [m] "<<endl;
     cout << "Land_speed       : "<< Land_speed_ <<" [m/s] "<<endl;
@@ -75,8 +73,8 @@ int main(int argc, char **argv){
     cout << "geo_fence_z : "<< geo_fence_z[0] << " [m]  to  "<<geo_fence_z[1] << " [m]"<< endl;
 
     // 初始化命令- 默认设置：Idle模式 电机怠速旋转 等待来自上层的控制指令
+    Command_Now.header.stamp = ros::Time::now();
     Command_Now.Mode                                = easondrone_msgs::ControlCommand::Idle;
-    Command_Now.Command_ID                          = 0;
     Command_Now.Reference_State.Move_mode           = easondrone_msgs::PositionReference::XYZ_POS;
     Command_Now.Reference_State.Move_frame          = easondrone_msgs::PositionReference::ENU_FRAME;
 
@@ -111,14 +109,8 @@ int main(int argc, char **argv){
         }
 
         switch (Command_Now.Mode){
-            // 【Idle】 怠速旋转，此时可以切入offboard模式，但不会起飞。
-            case easondrone_msgs::ControlCommand::Idle:{
-
-                break;
-            }
-
             case easondrone_msgs::ControlCommand::OFFBOARD_ARM:{
-                ROS_INFO("FSM_EXEC_STATE: IDLE");
+                ROS_INFO("FSM_EXEC_STATE: OFFBOARD & ARM");
 
                 if (mavros_state.mode != "OFFBOARD") {
                     offb_set_mode.request.custom_mode = "OFFBOARD";
@@ -135,6 +127,8 @@ int main(int argc, char **argv){
                         ROS_INFO("Vehicle armed");
                     }
                 }
+
+                break;
             }
 
                 // 【Takeoff】 从摆放初始位置原地起飞至指定高度，偏航角也保持当前角度
@@ -146,7 +140,8 @@ int main(int argc, char **argv){
                 // }
 
                 if (Command_Last.Mode != easondrone_msgs::ControlCommand::Takeoff){
-                    cout << "[control] Takeoff to desired point" << endl;
+                    ROS_INFO("FSM_EXEC_STATE: TAKEOFF");
+
                     // 设定起飞位置
                     Takeoff_position[0] = _DroneState.position[0];
                     Takeoff_position[1] = _DroneState.position[1];
@@ -211,7 +206,7 @@ int main(int argc, char **argv){
                 // 【Move】 ENU系移动。只有PID算法中才有追踪速度的选项，其他控制只能追踪位置
             case easondrone_msgs::ControlCommand::Move:{
                 //对于机体系的指令,需要转换成ENU坐标系执行,且同一ID号内,只执行一次.
-                if(Command_Now.Reference_State.Move_frame != easondrone_msgs::PositionReference::ENU_FRAME && Command_Now.Command_ID  >  Command_Last.Command_ID ){
+                if(Command_Now.Reference_State.Move_frame != easondrone_msgs::PositionReference::ENU_FRAME){
                     Body_to_ENU();
                 }
 
@@ -244,16 +239,7 @@ int main(int argc, char **argv){
 
         //执行控制
         if(Command_Now.Mode != easondrone_msgs::ControlCommand::Idle){
-            //选择控制器
-            if(controller_type_ == "cascade_pid"){
-                    _ControlOutput = pos_controller_cascade_pid.pos_controller(_DroneState, Command_Now.Reference_State, dt);
-                    // _ControlOutput = pos_controller_pid.pos_controller(_DroneState, Command_Now.Reference_State, dt);
-            }
-            else{
-                cout << "[control] unsupported controller_type_, use cascade_pid as default" << endl;
-
-                _ControlOutput = pos_controller_cascade_pid.pos_controller(_DroneState, Command_Now.Reference_State, dt);
-            }
+            _ControlOutput = pos_controller_cascade_pid.pos_controller(_DroneState, Command_Now.Reference_State, dt);
         }
 
         throttle_sp[0] = _ControlOutput.Throttle[0];

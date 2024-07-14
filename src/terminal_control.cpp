@@ -30,7 +30,6 @@ using namespace std;
 //即将发布的command
 easondrone_msgs::ControlCommand Command_to_pub;
 
-float time_trajectory = 0.0;
 //Geigraphical fence 地理围栏
 Eigen::Vector2f geo_fence_x;
 Eigen::Vector2f geo_fence_y;
@@ -88,14 +87,6 @@ void generate_com(int Move_mode, float state_desired[4]){
     }
 }
 
-void timerCallback(const ros::TimerEvent& e){
-    cout << ">>>>>>>>>>>>>>>> Welcome to use EasonDrone Terminal Control <<<<<<<<<<<<<<<<"<< endl;
-    cout << "ENTER key to control the drone: " << endl;
-    cout << "1 for Arm, Space for Takeoff, L for Land, H for Hold, 0 for Disarm" <<endl;
-    cout << "Move mode is fixed (XYZ_VEL,BODY_FRAME): w/s for body_x, a/d for body_y, k/m for z, q/e for body_yaw" <<endl;
-    cout << "CTRL-C to quit." <<endl;
-}
-
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>　主函数　<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 int main(int argc, char **argv){
     ros::init(argc, argv, "terminal_control");
@@ -113,9 +104,8 @@ int main(int argc, char **argv){
     nh.param<float>("geo_fence/z_max", geo_fence_z[1], 3.0);
 
     // 初始化命令 - Idle模式 电机怠速旋转 等待来自上层的控制指令
+    Command_to_pub.header.stamp = ros::Time::now();
     Command_to_pub.Mode                                = easondrone_msgs::ControlCommand::Idle;
-    Command_to_pub.Command_ID                          = 0;
-    Command_to_pub.source = NODE_NAME;
     Command_to_pub.Reference_State.Move_mode           = easondrone_msgs::PositionReference::XYZ_POS;
     Command_to_pub.Reference_State.Move_frame          = easondrone_msgs::PositionReference::ENU_FRAME;
 
@@ -182,8 +172,6 @@ void mainloop(){
             case easondrone_msgs::ControlCommand::Idle:{
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = easondrone_msgs::ControlCommand::Idle;
-                Command_to_pub.Command_ID += 1;
-                Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
 
                 break;
@@ -192,8 +180,6 @@ void mainloop(){
             case easondrone_msgs::ControlCommand::OFFBOARD_ARM:{
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = easondrone_msgs::ControlCommand::OFFBOARD_ARM;
-                Command_to_pub.Command_ID += 1;
-                Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
 
                 break;
@@ -202,8 +188,6 @@ void mainloop(){
             case easondrone_msgs::ControlCommand::Takeoff:{
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = easondrone_msgs::ControlCommand::Takeoff;
-                Command_to_pub.Command_ID += 1;
-                Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
 
                 break;
@@ -212,8 +196,6 @@ void mainloop(){
             case easondrone_msgs::ControlCommand::Hold:{
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = easondrone_msgs::ControlCommand::Hold;
-                Command_to_pub.Command_ID += 1;
-                Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
 
                 break;
@@ -222,8 +204,6 @@ void mainloop(){
             case easondrone_msgs::ControlCommand::Land:{
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = easondrone_msgs::ControlCommand::Land;
-                Command_to_pub.Command_ID += 1;
-                Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
 
                 break;
@@ -349,8 +329,6 @@ void mainloop(){
 
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
-                Command_to_pub.Command_ID += 1;
-                Command_to_pub.source = NODE_NAME;
                 Command_to_pub.Reference_State.Move_mode = Move_mode;
                 Command_to_pub.Reference_State.Move_frame = Move_frame;
                 // yaw_rate control
@@ -365,8 +343,6 @@ void mainloop(){
             case easondrone_msgs::ControlCommand::Disarm:{
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = easondrone_msgs::ControlCommand::Disarm;
-                Command_to_pub.Command_ID += 1;
-                Command_to_pub.source = NODE_NAME;
                 move_pub.publish(Command_to_pub);
 
                 break;
