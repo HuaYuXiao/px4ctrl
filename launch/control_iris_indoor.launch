@@ -2,7 +2,7 @@
     <arg name="rate_hz" value="100"/>
 
     <!-- run the px4_pos_estimator.cpp -->
-    <node pkg="easondrone_control" type="px4_pos_estimator" name="px4_pos_estimator" output="screen">
+    <node pkg="px4ctrl" type="px4_pos_estimator" name="px4_pos_estimator" output="screen">
         <param name="rate_hz" value="$(arg rate_hz)"/>
 
         <!-- 定位数据输入源 0 for vicon， 1 for 激光SLAM, 2 for gazebo , 3 for T265 -->
@@ -14,26 +14,31 @@
     </node>
 
     <!-- 启动uav_control_main -->
-<!--    <node pkg="easondrone_control" type="px4_pos_controller" name="px4_pos_controller" output="screen" launch-prefix="gnome-terminal &#45;&#45;">-->
-<!--        <param name="rate_hz" value="$(arg rate_hz)"/>-->
+    <node pkg="px4ctrl" type="px4ctrl" name="px4ctrl" output="screen" launch-prefix="gnome-terminal --">
+        <param name="rate_hz" value="$(arg rate_hz)"/>
 
-<!--        <rosparam command="load" file="$(find easondrone_control)/config/uav_control_indoor.yaml"/>-->
-<!--    </node>-->
-
-    <!-- 启动虚拟摇杆驱动 -->
-    <include file="$(find easondrone_control)/launch/joy_node.launch"/>
-
-    <!-- run the terminal_control.cpp -->
-<!--    <node pkg="easondrone_control" type="terminal_control" name="terminal_control" output="screen" launch-prefix="gnome-terminal &#45;&#45;">-->
-<!--        <rosparam command="load" file="$(find easondrone_control)/config/uav_control_indoor.yaml"/>-->
-<!--    </node>-->
-
-    <node pkg="easondrone_control" type="multirotor_communication.py" name="multirotor_communication"
-          output="screen" launch-prefix="gnome-terminal --">
+        <rosparam command="load" file="$(find px4ctrl)/config/uav_control_indoor.yaml"/>
     </node>
 
-    <node pkg="easondrone_control" type="multirotor_keyboard_control.py" name="multirotor_keyboard_control"
-          output="screen" launch-prefix="gnome-terminal --">
-        <param name="control_type" type="string" value="vel"/>
+    <!-- 启动虚拟摇杆驱动 -->
+    <include file="$(find px4ctrl)/launch/joy_node.launch"/>
+
+    <!-- run the terminal_control.cpp -->
+<!--    <node pkg="px4ctrl" type="terminal_control" name="terminal_control" output="screen" launch-prefix="gnome-terminal &#45;&#45;">-->
+<!--        <rosparam command="load" file="$(find px4ctrl)/config/uav_control_indoor.yaml"/>-->
+<!--    </node>-->
+
+<!--    <node pkg="px4ctrl" type="multirotor_communication.py" name="multirotor_communication"-->
+<!--          output="screen" launch-prefix="gnome-terminal &#45;&#45;">-->
+<!--    </node>-->
+
+<!--    <node pkg="px4ctrl" type="multirotor_keyboard_control.py" name="multirotor_keyboard_control"-->
+<!--          output="screen" launch-prefix="gnome-terminal &#45;&#45;">-->
+<!--        <param name="control_type" type="string" value="vel"/>-->
+<!--    </node>-->
+
+    <!-- run the terminal_control.cpp -->
+    <node pkg="px4ctrl" type="terminal_control" name="terminal_control" output="screen" launch-prefix="gnome-terminal --">
+        <rosparam command="load" file="$(find px4ctrl)/config/uav_control_indoor.yaml"/>
     </node>
 </launch>

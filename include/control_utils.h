@@ -3,8 +3,9 @@
 *
 * Author: Qyp
 * Maintainer: Eason Hua
-* Update Time: 2024.07.10
+* Update Time: 2024.07.14
 ***************************************************************************************************************************/
+
 #ifndef CONTORL_UTILS_H
 #define CONTORL_UTILS_H
 
@@ -189,5 +190,33 @@ easondrone_msgs::AttitudeReference ThrottleToAttitude(const Eigen::Vector3d& thr
 
     return _AttitudeReference;
 }
+
+// 【获取当前时间函数】 单位：秒
+    float get_time_in_sec(const ros::Time& begin_time)
+    {
+        ros::Time time_now = ros::Time::now();
+        float currTimeSec = time_now.sec - begin_time.sec;
+        float currTimenSec = time_now.nsec / 1e9 - begin_time.nsec / 1e9;
+        return (currTimeSec + currTimenSec);
+    }
+
+// 将四元数转换至(roll,pitch,yaw)  by a 3-2-1 intrinsic Tait-Bryan rotation sequence
+// https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
+// q0 q1 q2 q3
+// w x y z
+    Eigen::Vector3d quaternion_to_euler(const Eigen::Quaterniond &q)
+    {
+        float quat[4];
+        quat[0] = q.w();
+        quat[1] = q.x();
+        quat[2] = q.y();
+        quat[3] = q.z();
+
+        Eigen::Vector3d ans;
+        ans[0] = atan2(2.0 * (quat[3] * quat[2] + quat[0] * quat[1]), 1.0 - 2.0 * (quat[1] * quat[1] + quat[2] * quat[2]));
+        ans[1] = asin(2.0 * (quat[2] * quat[0] - quat[3] * quat[1]));
+        ans[2] = atan2(2.0 * (quat[3] * quat[0] + quat[1] * quat[2]), 1.0 - 2.0 * (quat[2] * quat[2] + quat[3] * quat[3]));
+        return ans;
+    }
 }
 #endif
