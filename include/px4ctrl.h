@@ -21,7 +21,6 @@
 #include "control_utils.h"
 #include "pos_controller_cascade_PID.h"
 
-#define NODE_NAME "px4ctrl"
 #define TRA_WINDOW 1000
 
 using namespace std;
@@ -32,7 +31,7 @@ float cur_time;                                             //程序运行时间
 float Takeoff_height_;                                       //默认起飞高度
 float Disarm_height_;                                        //自动上锁高度
 float Land_speed_;                                           //降落速度
-float dt = 0.02;
+float dt = 0.01;
 
 //Geigraphical fence 地理围栏
 Eigen::Vector2f geo_fence_x;
@@ -206,8 +205,6 @@ void Command_cb(const easondrone_msgs::ControlCommand::ConstPtr& msg){
 
 void drone_state_cb(const easondrone_msgs::DroneState::ConstPtr& msg){
     _DroneState = *msg;
-
-    _DroneState.time_from_start = cur_time;
 }
 
 void mavros_state_cb(const mavros_msgs::State::ConstPtr &msg){

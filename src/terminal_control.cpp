@@ -23,7 +23,6 @@
 #define VEL_XY_STEP_SIZE 0.1
 #define VEL_Z_STEP_SIZE 0.1
 #define YAW_STEP_SIZE 0.08
-#define NODE_NAME "terminal_control"
 
 using namespace std;
 
@@ -333,7 +332,6 @@ void mainloop(){
                 Command_to_pub.Reference_State.Move_frame = Move_frame;
                 // yaw_rate control
                 // Command_to_pub.Reference_State.Yaw_Rate_Mode = 1;
-                Command_to_pub.Reference_State.time_from_start = -1;
                 generate_com(Move_mode, state_desired);
 
                 move_pub.publish(Command_to_pub);

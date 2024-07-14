@@ -32,7 +32,6 @@ using namespace std;
 
 #define TRA_WINDOW 1000
 #define TIMEOUT_MAX 0.05
-#define NODE_NAME "pos_estimator"
 
 //---------------------------------------相关参数-----------------------------------------------
 float rate_hz_;

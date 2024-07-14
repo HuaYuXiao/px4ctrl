@@ -21,7 +21,7 @@
     </node>
 
     <!-- 启动虚拟摇杆驱动 -->
-    <include file="$(find px4ctrl)/launch/joy_node.launch"/>
+    <node pkg="px4ctrl" type="joy_node" name="joy_node" output="screen"/>
 
     <!-- run the terminal_control.cpp -->
     <node pkg="px4ctrl" type="terminal_control" name="terminal_control" output="screen" launch-prefix="gnome-terminal --">
