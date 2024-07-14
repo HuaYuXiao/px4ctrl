@@ -24,9 +24,9 @@
     <include file="$(find px4ctrl)/launch/joy_node.launch"/>
 
     <!-- run the terminal_control.cpp -->
-<!--    <node pkg="px4ctrl" type="terminal_control" name="terminal_control" output="screen" launch-prefix="gnome-terminal &#45;&#45;">-->
-<!--        <rosparam command="load" file="$(find px4ctrl)/config/uav_control_indoor.yaml"/>-->
-<!--    </node>-->
+    <node pkg="px4ctrl" type="terminal_control" name="terminal_control" output="screen" launch-prefix="gnome-terminal --">
+        <rosparam command="load" file="$(find px4ctrl)/config/uav_control_indoor.yaml"/>
+    </node>
 
 <!--    <node pkg="px4ctrl" type="multirotor_communication.py" name="multirotor_communication"-->
 <!--          output="screen" launch-prefix="gnome-terminal &#45;&#45;">-->
@@ -36,9 +36,4 @@
 <!--          output="screen" launch-prefix="gnome-terminal &#45;&#45;">-->
 <!--        <param name="control_type" type="string" value="vel"/>-->
 <!--    </node>-->
-
-    <!-- run the terminal_control.cpp -->
-    <node pkg="px4ctrl" type="terminal_control" name="terminal_control" output="screen" launch-prefix="gnome-terminal --">
-        <rosparam command="load" file="$(find px4ctrl)/config/uav_control_indoor.yaml"/>
-    </node>
 </launch>

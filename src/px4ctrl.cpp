@@ -3,12 +3,12 @@
 *
 * Author: Qyp
 * Maintainer: Eason Hua
-* Update Time: 2024.07.04
+* Update Time: 2024.07.14
 *
 * Introduction:  PX4 Position Controller 
 *         1. 从应用层节点订阅/easondrone/control_command话题（ControlCommand.msg），接收来自上层的控制指令。
 *         2. 从px4_pos_estimator.cpp节点订阅无人机的状态信息（DroneState.msg）。
-*         3. 调用位置环控制算法，计算加速度控制量，并转换为期望角度。（可选择cascade_PID, PID, UDE, passivity-UDE, NE+UDE位置控制算法）
+*         3. 调用位置环控制算法，计算加速度控制量，并转换为期望角度。（可选择cascade_PID位置控制算法）
 *         4. 通过command_to_mavros.h将计算出来的控制指令发送至飞控（通过mavros包发送mavlink消息）
 *         5. PX4固件通过mavlink_receiver.cpp接收该mavlink消息。
 ***************************************************************************************************************************/
@@ -113,28 +113,28 @@ int main(int argc, char **argv){
         switch (Command_Now.Mode){
             // 【Idle】 怠速旋转，此时可以切入offboard模式，但不会起飞。
             case easondrone_msgs::ControlCommand::Idle:{
-                // 设定yaw_ref=999时，切换offboard模式，并解锁
-                if(Command_Now.Reference_State.yaw_ref == 999){
-                    ROS_INFO("FSM_EXEC_STATE: IDLE");
 
-                    if (mavros_state.mode != "OFFBOARD") {
-                        offb_set_mode.request.custom_mode = "OFFBOARD";
+                break;
+            }
 
-                        if (set_mode_client_.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
-                            ROS_INFO("Offboard enabled");
-                        }
-                    }
+            case easondrone_msgs::ControlCommand::OFFBOARD_ARM:{
+                ROS_INFO("FSM_EXEC_STATE: IDLE");
 
-                    if (!mavros_state.armed) {
-                        arm_cmd.request.value = true;
+                if (mavros_state.mode != "OFFBOARD") {
+                    offb_set_mode.request.custom_mode = "OFFBOARD";
 
-                        if (arming_client_.call(arm_cmd) && arm_cmd.response.success) {
-                            ROS_INFO("Vehicle armed");
-                        }
+                    if (set_mode_client_.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                        ROS_INFO("Offboard enabled");
                     }
                 }
 
-                break;
+                if (!mavros_state.armed) {
+                    arm_cmd.request.value = true;
+
+                    if (arming_client_.call(arm_cmd) && arm_cmd.response.success) {
+                        ROS_INFO("Vehicle armed");
+                    }
+                }
             }
 
                 // 【Takeoff】 从摆放初始位置原地起飞至指定高度，偏航角也保持当前角度
