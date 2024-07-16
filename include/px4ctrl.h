@@ -1,6 +1,6 @@
 //
 // Created by hyx020222 on 7/9/24.
-// last updated on 2024.07.10
+// last updated on 2024.07.16
 //
 
 #ifndef EASONDRONE_CONTROL_PX4CTRL_H
@@ -22,7 +22,6 @@
 #include "control_utils.h"
 #include "Position_Controller/pos_controller_cascade_PID.h"
 
-#define NODE_NAME "px4ctrl"
 #define TRA_WINDOW 1000
 
 using namespace std;
@@ -90,8 +89,8 @@ void Body_to_ENU(){
         float d_pos_body[2] = {Command_Now.Reference_State.position_ref[0], Command_Now.Reference_State.position_ref[1]};         //the desired xy position in Body Frame
         float d_pos_enu[2];                                                           //the desired xy position in enu Frame (The origin point is the drone)
         control_utils::rotation_yaw(_DroneState.attitude[2], d_pos_body, d_pos_enu);
-        Command_Now.Reference_State.position_ref[0] = _DroneState.position[0] + d_pos_enu[0];
-        Command_Now.Reference_State.position_ref[1] = _DroneState.position[1] + d_pos_enu[1];
+        Command_Now.Reference_State.position_ref[0] = odom_pos_[0] + d_pos_enu[0];
+        Command_Now.Reference_State.position_ref[1] = odom_pos_[1] + d_pos_enu[1];
 
         Command_Now.Reference_State.velocity_ref[0] = 0;
         Command_Now.Reference_State.velocity_ref[1] = 0;
@@ -102,8 +101,8 @@ void Body_to_ENU(){
 //        //根据无人机当前偏航角进行坐标系转换
 //        control_utils::rotation_yaw(_DroneState.attitude[2], d_vel_body, d_vel_enu);
 //
-//        Command_Now.Reference_State.position_ref[0] = _DroneState.position[0] + d_pos_enu[0];
-//        Command_Now.Reference_State.position_ref[1] = _DroneState.position[1] + d_pos_enu[1];
+//        Command_Now.Reference_State.position_ref[0] = odom_pos_[0] + d_pos_enu[0];
+//        Command_Now.Reference_State.position_ref[1] = odom_pos_[1] + d_pos_enu[1];
 //        Command_Now.Reference_State.velocity_ref[0] = 0;
 //        Command_Now.Reference_State.velocity_ref[1] = 0;
     }else if( Command_Now.Reference_State.Move_mode  & 0b10){
@@ -132,8 +131,8 @@ void Body_to_ENU(){
         float d_pos_body[2] = {Command_Now.Reference_State.position_ref[0], Command_Now.Reference_State.position_ref[1]};         //the desired xy position in Body Frame
         float d_pos_enu[2];                                                           //the desired xy position in enu Frame (The origin point is the drone)
         control_utils::rotation_yaw(_DroneState.attitude[2], d_pos_body, d_pos_enu);
-        Command_Now.Reference_State.position_ref[0] = _DroneState.position[0] + d_pos_enu[0];
-        Command_Now.Reference_State.position_ref[1] = _DroneState.position[1] + d_pos_enu[1];
+        Command_Now.Reference_State.position_ref[0] = odom_pos_[0] + d_pos_enu[0];
+        Command_Now.Reference_State.position_ref[1] = odom_pos_[1] + d_pos_enu[1];
         Command_Now.Reference_State.position_ref[2] = Command_Now.Reference_State.position_ref[2];
 
         float d_vel_body[2] = {Command_Now.Reference_State.velocity_ref[0], Command_Now.Reference_State.velocity_ref[1]};         //the desired xy velocity in Body Frame
@@ -169,13 +168,7 @@ void Body_to_ENU(){
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>回调函数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 void Command_cb(const easondrone_msgs::ControlCommand::ConstPtr& msg){
-    // CommandID必须递增才会被记录
-    if( msg->Command_ID  >  Command_Now.Command_ID ){
-        Command_Now = *msg;
-    }else{
-        cout << "[control] Wrong Command ID" << endl;
-        cout << Command_Now << endl;
-    }
+    Command_Now = *msg;
 
     // 无人机一旦接受到Disarm指令，则会屏蔽其他指令
     if(Command_Last.Mode == easondrone_msgs::ControlCommand::Disarm){
@@ -195,8 +188,6 @@ void station_command_cb(const easondrone_msgs::ControlCommand::ConstPtr& msg){
 
 void drone_state_cb(const easondrone_msgs::DroneState::ConstPtr& msg){
     _DroneState = *msg;
-
-    _DroneState.time_from_start = cur_time;
 }
 
 void mavros_state_cb(const mavros_msgs::State::ConstPtr &msg){

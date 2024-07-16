@@ -3,8 +3,9 @@
 *
 * Author: Qyp
 * Maintainer: Eason Hua
-* Update Time: 2024.07.04
+* Update Time: 2024.07.16
 ***************************************************************************************************************************/
+
 #ifndef CONTORL_UTILS_H
 #define CONTORL_UTILS_H
 
@@ -22,7 +23,6 @@
 #include <easondrone_msgs/PositionReference.h>
 #include <easondrone_msgs/AttitudeReference.h>
 #include <easondrone_msgs/ControlOutput.h>
-#include "station_utils.h"
 
 using namespace std;
 
@@ -191,5 +191,14 @@ easondrone_msgs::AttitudeReference ThrottleToAttitude(const Eigen::Vector3d& thr
 
     return _AttitudeReference;
 }
+
+// 【获取当前时间函数】 单位：秒
+    float get_time_in_sec(const ros::Time& begin_time)
+    {
+        ros::Time time_now = ros::Time::now();
+        float currTimeSec = time_now.sec - begin_time.sec;
+        float currTimenSec = time_now.nsec / 1e9 - begin_time.nsec / 1e9;
+        return (currTimeSec + currTimenSec);
+    }
 }
 #endif

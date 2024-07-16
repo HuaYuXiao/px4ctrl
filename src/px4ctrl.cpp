@@ -3,7 +3,7 @@
 *
 * Author: Qyp
 * Maintainer: Eason Hua
-// last updated on 2024.07.10
+// last updated on 2024.07.16
 *
 * Introduction:  PX4 Position Controller 
 *         1. 从应用层节点订阅/easondrone/control_command话题（ControlCommand.msg），接收来自上层的控制指令。
@@ -85,20 +85,19 @@ int main(int argc, char **argv){
 
     // 初始化命令- 默认设置：Idle模式 电机怠速旋转 等待来自上层的控制指令
     Command_Now.Mode                                = easondrone_msgs::ControlCommand::Idle;
-    Command_Now.Command_ID                          = 0;
     Command_Now.Reference_State.Move_mode           = easondrone_msgs::PositionReference::XYZ_POS;
     Command_Now.Reference_State.Move_frame          = easondrone_msgs::PositionReference::ENU_FRAME;
 
     // 记录启控时间
     ros::Time begin_time = ros::Time::now();
-    float last_time = station_utils::get_time_in_sec(begin_time);
+    float last_time = control_utils::get_time_in_sec(begin_time);
 
     cout << "[control] controller initialized" << endl;
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主  循  环<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     while(ros::ok()){
         // 当前时间
-        cur_time = station_utils::get_time_in_sec(begin_time);
+        cur_time = control_utils::get_time_in_sec(begin_time);
         dt = cur_time - last_time;
         dt = constrain_function2(dt, 0.008, 0.012);
         last_time = cur_time;
@@ -112,26 +111,28 @@ int main(int argc, char **argv){
         }
 
         switch (Command_Now.Mode){
-            // 【Idle】 怠速旋转，此时可以切入offboard模式，但不会起飞。
+            // 【Idle】
             case easondrone_msgs::ControlCommand::Idle:{
-                // 设定yaw_ref=999时，切换offboard模式，并解锁
-                if(Command_Now.Reference_State.yaw_ref == 999){
-                    ROS_INFO("FSM_EXEC_STATE: IDLE");
+                break;
+            }
 
-                    if (mavros_state.mode != "OFFBOARD") {
-                        offb_set_mode.request.custom_mode = "OFFBOARD";
+            // 怠速旋转，此时可以切入offboard模式，但不会起飞
+            case easondrone_msgs::ControlCommand::OFFBOARD_ARM:{
+                ROS_INFO("FSM_EXEC_STATE: OFFBOARD & ARM");
 
-                        if (set_mode_client_.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
-                            ROS_INFO("Offboard enabled");
-                        }
+                if (mavros_state.mode != "OFFBOARD") {
+                    offb_set_mode.request.custom_mode = "OFFBOARD";
+
+                    if (set_mode_client_.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                        ROS_INFO("Offboard enabled");
                     }
+                }
 
-                    if (!mavros_state.armed) {
-                        arm_cmd.request.value = true;
+                if (!mavros_state.armed) {
+                    arm_cmd.request.value = true;
 
-                        if (arming_client_.call(arm_cmd) && arm_cmd.response.success) {
-                            ROS_INFO("Vehicle armed");
-                        }
+                    if (arming_client_.call(arm_cmd) && arm_cmd.response.success) {
+                        ROS_INFO("Vehicle armed");
                     }
                 }
 
@@ -142,7 +143,7 @@ int main(int argc, char **argv){
             case easondrone_msgs::ControlCommand::Takeoff:{
                 //当无人机在空中时若受到起飞指令，则发出警告并悬停
                 // if (_DroneState.landed == false){
-                //     Command_Now.Mode = easondrone_msgs::ControlCommand::Hold;
+                //     Command_Now.Mode = easondrone_msgs::ControlCommand::Hover;
                 //     cout << "[control] The drone is in the air" << endl;
                 // }
 
@@ -165,9 +166,9 @@ int main(int argc, char **argv){
                 break;
             }
 
-                // 【Hold】 悬停。当前位置悬停
-            case easondrone_msgs::ControlCommand::Hold:{
-                if (Command_Last.Mode != easondrone_msgs::ControlCommand::Hold){
+                // 【Hover】 悬停。当前位置悬停
+            case easondrone_msgs::ControlCommand::Hover:{
+                if (Command_Last.Mode != easondrone_msgs::ControlCommand::Hover){
                     Command_Now.Reference_State.Move_mode       = easondrone_msgs::PositionReference::XYZ_POS;
                     Command_Now.Reference_State.Move_frame      = easondrone_msgs::PositionReference::ENU_FRAME;
                     Command_Now.Reference_State.position_ref[0] = odom_pos_[0];
@@ -213,7 +214,7 @@ int main(int argc, char **argv){
                 // 【Move】 ENU系移动。只有PID算法中才有追踪速度的选项，其他控制只能追踪位置
             case easondrone_msgs::ControlCommand::Move:{
                 //对于机体系的指令,需要转换成ENU坐标系执行,且同一ID号内,只执行一次.
-                if(Command_Now.Reference_State.Move_frame != easondrone_msgs::PositionReference::ENU_FRAME && Command_Now.Command_ID  >  Command_Last.Command_ID ){
+                if(Command_Now.Reference_State.Move_frame != easondrone_msgs::PositionReference::ENU_FRAME){
                     Body_to_ENU();
                 }
 

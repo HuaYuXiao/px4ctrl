@@ -21,13 +21,13 @@ catkin_make install --source Modules/px4ctrl --build Modules/px4ctrl/build
 For p450:
 
 ```bash
-roslaunch px4ctrl control_p450_indoor.launch
+roslaunch px4ctrl px4ctrl_p450_indoor.launch
 ```
 
 For isis:
 
 ```bash
-roslaunch px4ctrl control_iris_indoor.launch
+roslaunch px4ctrl px4ctrl_iris_indoor.launch
 ```
 
 - Enter t to unlock the aircraft for takeoff.

@@ -3,7 +3,7 @@
  *
  * Author: Qyp
 * Maintainer: Eason Hua
-* Update Time: 2024.5.30
+* Update Time: 2024.07.16
  *
  * 说明: mavros位置估计程序
  *      1. 订阅激光SLAM (cartorgrapher_ros节点) 发布的位置信息,从laser坐标系转换至NED坐标系
@@ -16,11 +16,13 @@
 
 //头文件
 #include <ros/ros.h>
-#include <nav_msgs/Odometry.h>
-#include <geometry_msgs/TransformStamped.h>
 #include <iostream>
 #include <Eigen/Eigen>
 #include <Eigen/Dense>
+
+#include <nav_msgs/Odometry.h>
+#include <geometry_msgs/TransformStamped.h>
+
 #include "state_from_mavros.h"
 #include "math_utils.h"
 #include "control_utils.h"
@@ -29,7 +31,6 @@ using namespace std;
 
 #define TRA_WINDOW 1000
 #define TIMEOUT_MAX 0.05
-#define NODE_NAME "pos_estimator"
 
 //---------------------------------------相关参数-----------------------------------------------
 float rate_hz_;
@@ -325,7 +326,7 @@ void send_to_fcu(){
         vision.pose.orientation.w = q_mocap.w();
       
         // 此处时间主要用于监测动捕，T265设备是否正常工作
-        if(station_utils::get_time_in_sec(last_timestamp) > TIMEOUT_MAX){
+        if(control_utils::get_time_in_sec(last_timestamp) > TIMEOUT_MAX){
             cout << "[estimator] Mocap Timeout" << endl;
         }
     }else if(input_source == 6){
