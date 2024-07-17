@@ -3,7 +3,7 @@
 *
 * Author: Qyp
 * Maintainer: Eason Hua
-// last updated on 2024.07.16
+// last updated on 2024.07.17
 *
 * Introduction:  PX4 Position Controller 
 *         1. 从应用层节点订阅/easondrone/control_command话题（ControlCommand.msg），接收来自上层的控制指令。
@@ -36,8 +36,8 @@ int main(int argc, char **argv){
     nh.param<float>("geo_fence/z_max", geo_fence_z[1], 3.0);
 
     //【订阅】指令 本话题为任务模块生成的控制指令
-    Command_sub = nh.subscribe<easondrone_msgs::ControlCommand>
-            ("/easondrone/control_command", 10, Command_cb);
+    easondrone_ctrl_sub_ = nh.subscribe<easondrone_msgs::ControlCommand>
+            ("/easondrone/control_command", 10, easondrone_ctrl_cb_);
     //【订阅】指令 本话题为地面站发送的控制指令
     station_command_sub = nh.subscribe<easondrone_msgs::ControlCommand>
             ("/easondrone/control_command_station", 10, station_command_cb);

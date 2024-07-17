@@ -1,6 +1,6 @@
 //
 // Created by hyx020222 on 7/9/24.
-// last updated on 2024.07.16
+// last updated on 2024.07.17
 //
 
 #ifndef EASONDRONE_CONTROL_PX4CTRL_H
@@ -62,7 +62,7 @@ Eigen::Vector3d throttle_sp;
 
 std::vector<geometry_msgs::PoseStamped> posehistory_vector_;
 
-ros::Subscriber Command_sub, station_command_sub, drone_state_sub, mavros_state_sub_, odom_sub_;
+ros::Subscriber easondrone_ctrl_sub_, station_command_sub, drone_state_sub, mavros_state_sub_, odom_sub_;
 ros::Publisher att_ref_pub, setpoint_raw_attitude_pub_;
 ros::ServiceClient set_mode_client_, arming_client_;
 
@@ -94,7 +94,8 @@ void Body_to_ENU(){
 
         Command_Now.Reference_State.velocity_ref[0] = 0;
         Command_Now.Reference_State.velocity_ref[1] = 0;
-    }else if( Command_Now.Reference_State.Move_mode  & 0b01){
+    }
+    else if( Command_Now.Reference_State.Move_mode  & 0b01){
 //        TODO: XY_POS_Z_VEL
 //        float d_vel_body[2] = {Command_Now.Reference_State.velocity_ref[0], Command_Now.Reference_State.velocity_ref[1]};         //the desired xy velocity in Body Frame
 //        float d_vel_enu[2];                                                           //the desired xy velocity in NED Frame
@@ -105,7 +106,8 @@ void Body_to_ENU(){
 //        Command_Now.Reference_State.position_ref[1] = odom_pos_[1] + d_pos_enu[1];
 //        Command_Now.Reference_State.velocity_ref[0] = 0;
 //        Command_Now.Reference_State.velocity_ref[1] = 0;
-    }else if( Command_Now.Reference_State.Move_mode  & 0b10){
+    }
+    else if( Command_Now.Reference_State.Move_mode  & 0b10){
         // XY_VEL_Z_POS
         Command_Now.Reference_State.position_ref[0] = 0;
         Command_Now.Reference_State.position_ref[1] = 0;
@@ -116,7 +118,8 @@ void Body_to_ENU(){
         control_utils::rotation_yaw(_DroneState.attitude[2], d_vel_body, d_vel_enu);
         Command_Now.Reference_State.velocity_ref[0] = d_vel_enu[0];
         Command_Now.Reference_State.velocity_ref[1] = d_vel_enu[1];
-    }else if(Command_Now.Reference_State.Move_mode & 0b11){
+    }
+    else if(Command_Now.Reference_State.Move_mode & 0b11){
         // XYZ_VEL
         float d_vel_body[2] = {Command_Now.Reference_State.velocity_ref[0], Command_Now.Reference_State.velocity_ref[1]};
         float d_vel_enu[2];                                                           //the desired xy velocity in NED Frame
@@ -125,7 +128,8 @@ void Body_to_ENU(){
         Command_Now.Reference_State.velocity_ref[0] = d_vel_enu[0];
         Command_Now.Reference_State.velocity_ref[1] = d_vel_enu[1];
         Command_Now.Reference_State.velocity_ref[2] = Command_Now.Reference_State.velocity_ref[2];
-    }else if(Command_Now.Reference_State.Move_mode & 0b110){
+    }
+    else if(Command_Now.Reference_State.Move_mode & 0b110){
 //POS_VEL_ACC
         cout << "[control] POS_VEL_ACC" << endl;
         float d_pos_body[2] = {Command_Now.Reference_State.position_ref[0], Command_Now.Reference_State.position_ref[1]};         //the desired xy position in Body Frame
@@ -149,7 +153,8 @@ void Body_to_ENU(){
         Command_Now.Reference_State.acceleration_ref[0] = d_acc_enu[0];
         Command_Now.Reference_State.acceleration_ref[1] = d_acc_enu[1];
         Command_Now.Reference_State.acceleration_ref[2] = Command_Now.Reference_State.acceleration_ref[2];
-    }else{
+    }
+    else{
         cout << "[control] unsupported Move_mode: " << Command_Now.Reference_State.Move_mode << endl;
 
         return;
@@ -167,7 +172,7 @@ void Body_to_ENU(){
 }
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>回调函数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-void Command_cb(const easondrone_msgs::ControlCommand::ConstPtr& msg){
+void easondrone_ctrl_cb_(const easondrone_msgs::ControlCommand::ConstPtr& msg){
     Command_Now = *msg;
 
     // 无人机一旦接受到Disarm指令，则会屏蔽其他指令
