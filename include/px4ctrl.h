@@ -60,8 +60,6 @@ easondrone_msgs::AttitudeReference _AttitudeReference;           //位置控制�
 
 Eigen::Vector3d throttle_sp;
 
-std::vector<geometry_msgs::PoseStamped> posehistory_vector_;
-
 ros::Subscriber easondrone_ctrl_sub_, station_command_sub, drone_state_sub, mavros_state_sub_, odom_sub_;
 ros::Publisher att_ref_pub, setpoint_raw_attitude_pub_;
 ros::ServiceClient set_mode_client_, arming_client_;
@@ -74,7 +72,7 @@ bool check_safety(){
         odom_pos_(2) <= geo_fence_z[0] ||
         odom_pos_(2) >= geo_fence_z[1]){
 
-        cout << "[control] Out of geo fence, the drone is landing" << endl;
+        cout << "[px4ctrl] Out of geo fence, the drone is landing" << endl;
 
         return false;
     }
@@ -155,7 +153,7 @@ void Body_to_ENU(){
         Command_Now.Reference_State.acceleration_ref[2] = Command_Now.Reference_State.acceleration_ref[2];
     }
     else{
-        cout << "[control] unsupported Move_mode: " << Command_Now.Reference_State.Move_mode << endl;
+        cout << "[px4ctrl] unsupported Move_mode: " << Command_Now.Reference_State.Move_mode << endl;
 
         return;
     }

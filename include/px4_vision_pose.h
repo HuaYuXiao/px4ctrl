@@ -36,14 +36,10 @@ using namespace std;
 #define TIMEOUT_MAX 0.05
 
 //---------------------------------------相关参数-----------------------------------------------
-float rate_hz_;
-
 int input_source;
 
 Eigen::Vector3f pos_offset;
-float yaw_offset;
-float pitch_offset;
-float roll_offset;
+float yaw_offset, pitch_offset, roll_offset;
 
 string object_name;
 std::string subject_name;
@@ -55,41 +51,39 @@ ros::Time last_timestamp;
 // optitrack定位相关------------------------------------------
 Eigen::Vector3d pos_drone_mocap; //无人机当前位置 (optitrack)
 Eigen::Quaterniond q_mocap;
-Eigen::Vector3d Euler_mocap; //无人机当前姿态 (optitrack)
+
 // -------- vicon定位相关 --------
 //无人机当前位置 (vicon)
 Eigen::Vector3d pos_drone_vicon;
 Eigen::Quaterniond q_vicon;
-//无人机当前姿态 (vicon)
-Eigen::Vector3d Euler_vicon;
+
 //---------------------------------------laser定位相关------------------------------------------
 Eigen::Vector3d pos_drone_laser; //无人机当前位置 (laser)
 Eigen::Quaterniond q_laser;
-Eigen::Vector3d Euler_laser; //无人机当前姿态(laser)
 geometry_msgs::TransformStamped laser; //当前时刻cartorgrapher发布的数据
+
 //---------------------------------------T265------------------------------------------
 Eigen::Vector3d pos_drone_t265;
 Eigen::Quaterniond q_t265;
-Eigen::Vector3d Euler_t265;
+
 //---------------------------------------gazebo真值相关------------------------------------------
 Eigen::Vector3d pos_drone_gazebo;
 Eigen::Quaterniond q_gazebo;
-Eigen::Vector3d Euler_gazebo;
+
 //---------------------------------------SLAM相关------------------------------------------
 Eigen::Vector3d pos_drone_slam;
 Eigen::Quaterniond q_slam;
-Eigen::Vector3d Euler_slam;
 
 Eigen::Vector3d pos_LIO;
 Eigen::Quaterniond q_LIO;
-Eigen::Vector3d Euler_LIO;
+
+geometry_msgs::PoseStamped vision_pose_;
+easondrone_msgs::DroneState Drone_State;
+std::vector<geometry_msgs::PoseStamped> posehistory_vector_;
 
 //---------------------------------------发布相关变量--------------------------------------------
 ros::Subscriber vicon_sub, t265_sub, gazebo_sub, slam_sub, laser_sub, optitrack_sub, LIO_sub_;
-ros::Publisher vision_pub, drone_state_pub, trajectory_pub;
-
-easondrone_msgs::DroneState Drone_State;
-std::vector<geometry_msgs::PoseStamped> posehistory_vector_;
+ros::Publisher vision_pose_pub_, drone_state_pub, trajectory_pub;
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>回调函数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 void vicon_cb(const geometry_msgs::TransformStamped::ConstPtr& msg){
@@ -101,52 +95,30 @@ void vicon_cb(const geometry_msgs::TransformStamped::ConstPtr& msg){
                                  msg->transform.rotation.x,
                                  msg->transform.rotation.y,
                                  msg->transform.rotation.z);
-
-    Euler_vicon = quaternion_to_euler(q_vicon);
-    // 将偏移量添加到欧拉角中
-    Euler_vicon[0] -= yaw_offset;    // 偏航
-    Euler_vicon[1] -= pitch_offset;  // 俯仰
-    Euler_vicon[2] -= roll_offset;   // 横滚
 }
 
 void gazebo_cb(const nav_msgs::Odometry::ConstPtr &msg){
-    if (msg->header.frame_id == "map"){
-        pos_drone_gazebo = Eigen::Vector3d(msg->pose.pose.position.x,
-                                           msg->pose.pose.position.y,
-                                           msg->pose.pose.position.z);
-        q_gazebo = Eigen::Quaterniond(msg->pose.pose.orientation.w,
-                                      msg->pose.pose.orientation.x,
-                                      msg->pose.pose.orientation.y,
-                                      msg->pose.pose.orientation.z);
-        Euler_gazebo = quaternion_to_euler(q_gazebo);
-        // Euler_gazebo[2] = Euler_gazebo[2] + yaw_offset;
-        // q_gazebo = quaternion_from_rpy(Euler_gazebo);
-    }
-    else{
-        cout << "[estimator] wrong gazebo ground truth frame id" << endl;
-    }
+    pos_drone_gazebo = Eigen::Vector3d(msg->pose.pose.position.x,
+                                       msg->pose.pose.position.y,
+                                       msg->pose.pose.position.z);
+    q_gazebo = Eigen::Quaterniond(msg->pose.pose.orientation.w,
+                                  msg->pose.pose.orientation.x,
+                                  msg->pose.pose.orientation.y,
+                                  msg->pose.pose.orientation.z);
 }
 
 void t265_cb(const nav_msgs::Odometry::ConstPtr &msg){
-    if (msg->header.frame_id == "map"){
-        pos_drone_t265 = Eigen::Vector3d(msg->pose.pose.position.x,
-                                         msg->pose.pose.position.y,
-                                         msg->pose.pose.position.z);
-        // pos_drone_t265[0] = msg->pose.pose.position.x + pos_offset[0];
-        // pos_drone_t265[1] = msg->pose.pose.position.y + pos_offset[1];
-        // pos_drone_t265[2] = msg->pose.pose.position.z + pos_offset[2];
+    pos_drone_t265 = Eigen::Vector3d(msg->pose.pose.position.x,
+                                     msg->pose.pose.position.y,
+                                     msg->pose.pose.position.z);
+    // pos_drone_t265[0] = msg->pose.pose.position.x + pos_offset[0];
+    // pos_drone_t265[1] = msg->pose.pose.position.y + pos_offset[1];
+    // pos_drone_t265[2] = msg->pose.pose.position.z + pos_offset[2];
 
-        q_t265 = Eigen::Quaterniond(msg->pose.pose.orientation.w,
-                                    msg->pose.pose.orientation.x,
-                                    msg->pose.pose.orientation.y,
-                                    msg->pose.pose.orientation.z);
-        Euler_t265 = quaternion_to_euler(q_gazebo);
-        // Euler_t265[2] = Euler_t265[2] + yaw_offset;
-        // q_t265 = quaternion_from_rpy(Euler_t265);
-    }
-    else{
-        cout << "[estimator] wrong t265 frame id" << endl;
-    }
+    q_t265 = Eigen::Quaterniond(msg->pose.pose.orientation.w,
+                                msg->pose.pose.orientation.x,
+                                msg->pose.pose.orientation.y,
+                                msg->pose.pose.orientation.z);
 }
 
 void laser_cb(const tf2_msgs::TFMessage::ConstPtr &msg){
@@ -167,12 +139,6 @@ void laser_cb(const tf2_msgs::TFMessage::ConstPtr &msg){
         Eigen::Quaterniond q_laser_enu(laser.transform.rotation.w, laser.transform.rotation.x, laser.transform.rotation.y, laser.transform.rotation.z);
 
         q_laser = q_laser_enu;
-
-        // Transform the Quaternion to Euler Angles
-        Euler_laser = quaternion_to_euler(q_laser);
-
-        //cout << "Position [X Y Z] : " << pos_drone_laser[0] << " [ m ] "<< pos_drone_laser[1]<<" [ m ] "<< pos_drone_laser[2]<<" [ m ] "<<endl;
-        //cout << "Euler [X Y Z] : " << Euler_laser[0] << " [m/s] "<< Euler_laser[1]<<" [m/s] "<< Euler_laser[2]<<" [m/s] "<<endl;
     }
 }
 
@@ -210,31 +176,21 @@ void optitrack_cb(const geometry_msgs::PoseStamped::ConstPtr &msg){
         pos_drone_mocap[2] = pos_drone_mocap[2] - pos_offset[2];
     }
 
-    // Transform the Quaternion to Euler Angles
-    Euler_mocap = quaternion_to_euler(q_mocap);
-
     last_timestamp = msg->header.stamp;
 }
 
 void slam_cb(const geometry_msgs::PoseStamped::ConstPtr &msg){
-    if (msg->header.frame_id == "map_slam"){
-        pos_drone_slam = Eigen::Vector3d(msg->pose.position.x,
-                                         msg->pose.position.y,
-                                         msg->pose.position.z);
-        // pos_drone_gazebo[0] = msg->pose.pose.position.x + pos_offset[0];
-        // pos_drone_gazebo[1] = msg->pose.pose.position.y + pos_offset[1];
-        // pos_drone_gazebo[2] = msg->pose.pose.position.z + pos_offset[2];
+    pos_drone_slam = Eigen::Vector3d(msg->pose.position.x,
+                                     msg->pose.position.y,
+                                     msg->pose.position.z);
+    // pos_drone_gazebo[0] = msg->pose.pose.position.x + pos_offset[0];
+    // pos_drone_gazebo[1] = msg->pose.pose.position.y + pos_offset[1];
+    // pos_drone_gazebo[2] = msg->pose.pose.position.z + pos_offset[2];
 
-        q_slam = Eigen::Quaterniond(msg->pose.orientation.w,
-                                    msg->pose.orientation.x,
-                                    msg->pose.orientation.y,
-                                    msg->pose.orientation.z);
-        Euler_slam = quaternion_to_euler(q_slam);
-        // Euler_gazebo[2] = Euler_gazebo[2] + yaw_offset;
-        // q_gazebo = quaternion_from_rpy(Euler_gazebo);
-    }else{
-        cout << "[estimator] wrong slam frame id" << endl;
-    }
+    q_slam = Eigen::Quaterniond(msg->pose.orientation.w,
+                                msg->pose.orientation.x,
+                                msg->pose.orientation.y,
+                                msg->pose.orientation.z);
 }
 
 void LIO_cb(const nav_msgs::Odometry::ConstPtr &msg){
@@ -245,7 +201,6 @@ void LIO_cb(const nav_msgs::Odometry::ConstPtr &msg){
                                   msg->pose.pose.orientation.x,
                                   msg->pose.pose.orientation.y,
                                   msg->pose.pose.orientation.z);
-    Euler_LIO = quaternion_to_euler(q_LIO);
 }
 
 #endif //PX4CTRL_PX4_VISION_H

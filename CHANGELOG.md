@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v3.5.2] - 2024-07-18
   - add support fot `FAST-LIO`
   - remove `Drone_odom`
+  - remove euler angle estimate
 - v3.5.1:
   - OFFBOARD & arm with easondrone_msgs::ControlCommand::OFFBOARD_ARM
   - remove check for Command_ID

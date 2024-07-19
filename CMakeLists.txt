@@ -66,10 +66,11 @@ target_link_libraries(px4ctrl ${catkin_LIBRARIES})
 
 ##px4_pos_estimator.cpp
 add_library(OptiTrackFeedbackRigidBody src/lib/OptiTrackFeedBackRigidBody.cpp)
-add_executable(px4_pos_estimator src/px4_pos_estimator.cpp)
+add_executable(px4_pos_estimator src/px4_vision_pose.cpp)
 add_dependencies(px4_pos_estimator ${PROJECT_NAME}_gencpp)
-target_link_libraries(px4_pos_estimator ${catkin_LIBRARIES})
-target_link_libraries(px4_pos_estimator OptiTrackFeedbackRigidBody)
+target_link_libraries(px4_pos_estimator
+        ${catkin_LIBRARIES}
+        OptiTrackFeedbackRigidBody)
 
 add_executable(joy_node src/joy_node.cpp)
 target_link_libraries(joy_node ${catkin_LIBRARIES})
@@ -77,8 +78,9 @@ target_link_libraries(joy_node ${catkin_LIBRARIES})
 add_library(KeyboardEvent src/lib/KeyboardEvent.cpp)
 add_executable(terminal_control src/Utilities/terminal_control.cpp)
 add_dependencies(terminal_control ${PROJECT_NAME}_gencpp)
-target_link_libraries(terminal_control ${catkin_LIBRARIES})
-target_link_libraries(terminal_control KeyboardEvent)
+target_link_libraries(terminal_control
+        ${catkin_LIBRARIES}
+        KeyboardEvent)
 
 catkin_install_python(PROGRAMS script/multirotor_communication.py script/multirotor_keyboard_control.py
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
