@@ -1,3 +1,12 @@
+/***************************************************************************************************************************
+ * px4_vision_pose.cpp
+ *
+ * Author: Qyp
+* Maintainer: Eason Hua
+* Update Time: 2024.07.19
+ *
+***************************************************************************************************************************/
+
 #include "px4_vision_pose.h"
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>函数声明<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -17,60 +26,71 @@ void send_to_fcu() {
             // optitrack
             set_pose(vision_pose_.pose, pos_drone_mocap, q_mocap);
 
-            // 此处时间主要用于监测动捕，T265设备是否正常工作
-            if (control_utils::get_time_in_sec(last_timestamp) > TIMEOUT_MAX) {
-                cout << "[estimator] Mocap Timeout" << endl;
-            }
+            vision_pose_.header.stamp = ros::Time::now();
+            vision_pose_pub_.publish(vision_pose_);
+
             break;
         }
 
         case 1:{
             // laser
             set_pose(vision_pose_.pose, pos_drone_laser, q_laser);
-            //目前为二维雷达仿真情况，故z轴使用其他来源
-            vision_pose_.pose.position.z = pos_drone_gazebo[2];
+            // TODO： 目前为二维雷达仿真情况，故z轴使用其他来源
+//            vision_pose_.pose.position.z = pos_drone_gazebo[2];
+
+            vision_pose_.header.stamp = ros::Time::now();
+            vision_pose_pub_.publish(vision_pose_);
+
             break;
         }
 
         case 2:{
-            // gazebo
-            set_pose(vision_pose_.pose, pos_drone_gazebo, q_gazebo);
+            // Gazebo
+            odom_out_.header.stamp = ros::Time::now();
+            odom_out_pub_.publish(odom_out_);
+
             break;
         }
 
         case 3:{
             // T265
-            set_pose(vision_pose_.pose, pos_drone_t265, q_t265);
+            odom_out_.header.stamp = ros::Time::now();
+            odom_out_pub_.publish(odom_out_);
+
             break;
         }
 
         case 4:{
             // slam
-            set_pose(vision_pose_.pose, pos_drone_slam, q_slam);
+            vision_pose_.header.stamp = ros::Time::now();
+            vision_pose_pub_.publish(vision_pose_);
+
             break;
         }
 
         case 5:{
             // LIO
-            set_pose(vision_pose_.pose, pos_LIO, q_LIO);
+            odom_out_.header.stamp = ros::Time::now();
+            odom_out_pub_.publish(odom_out_);
+
             break;
         }
 
         case 6:{
             // VICON
-            set_pose(vision_pose_.pose, pos_drone_vicon, q_vicon);
+            vision_pose_.header.stamp = ros::Time::now();
+            vision_pose_pub_.publish(vision_pose_);
+
             break;
         }
 
         default:{
             // Handle invalid input_source if necessary
             cout << "[estimator] Invalid input source" << endl;
+
             break;
         }
     }
-
-    vision_pose_.header.stamp = ros::Time::now();
-    vision_pose_pub_.publish(vision_pose_);
 }
 
 // 发布无人机状态，具体内容参见 easondrone_msgs::DroneState
@@ -130,15 +150,18 @@ int main(int argc, char **argv){
     nh.param<float>("offset_pitch", pitch_offset, 0.0);
     nh.param<float>("offset_roll", roll_offset, 0.0);
 
+    nh.param<string>("LIO_topic", LIO_topic_, "/Odometry");
+    nh.param<string>("T265_topic", T265_topic_, "/t265/odom/sample");
+
     // VICON
-    vicon_sub = nh.subscribe<geometry_msgs::TransformStamped>
-            ("/vicon/" + subject_name + "/" + segment_name, 1000, vicon_cb);
+    VICON_sub_ = nh.subscribe<geometry_msgs::TransformStamped>
+            ("/vicon/" + subject_name + "/" + segment_name, 1000, VICON_cb);
     //  【订阅】t265估计位置
-    t265_sub = nh.subscribe<nav_msgs::Odometry>
-            ("/t265/odom/sample", 100, t265_cb);
+    T265_sub_ = nh.subscribe<nav_msgs::Odometry>
+            ("/t265/odom/sample", 100, T265_cb);
     // 【订阅】gazebo仿真真值
-    gazebo_sub = nh.subscribe<nav_msgs::Odometry>
-            ("/mavros/local_position/odom", 100, gazebo_cb);
+    Gazebo_sub_ = nh.subscribe<nav_msgs::Odometry>
+            ("/mavros/local_position/odom", 100, Gazebo_cb);
     // 【订阅】SLAM估计位姿
     slam_sub = nh.subscribe<geometry_msgs::PoseStamped>
             ("/slam/pose", 100, slam_cb);
@@ -148,7 +171,7 @@ int main(int argc, char **argv){
     // 【订阅】optitrack估计位置
     optitrack_sub = nh.subscribe<geometry_msgs::PoseStamped>
             ("/vrpn_client_node/"+ object_name + "/pose", 100, optitrack_cb);
-    // subscribe to odometry from VIO
+    // subscribe to odometry from LIO
     LIO_sub_ = nh.subscribe<nav_msgs::Odometry>
             ("/Odometry", 100, LIO_cb);
 
@@ -158,6 +181,8 @@ int main(int argc, char **argv){
     //  对应的飞控中的uORB消息为vehicle_vision_pose_position.msg 及 vehicle_vision_pose_attitude.msg
     vision_pose_pub_ = nh.advertise<geometry_msgs::PoseStamped>
             ("/mavros/vision_pose_pose/pose", 10);
+    odom_out_pub_ = nh.advertise<nav_msgs::Odometry>
+            ("/mavros/odometry/out", 10);
     // 【发布】无人机状态量
     drone_state_pub = nh.advertise<easondrone_msgs::DroneState>
             ("/easondrone/drone_state", 10);

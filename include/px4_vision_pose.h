@@ -2,11 +2,11 @@
 #define PX4CTRL_PX4_VISION_H
 
 /***************************************************************************************************************************
- * px4_pos_estimator.cpp
+ * px4_vision_pose.h
  *
  * Author: Qyp
 * Maintainer: Eason Hua
-* Update Time: 2024.07.18
+* Update Time: 2024.07.19
  *
  * 说明: mavros位置估计程序
  *      1. 订阅激光SLAM (cartorgrapher_ros节点) 发布的位置信息,从laser坐标系转换至NED坐标系
@@ -40,6 +40,7 @@ int input_source;
 
 Eigen::Vector3f pos_offset;
 float yaw_offset, pitch_offset, roll_offset;
+string LIO_topic_, T265_topic_;
 
 string object_name;
 std::string subject_name;
@@ -62,63 +63,36 @@ Eigen::Vector3d pos_drone_laser; //无人机当前位置 (laser)
 Eigen::Quaterniond q_laser;
 geometry_msgs::TransformStamped laser; //当前时刻cartorgrapher发布的数据
 
-//---------------------------------------T265------------------------------------------
-Eigen::Vector3d pos_drone_t265;
-Eigen::Quaterniond q_t265;
-
-//---------------------------------------gazebo真值相关------------------------------------------
-Eigen::Vector3d pos_drone_gazebo;
-Eigen::Quaterniond q_gazebo;
-
 //---------------------------------------SLAM相关------------------------------------------
 Eigen::Vector3d pos_drone_slam;
 Eigen::Quaterniond q_slam;
 
-Eigen::Vector3d pos_LIO;
-Eigen::Quaterniond q_LIO;
-
 geometry_msgs::PoseStamped vision_pose_;
+nav_msgs::Odometry odom_out_;
 easondrone_msgs::DroneState Drone_State;
 std::vector<geometry_msgs::PoseStamped> posehistory_vector_;
 
 //---------------------------------------发布相关变量--------------------------------------------
-ros::Subscriber vicon_sub, t265_sub, gazebo_sub, slam_sub, laser_sub, optitrack_sub, LIO_sub_;
-ros::Publisher vision_pose_pub_, drone_state_pub, trajectory_pub;
+ros::Subscriber VICON_sub_, T265_sub_, Gazebo_sub_, slam_sub, laser_sub, optitrack_sub, LIO_sub_;
+ros::Publisher vision_pose_pub_, odom_out_pub_, drone_state_pub, trajectory_pub;
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>回调函数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-void vicon_cb(const geometry_msgs::TransformStamped::ConstPtr& msg){
-    pos_drone_vicon = Eigen::Vector3d(msg->transform.translation.x - pos_offset[0],
-                                      msg->transform.translation.y - pos_offset[1],
-                                      msg->transform.translation.z - pos_offset[2]);
-
-    q_vicon = Eigen::Quaterniond(msg->transform.rotation.w,
-                                 msg->transform.rotation.x,
-                                 msg->transform.rotation.y,
-                                 msg->transform.rotation.z);
+void VICON_cb(const geometry_msgs::TransformStamped::ConstPtr& msg){
+    vision_pose_.pose.position.x = msg->transform.translation.x - pos_offset[0];
+    vision_pose_.pose.position.y = msg->transform.translation.y - pos_offset[1];
+    vision_pose_.pose.position.z = msg->transform.translation.z - pos_offset[2];
+    vision_pose_.pose.orientation.w = msg->transform.rotation.w;
+    vision_pose_.pose.orientation.x = msg->transform.rotation.x;
+    vision_pose_.pose.orientation.y = msg->transform.rotation.y;
+    vision_pose_.pose.orientation.z = msg->transform.rotation.z;
 }
 
-void gazebo_cb(const nav_msgs::Odometry::ConstPtr &msg){
-    pos_drone_gazebo = Eigen::Vector3d(msg->pose.pose.position.x,
-                                       msg->pose.pose.position.y,
-                                       msg->pose.pose.position.z);
-    q_gazebo = Eigen::Quaterniond(msg->pose.pose.orientation.w,
-                                  msg->pose.pose.orientation.x,
-                                  msg->pose.pose.orientation.y,
-                                  msg->pose.pose.orientation.z);
+void Gazebo_cb(const nav_msgs::Odometry::ConstPtr &msg){
+    odom_out_ = *msg;
 }
 
-void t265_cb(const nav_msgs::Odometry::ConstPtr &msg){
-    pos_drone_t265 = Eigen::Vector3d(msg->pose.pose.position.x,
-                                     msg->pose.pose.position.y,
-                                     msg->pose.pose.position.z);
-    // pos_drone_t265[0] = msg->pose.pose.position.x + pos_offset[0];
-    // pos_drone_t265[1] = msg->pose.pose.position.y + pos_offset[1];
-    // pos_drone_t265[2] = msg->pose.pose.position.z + pos_offset[2];
-
-    q_t265 = Eigen::Quaterniond(msg->pose.pose.orientation.w,
-                                msg->pose.pose.orientation.x,
-                                msg->pose.pose.orientation.y,
-                                msg->pose.pose.orientation.z);
+void T265_cb(const nav_msgs::Odometry::ConstPtr &msg){
+    odom_out_ = *msg;
 }
 
 void laser_cb(const tf2_msgs::TFMessage::ConstPtr &msg){
@@ -180,27 +154,11 @@ void optitrack_cb(const geometry_msgs::PoseStamped::ConstPtr &msg){
 }
 
 void slam_cb(const geometry_msgs::PoseStamped::ConstPtr &msg){
-    pos_drone_slam = Eigen::Vector3d(msg->pose.position.x,
-                                     msg->pose.position.y,
-                                     msg->pose.position.z);
-    // pos_drone_gazebo[0] = msg->pose.pose.position.x + pos_offset[0];
-    // pos_drone_gazebo[1] = msg->pose.pose.position.y + pos_offset[1];
-    // pos_drone_gazebo[2] = msg->pose.pose.position.z + pos_offset[2];
-
-    q_slam = Eigen::Quaterniond(msg->pose.orientation.w,
-                                msg->pose.orientation.x,
-                                msg->pose.orientation.y,
-                                msg->pose.orientation.z);
+    vision_pose_ = *msg;
 }
 
 void LIO_cb(const nav_msgs::Odometry::ConstPtr &msg){
-    pos_LIO = Eigen::Vector3d(msg->pose.pose.position.x,
-                                       msg->pose.pose.position.y,
-                                       msg->pose.pose.position.z);
-    q_LIO = Eigen::Quaterniond(msg->pose.pose.orientation.w,
-                                  msg->pose.pose.orientation.x,
-                                  msg->pose.pose.orientation.y,
-                                  msg->pose.pose.orientation.z);
+    odom_out_ = *msg;
 }
 
 #endif //PX4CTRL_PX4_VISION_H
