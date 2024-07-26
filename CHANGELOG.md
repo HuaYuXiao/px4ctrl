@@ -7,8 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## [v3.6.0] - 2024-07-26
-- [remove support]: cmd from `/easondrone/control_command_station`
 - [new feature]: direct publish `/easondrone/control_command` from `/move_base_simple/goal`
+- [remove support]: cmd from `/easondrone/control_command_station`
 
 ## [v3.5.2] - 2024-07-26
 - [new feature]: `FAST-LIO`: `/Odometry` to `/mavros/vision_pose/pose`
