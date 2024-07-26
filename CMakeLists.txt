@@ -11,17 +11,18 @@ find_package(Boost REQUIRED COMPONENTS system)
 find_package(catkin REQUIRED COMPONENTS
   message_generation  
   roscpp
-  geometry_msgs
-  nav_msgs
-  sensor_msgs
   mavros
-  std_msgs
+        message_filters
   std_srvs
   tf
   tf2_ros
   tf2_eigen
         tf2_geometry_msgs
   mavros_msgs
+        geometry_msgs
+        std_msgs
+        nav_msgs
+        sensor_msgs
         easondrone_msgs
 )
 
@@ -81,6 +82,10 @@ add_dependencies(terminal_control ${PROJECT_NAME}_gencpp)
 target_link_libraries(terminal_control
         ${catkin_LIBRARIES}
         KeyboardEvent)
+
+add_executable(direct_goal src/direct_goal.cpp)
+add_dependencies(px4ctrl ${PROJECT_NAME}_gencpp)
+target_link_libraries(direct_goal ${catkin_LIBRARIES})
 
 catkin_install_python(PROGRAMS script/multirotor_communication.py script/multirotor_keyboard_control.py
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})

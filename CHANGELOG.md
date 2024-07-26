@@ -5,12 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v3.5.3] - 2024-07-26
+
+## [v3.6.0] - 2024-07-26
 - [remove support]: cmd from `/easondrone/control_command_station`
 - [new feature]: direct publish `/easondrone/control_command` from `/move_base_simple/goal`
 
 ## [v3.5.2] - 2024-07-26
-- add support for `FAST-LIO`: `/Odometry` to `/mavros/vision_pose/pose`
+- [new feature]: `FAST-LIO`: `/Odometry` to `/mavros/vision_pose/pose`
 - remove `Drone_odom`
 - remove euler angle estimate
 - directly remap `nav_msgs::Odometry` to `/mavros/odometry/out`
@@ -41,13 +42,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v3.4.1: 
 - remove `message_pub`
-- v3.4.0: support PID controller with `POS+VEL` loop
-- v3.3.4: update `rate_hz_`
-- v3.3.3: update `get_ref_pose_rviz`
-- v3.3.2: add support for `launch`
-- v3.3.1: support move mode `POS_VEL_ACC`
-- v3.3.0: support move mode `XYZ_VEL`
-- v3.2.1: catch invalid input of terminal control
-- v2.0.0: support control type `NE`, `PID`, `UDE`
-- v1.2.0: import position offset
-- v1.0.0: add support for `VICON`
+
+## v3.4.0: 
+- support PID controller with `POS+VEL` loop
+
+## v3.3.4: 
+- update `rate_hz_` (removed in v3.5.3)
+
+## v3.3.3:
+- update `get_ref_pose_rviz`
+
+## v3.3.2: 
+- add support for `launch`
+
+## v3.3.1: 
+- [new feature]: support move mode `POS_VEL_ACC`
+
+## v3.3.0: 
+- [new feature]: support move mode `XYZ_VEL`
+
+## v3.2.1: 
+- [new feature]: catch invalid input of terminal control
+
+## v2.0.0: 
+- [new feature]: control type `NE`, `PID`, `UDE`
+
+## v1.2.0: 
+- import position offset
+
+## v1.0.0: 
+- [new feature]: `VICON`

@@ -23,4 +23,6 @@
           output="screen" launch-prefix="gnome-terminal --">
         <rosparam command="load" file="$(find px4ctrl)/config/uav_control_indoor.yaml"/>
     </node>
+
+    <node pkg="px4ctrl" type="direct_goal" name="direct_goal"/>
 </launch>
