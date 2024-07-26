@@ -27,8 +27,6 @@
 using namespace std;
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>变量声明<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-float rate_hz_;
-
 float cur_time;                                             //程序运行时间
 float Takeoff_height_;                                       //默认起飞高度
 float Disarm_height_;                                        //自动上锁高度
@@ -172,16 +170,6 @@ void Body_to_ENU(){
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>回调函数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 void easondrone_ctrl_cb_(const easondrone_msgs::ControlCommand::ConstPtr& msg){
     Command_Now = *msg;
-
-    // 无人机一旦接受到Disarm指令，则会屏蔽其他指令
-    if(Command_Last.Mode == easondrone_msgs::ControlCommand::Disarm){
-        Command_Now = Command_Last;
-    }
-}
-
-void station_command_cb(const easondrone_msgs::ControlCommand::ConstPtr& msg){
-    Command_Now = *msg;
-    cout << "[control] Get a command from Station" << endl;
 
     // 无人机一旦接受到Disarm指令，则会屏蔽其他指令
     if(Command_Last.Mode == easondrone_msgs::ControlCommand::Disarm){

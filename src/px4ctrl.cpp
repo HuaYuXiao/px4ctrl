@@ -20,9 +20,6 @@ int main(int argc, char **argv){
     ros::init(argc, argv, "px4ctrl");
     ros::NodeHandle nh("~");
 
-    //　程序执行频率
-    nh.param<float>("rate_hz", rate_hz_, 100);
-
     // 参数读取
     nh.param<float>("control/Takeoff_height", Takeoff_height_, 1.5);
     nh.param<float>("control/Disarm_height", Disarm_height_, 0.15);
@@ -38,15 +35,12 @@ int main(int argc, char **argv){
     //【订阅】指令 本话题为任务模块生成的控制指令
     easondrone_ctrl_sub_ = nh.subscribe<easondrone_msgs::ControlCommand>
             ("/easondrone/control_command", 10, easondrone_ctrl_cb_);
-    //【订阅】指令 本话题为地面站发送的控制指令
-    station_command_sub = nh.subscribe<easondrone_msgs::ControlCommand>
-            ("/easondrone/control_command_station", 10, station_command_cb);
     //【订阅】无人机状态 本话题来自px4_pos_estimator.cpp
     drone_state_sub = nh.subscribe<easondrone_msgs::DroneState>
             ("/easondrone/drone_state", 10, drone_state_cb);
     mavros_state_sub_ = nh.subscribe<mavros_msgs::State>
             ("/mavros/state", 10, mavros_state_cb);
-    odom_sub_ = nh.subscribe
+    odom_sub_ = nh.subscribe<nav_msgs::Odometry>
             ("/mavros/local_position/odom", 10, odometryCallback);
 
     // 【发布】角度/角速度期望值 坐标系 ENU系
@@ -67,7 +61,7 @@ int main(int argc, char **argv){
     dt = 0.02;
 
     // 位置控制一般选取为50Hz，主要取决于位置状态的更新频率
-    ros::Rate rate(rate_hz_);
+    ros::Rate rate(100);
 
     // 用于与mavros通讯的类，通过mavros发送控制指令至飞控【本程序->mavros->飞控】
     command_to_mavros _command_to_mavros;
@@ -79,9 +73,9 @@ int main(int argc, char **argv){
     cout << "Takeoff_height   : "<< Takeoff_height_<<" [m] "<<endl;
     cout << "Disarm_height    : "<< Disarm_height_ <<" [m] "<<endl;
     cout << "Land_speed       : "<< Land_speed_ <<" [m/s] "<<endl;
-    cout << "geo_fence_x : "<< geo_fence_x[0] << " [m]  to  "<<geo_fence_x[1] << " [m]"<< endl;
-    cout << "geo_fence_y : "<< geo_fence_y[0] << " [m]  to  "<<geo_fence_y[1] << " [m]"<< endl;
-    cout << "geo_fence_z : "<< geo_fence_z[0] << " [m]  to  "<<geo_fence_z[1] << " [m]"<< endl;
+    cout << "geo_fence_x : " << geo_fence_x[0] << " to " << geo_fence_x[1] << endl;
+    cout << "geo_fence_y : " << geo_fence_y[0] << " to " << geo_fence_y[1] << endl;
+    cout << "geo_fence_z : " << geo_fence_z[0] << " to " << geo_fence_z[1] << endl;
 
     // 初始化命令- 默认设置：Idle模式 电机怠速旋转 等待来自上层的控制指令
     Command_Now.Mode                                = easondrone_msgs::ControlCommand::Idle;
@@ -92,7 +86,7 @@ int main(int argc, char **argv){
     ros::Time begin_time = ros::Time::now();
     float last_time = control_utils::get_time_in_sec(begin_time);
 
-    cout << "[control] controller initialized" << endl;
+    cout << "[px4ctrl] controller initialized" << endl;
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主  循  环<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     while(ros::ok()){
