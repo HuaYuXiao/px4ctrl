@@ -158,7 +158,13 @@ void slam_cb(const geometry_msgs::PoseStamped::ConstPtr &msg){
 }
 
 void LIO_cb(const nav_msgs::Odometry::ConstPtr &msg){
-    odom_out_ = *msg;
+    vision_pose_.pose.position.x = msg->pose.pose.position.x;
+    vision_pose_.pose.position.y = msg->pose.pose.position.y;
+    vision_pose_.pose.position.z = msg->pose.pose.position.z;
+    vision_pose_.pose.orientation.x = msg->pose.pose.orientation.x;
+    vision_pose_.pose.orientation.y = msg->pose.pose.orientation.y;
+    vision_pose_.pose.orientation.z = msg->pose.pose.orientation.z;
+    vision_pose_.pose.orientation.w = msg->pose.pose.orientation.w;
 }
 
 #endif //PX4CTRL_PX4_VISION_H

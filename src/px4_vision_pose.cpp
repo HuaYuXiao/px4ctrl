@@ -70,8 +70,8 @@ void send_to_fcu() {
 
         case 5:{
             // LIO
-            odom_out_.header.stamp = ros::Time::now();
-            odom_out_pub_.publish(odom_out_);
+            vision_pose_.header.stamp = ros::Time::now();
+            vision_pose_pub_.publish(vision_pose_);
 
             break;
         }
@@ -180,7 +180,7 @@ int main(int argc, char **argv){
     //  对应Mavlink消息为VISION_POSITION_ESTIMATE(#102),
     //  对应的飞控中的uORB消息为vehicle_vision_pose_position.msg 及 vehicle_vision_pose_attitude.msg
     vision_pose_pub_ = nh.advertise<geometry_msgs::PoseStamped>
-            ("/mavros/vision_pose_pose/pose", 10);
+            ("/mavros/vision_pose/pose", 10);
     odom_out_pub_ = nh.advertise<nav_msgs::Odometry>
             ("/mavros/odometry/out", 10);
     // 【发布】无人机状态量
