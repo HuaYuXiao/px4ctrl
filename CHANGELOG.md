@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.6.2] - 2024-08-05
+- [remove feature]: check for geofence
+- [remove feature]: `easondrone_msgs::ControlCommand::Idle`
+
 ## [v3.6.1] - 2024-08-05
 - [new feature]: support `VINS-Fusion`: `/vins_estimator/odometry` to `/mavros/vision_pose/pose`
 - [remove support]: `cartographer`, `outdoor`

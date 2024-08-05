@@ -46,7 +46,7 @@ int main(int argc, char **argv){
             ("/easondrone/control_command", 10);
 
     // 初始化命令 - Idle模式 电机怠速旋转 等待来自上层的控制指令
-    Command_to_pub.Mode                                = easondrone_msgs::ControlCommand::Idle;
+    Command_to_pub.Mode                                = easondrone_msgs::ControlCommand::Move;
     Command_to_pub.Reference_State.Move_mode           = easondrone_msgs::PositionReference::XYZ_POS;
     Command_to_pub.Reference_State.Move_frame          = easondrone_msgs::PositionReference::ENU_FRAME;
 
@@ -67,7 +67,7 @@ int main(int argc, char **argv){
 }
 
 void mainloop(){
-    int Control_Mode = 0;
+    int Control_Mode = 6;
     bool valid_Control_Mode = false;
     int Move_mode = 0;
     bool valid_move_mode = false;
@@ -83,11 +83,10 @@ void mainloop(){
         while (!valid_Control_Mode){
             cout << "-------- EasonDrone Terminal--------" << endl;
             cout << "Please choose the Command.Mode: " << endl;
-            cout << "0 for IDLE, 1 for TAKEOFF, 2 for HOLD, 3 for LAND, " << endl;
-            cout << "4 for MOVE, 5 for DISARM, 6 - ARM & OFFBOARD" << endl;
+            cout << "1 - Takeoff, 2 - Hover,  3 - Land, " << endl;
+            cout << "4 - Move,    5 - Disarm, 6 - Arm & Offboard" << endl;
             if (cin >> Control_Mode) {
-                if (Control_Mode == 0 ||
-                    Control_Mode == 1 ||
+                if (Control_Mode == 1 ||
                     Control_Mode == 2 ||
                     Control_Mode == 3 ||
                     Control_Mode == 4 ||
@@ -110,14 +109,6 @@ void mainloop(){
         valid_Control_Mode = false;
 
         switch (Control_Mode){
-            case easondrone_msgs::ControlCommand::Idle:{
-                Command_to_pub.header.stamp = ros::Time::now();
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Idle;
-                easondrone_ctrl_pub_.publish(Command_to_pub);
-
-                break;
-            }
-
             case 6:{
                 Command_to_pub.header.stamp = ros::Time::now();
                 Command_to_pub.Mode = easondrone_msgs::ControlCommand::OFFBOARD_ARM;
@@ -159,10 +150,12 @@ void mainloop(){
                             Move_mode == 2 ||
                             Move_mode == 3) {
                             valid_move_mode = true;
-                        } else {
+                        }
+                        else {
                             cout << "Invalid input! Please enter a valid Move_mode." << endl;
                         }
-                    } else {
+                    }
+                    else {
                         // Clear error flags
                         cin.clear();
                         // Discard invalid input
@@ -177,10 +170,12 @@ void mainloop(){
                     if (cin >> Move_frame) {
                         if (Move_frame == 0 || Move_frame == 1) {
                             valid_move_frame = true;
-                        } else {
+                        }
+                        else {
                             cout << "Invalid input! Please enter 0 or 1." << endl;
                         }
-                    } else {
+                    }
+                    else {
                         // Clear error flags
                         cin.clear();
                         // Discard invalid input

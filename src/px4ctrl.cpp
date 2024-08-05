@@ -68,7 +68,7 @@ int main(int argc, char **argv){
     cout << "Land_speed       : "<< Land_speed_ <<" [m/s] "<<endl;
 
     // 初始化命令- 默认设置：Idle模式 电机怠速旋转 等待来自上层的控制指令
-    Command_Now.Mode                                = easondrone_msgs::ControlCommand::Idle;
+    Command_Now.Mode                                = easondrone_msgs::ControlCommand::Move;
     Command_Now.Reference_State.Move_mode           = easondrone_msgs::PositionReference::XYZ_POS;
     Command_Now.Reference_State.Move_frame          = easondrone_msgs::PositionReference::ENU_FRAME;
 
@@ -90,11 +90,6 @@ int main(int argc, char **argv){
         ros::spinOnce();
 
         switch (Command_Now.Mode){
-            // 【Idle】
-            case easondrone_msgs::ControlCommand::Idle:{
-                break;
-            }
-
             // 怠速旋转，此时可以切入offboard模式，但不会起飞
             case easondrone_msgs::ControlCommand::OFFBOARD_ARM:{
                 ROS_INFO("FSM_EXEC_STATE: OFFBOARD & ARM");
@@ -183,10 +178,6 @@ int main(int argc, char **argv){
                     }
                 }
 
-//                if(_DroneState.landed){
-//                    Command_Now.Mode = easondrone_msgs::ControlCommand::Idle;
-//                }
-
                 break;
             }
 
@@ -225,9 +216,7 @@ int main(int argc, char **argv){
         }
 
         //执行控制
-        if(Command_Now.Mode != easondrone_msgs::ControlCommand::Idle){
-            _ControlOutput = pos_controller_cascade_pid.pos_controller(_DroneState, Command_Now.Reference_State, dt);
-        }
+        _ControlOutput = pos_controller_cascade_pid.pos_controller(_DroneState, Command_Now.Reference_State, dt);
 
         throttle_sp[0] = _ControlOutput.Throttle[0];
         throttle_sp[1] = _ControlOutput.Throttle[1];
