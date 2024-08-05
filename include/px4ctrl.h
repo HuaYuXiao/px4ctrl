@@ -22,9 +22,10 @@
 #include "control_utils.h"
 #include "Position_Controller/pos_controller_cascade_PID.h"
 
-#define TRA_WINDOW 1000
-
 using namespace std;
+
+
+#define TRA_WINDOW 1000
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>变量声明<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 float cur_time;                                             //程序运行时间
@@ -32,11 +33,6 @@ float Takeoff_height_;                                       //默认起飞高�
 float Disarm_height_;                                        //自动上锁高度
 float Land_speed_;                                           //降落速度
 float dt;
-
-//Geigraphical fence 地理围栏
-Eigen::Vector2f geo_fence_x;
-Eigen::Vector2f geo_fence_y;
-Eigen::Vector2f geo_fence_z;
 
 Eigen::Vector3d Takeoff_position;                              // 起飞位置
 easondrone_msgs::DroneState _DroneState;                          //无人机状态量
@@ -62,21 +58,6 @@ ros::Subscriber easondrone_ctrl_sub_, station_command_sub, drone_state_sub, mavr
 ros::Publisher att_ref_pub, setpoint_raw_attitude_pub_;
 ros::ServiceClient set_mode_client_, arming_client_;
 
-bool check_safety(){
-    if (odom_pos_(0) <= geo_fence_x[0] ||
-        odom_pos_(0) >= geo_fence_x[1] ||
-        odom_pos_(1) <= geo_fence_y[0] ||
-        odom_pos_(1) >= geo_fence_y[1] ||
-        odom_pos_(2) <= geo_fence_z[0] ||
-        odom_pos_(2) >= geo_fence_z[1]){
-
-        cout << "[px4ctrl] Out of geo fence, the drone is landing" << endl;
-
-        return false;
-    }
-
-    return true;
-}
 
 //【Body_to_ENU】 机体系移动。
 void Body_to_ENU(){

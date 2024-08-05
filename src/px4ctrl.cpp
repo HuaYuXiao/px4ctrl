@@ -3,7 +3,7 @@
 *
 * Author: Qyp
 * Maintainer: Eason Hua
-// last updated on 2024.07.17
+// last updated on 2024.08.05
 *
 * Introduction:  PX4 Position Controller 
 *         1. 从应用层节点订阅/easondrone/control_command话题（ControlCommand.msg），接收来自上层的控制指令。
@@ -25,23 +25,16 @@ int main(int argc, char **argv){
     nh.param<float>("control/Disarm_height", Disarm_height_, 0.15);
     nh.param<float>("control/Land_speed", Land_speed_, 0.2);
 
-    nh.param<float>("geo_fence/x_min", geo_fence_x[0], -8.0);
-    nh.param<float>("geo_fence/x_max", geo_fence_x[1], 8.0);
-    nh.param<float>("geo_fence/y_min", geo_fence_y[0], -5.0);
-    nh.param<float>("geo_fence/y_max", geo_fence_y[1], 5.0);
-    nh.param<float>("geo_fence/z_min", geo_fence_z[0], -0.3);
-    nh.param<float>("geo_fence/z_max", geo_fence_z[1], 3.0);
-
+    mavros_state_sub_ = nh.subscribe<mavros_msgs::State>
+            ("/mavros/state", 10, mavros_state_cb);
+    odom_sub_ = nh.subscribe<nav_msgs::Odometry>
+            ("/mavros/local_position/odom", 10, odometryCallback);
     //【订阅】指令 本话题为任务模块生成的控制指令
     easondrone_ctrl_sub_ = nh.subscribe<easondrone_msgs::ControlCommand>
             ("/easondrone/control_command", 10, easondrone_ctrl_cb_);
     //【订阅】无人机状态 本话题来自px4_pos_estimator.cpp
     drone_state_sub = nh.subscribe<easondrone_msgs::DroneState>
             ("/easondrone/drone_state", 10, drone_state_cb);
-    mavros_state_sub_ = nh.subscribe<mavros_msgs::State>
-            ("/mavros/state", 10, mavros_state_cb);
-    odom_sub_ = nh.subscribe<nav_msgs::Odometry>
-            ("/mavros/local_position/odom", 10, odometryCallback);
 
     // 【发布】角度/角速度期望值 坐标系 ENU系
     //  本话题要发送至飞控(通过Mavros功能包 /plugins/setpoint_raw.cpp发送), 对应Mavlink消息为SET_ATTITUDE_TARGET (#82), 对应的飞控中的uORB消息为vehicle_attitude_setpoint.msg（角度） 或vehicle_rates_setpoint.msg（角速度）
@@ -73,9 +66,6 @@ int main(int argc, char **argv){
     cout << "Takeoff_height   : "<< Takeoff_height_<<" [m] "<<endl;
     cout << "Disarm_height    : "<< Disarm_height_ <<" [m] "<<endl;
     cout << "Land_speed       : "<< Land_speed_ <<" [m/s] "<<endl;
-    cout << "geo_fence_x : " << geo_fence_x[0] << " to " << geo_fence_x[1] << endl;
-    cout << "geo_fence_y : " << geo_fence_y[0] << " to " << geo_fence_y[1] << endl;
-    cout << "geo_fence_z : " << geo_fence_z[0] << " to " << geo_fence_z[1] << endl;
 
     // 初始化命令- 默认设置：Idle模式 电机怠速旋转 等待来自上层的控制指令
     Command_Now.Mode                                = easondrone_msgs::ControlCommand::Idle;
@@ -98,11 +88,6 @@ int main(int argc, char **argv){
 
         //执行回调函数
         ros::spinOnce();
-
-        // Check for geo fence: If drone is out of the geo fence, it will land now.
-        if(!check_safety()){
-            Command_Now.Mode = easondrone_msgs::ControlCommand::Land;
-        }
 
         switch (Command_Now.Mode){
             // 【Idle】

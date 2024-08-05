@@ -3,7 +3,7 @@
 *
 * Author: Qyp
 * Edited by: Eason Hua
-* Update Time: 2024.07.16
+* Update Time: 2024.08.05
 *
 * Introduction:  test function for sending ControlCommand.msg
 ***************************************************************************************************************************/
@@ -22,21 +22,19 @@
 
 using namespace std;
 
+
 //即将发布的command
 easondrone_msgs::ControlCommand Command_to_pub;
 
-//Geigraphical fence 地理围栏
-Eigen::Vector2f geo_fence_x;
-Eigen::Vector2f geo_fence_y;
-Eigen::Vector2f geo_fence_z;
-
 //发布
 ros::Publisher easondrone_ctrl_pub_;
+
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>　函数声明　<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 void mainloop();
 
 void generate_com(int Move_mode, float state_desired[4]);
+
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>　主函数　<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 int main(int argc, char **argv){
@@ -46,13 +44,6 @@ int main(int argc, char **argv){
     //　【发布】控制指令
     easondrone_ctrl_pub_ = nh.advertise<easondrone_msgs::ControlCommand>
             ("/easondrone/control_command", 10);
-
-    nh.param<float>("geo_fence/x_min", geo_fence_x[0], -8.0);
-    nh.param<float>("geo_fence/x_max", geo_fence_x[1], 8.0);
-    nh.param<float>("geo_fence/y_min", geo_fence_y[0], -5.0);
-    nh.param<float>("geo_fence/y_max", geo_fence_y[1], 5.0);
-    nh.param<float>("geo_fence/z_min", geo_fence_z[0], -0.3);
-    nh.param<float>("geo_fence/z_max", geo_fence_z[1], 3.0);
 
     // 初始化命令 - Idle模式 电机怠速旋转 等待来自上层的控制指令
     Command_to_pub.Mode                                = easondrone_msgs::ControlCommand::Idle;
@@ -93,7 +84,7 @@ void mainloop(){
             cout << "-------- EasonDrone Terminal--------" << endl;
             cout << "Please choose the Command.Mode: " << endl;
             cout << "0 for IDLE, 1 for TAKEOFF, 2 for HOLD, 3 for LAND, " << endl;
-            cout << "4 for MOVE, 5 for DISARM, 6 - OFFBOARD & ARM" << endl;
+            cout << "4 for MOVE, 5 for DISARM, 6 - ARM & OFFBOARD" << endl;
             if (cin >> Control_Mode) {
                 if (Control_Mode == 0 ||
                     Control_Mode == 1 ||
@@ -103,10 +94,12 @@ void mainloop(){
                     Control_Mode == 5 ||
                     Control_Mode == 6) {
                     valid_Control_Mode = true;
-                }else{
+                }
+                else{
                     cout << "Invalid input! Please enter a valid command mode." << endl;
                 }
-            } else {
+            }
+            else {
                 // Clear error flags
                 cin.clear();
                 // Discard invalid input
@@ -202,13 +195,9 @@ void mainloop(){
                 while (!valid_x_input) {
                     cout << "setpoint_t[0] --- x [m] : " << endl;
                     if (cin >> state_desired[0]) {
-                        // Check if x is within the range defined by geo_fence_x
-                        if (state_desired[0] > geo_fence_x[0] && state_desired[0] < geo_fence_x[1]) {
-                            valid_x_input = true;
-                        } else {
-                            cout << "Invalid input for x! Please enter a value between " << geo_fence_x[0] << " and " << geo_fence_x[1] << endl;
-                        }
-                    } else {
+                        valid_x_input = true;
+                    }
+                    else {
                         // Clear error flags
                         cin.clear();
                         // Discard invalid input
@@ -221,13 +210,9 @@ void mainloop(){
                 while (!valid_y_input) {
                     cout << "setpoint_t[1] --- y [m] : " << endl;
                     if (cin >> state_desired[1]) {
-                        // Check if y is within the range defined by geo_fence_y
-                        if (state_desired[1] > geo_fence_y[0] && state_desired[1] < geo_fence_y[1]) {
-                            valid_y_input = true;
-                        } else {
-                            cout << "Invalid input for y! Please enter a value between " << geo_fence_y[0] << " and " << geo_fence_y[1] << endl;
-                        }
-                    } else {
+                        valid_y_input = true;
+                    }
+                    else {
                         // Clear error flags
                         cin.clear();
                         // Discard invalid input
@@ -240,13 +225,14 @@ void mainloop(){
                 while (!valid_z_input) {
                     cout << "setpoint_t[2] --- z [m] : " << endl;
                     if (cin >> state_desired[2]) {
-                        // Check if z is within the range defined by geo_fence_z
-                        if (state_desired[2] > geo_fence_y[0] && state_desired[2] < geo_fence_z[1]) {
+                        if (state_desired[2] >= 0.0) {
                             valid_z_input = true;
-                        } else {
-                            cout << "Invalid input for z! Please enter a value between " << geo_fence_z[0] << " and " << geo_fence_z[1] << endl;
                         }
-                    } else {
+                        else {
+                            cout << "Invalid input for z! Please enter a non-negative value" << endl;
+                        }
+                    }
+                    else {
                         // Clear error flags
                         cin.clear();
                         // Discard invalid input
@@ -260,12 +246,14 @@ void mainloop(){
                     cout << "setpoint_t[3] --- yaw [deg] : " << endl;
                     if (cin >> state_desired[3]) {
                         // Check if yaw is within the range
-                        if (state_desired[3] >= -360 && state_desired[3] < 360) {
+                        if (state_desired[3] >= -180 && state_desired[3] < 180) {
                             valid_yaw_input = true;
-                        } else {
-                            cout << "Invalid input for yaw! Please enter a value between -360 and 360" << endl;
                         }
-                    } else {
+                        else {
+                            cout << "Invalid input for yaw! Please enter a value between -180 and 180" << endl;
+                        }
+                    }
+                    else {
                         // Clear error flags
                         cin.clear();
                         // Discard invalid input
