@@ -8,8 +8,6 @@ control:
   Land_speed : 0.3
   ##　上锁高度
   Disarm_height : 0.1
-  ## 定位源: 2 for Gazebo, 3 for T265, 5 for LIO, 6 for VICON
-  location_source : 5
   ## 最大安全速度
   maximum_safe_vel_xy : 0.2
   maximum_safe_vel_z : 0.5

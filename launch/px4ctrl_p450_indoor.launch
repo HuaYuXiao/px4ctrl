@@ -1,12 +1,12 @@
 <launch>
     <!-- run the px4_vision_pose.cpp -->
     <node pkg="px4ctrl" type="px4_pos_estimator" name="px4_pos_estimator" output="screen">
-        <!-- 定位数据输入源 0 for vicon， 1 for 激光SLAM, 2 for gazebo , 3 for T265 -->
+        <!-- 定位数据输入源: 6 - VICON, 2 - Gazebo, 3 - T265, 5 - LIO, 0 - optitrack, 1 - VIO -->
         <param name="input_source" value="2"/>
-
-        <param name="offset_x" value="0"/>
-        <param name="offset_y" value="0"/>
-        <param name="offset_z" value="0"/>
+        <param name="LIO_topic" value="/Odometry"/>
+        <param name="Gazebo_topic" value="/gazebo/groundtruth/odom"/>
+        <param name="T265_topic" value="/t265/odom/sample"/>
+        <param name="VIO_topic" value="/vins_estimator/odometry"/>
     </node>
 
     <!-- 启动uav_control_main -->
