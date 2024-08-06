@@ -14,13 +14,14 @@
 
 #include "px4ctrl_node.h"
 
+
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主 函 数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 int main(int argc, char **argv){
     ros::init(argc, argv, "px4ctrl_node");
     ros::NodeHandle nh("~");
 
-    mavros_state_sub_ = nh.subscribe<mavros_msgs::State>
-            ("/mavros/state", 10, mavros_state_cb);
+    state_sub = nh.subscribe<mavros_msgs::State>
+            ("/mavros/state", 10, state_cb);
     odom_sub_ = nh.subscribe<nav_msgs::Odometry>
             ("/mavros/local_position/odom", 10, odometryCallback);
     //【订阅】指令 本话题为任务模块生成的控制指令
@@ -30,6 +31,8 @@ int main(int argc, char **argv){
     drone_state_sub = nh.subscribe<easondrone_msgs::DroneState>
             ("/easondrone/drone_state", 10, drone_state_cb);
 
+    local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>
+            ("mavros/setpoint_position/local", 10);
     // 【发布】角度/角速度期望值 坐标系 ENU系
     //  本话题要发送至飞控(通过Mavros功能包 /plugins/setpoint_raw.cpp发送), 对应Mavlink消息为SET_ATTITUDE_TARGET (#82), 对应的飞控中的uORB消息为vehicle_attitude_setpoint.msg（角度） 或vehicle_rates_setpoint.msg（角速度）
     setpoint_raw_attitude_pub_ = nh.advertise<mavros_msgs::AttitudeTarget>
@@ -39,16 +42,38 @@ int main(int argc, char **argv){
             ("/easondrone/control/attitude_reference", 10);
 
     // 【服务】解锁/上锁 本服务通过Mavros功能包 /plugins/command.cpp 实现
-    arming_client_ = nh.serviceClient<mavros_msgs::CommandBool>
+    arming_client = nh.serviceClient<mavros_msgs::CommandBool>
             ("/mavros/cmd/arming");
     // 【服务】修改系统模式 本服务通过Mavros功能包 /plugins/command.cpp 实现
-    set_mode_client_ = nh.serviceClient<mavros_msgs::SetMode>
+    arming_client = nh.serviceClient<mavros_msgs::SetMode>
             ("/mavros/set_mode");
 
     dt = 0.02;
 
-    // 位置控制一般选取为50Hz，主要取决于位置状态的更新频率
-    ros::Rate rate(100);
+    //the setpoint publishing rate MUST be faster than 2Hz
+    ros::Rate rate(20.0);
+
+    // wait for FCU connection
+    while(ros::ok() && !current_state.connected){
+        ros::spinOnce();
+        rate.sleep();
+    }
+
+    geometry_msgs::PoseStamped pose;
+    pose.pose.position.x = 0;
+    pose.pose.position.y = 0;
+    pose.pose.position.z = 0;
+
+    //send a few setpoints before starting
+    for(int i = 100; ros::ok() && i > 0; --i){
+        local_pos_pub.publish(pose);
+        ros::spinOnce();
+        rate.sleep();
+    }
+
+    offb_set_mode.request.custom_mode = "OFFBOARD";
+
+    arm_cmd.request.value = true;
 
     // 用于与mavros通讯的类，通过mavros发送控制指令至飞控【本程序->mavros->飞控】
     command_to_mavros _command_to_mavros;
@@ -65,7 +90,7 @@ int main(int argc, char **argv){
     ros::Time begin_time = ros::Time::now();
     float last_time = control_utils::get_time_in_sec(begin_time);
 
-    cout << "[px4ctrl] controller initialized" << endl;
+    cout << "[px4ctrl_node] controller initialized" << endl;
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主  循  环<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     while(ros::ok()){
@@ -79,39 +104,38 @@ int main(int argc, char **argv){
         ros::spinOnce();
 
         switch (Command_Now.Mode){
-            // 怠速旋转，此时可以切入offboard模式，但不会起飞
-            case easondrone_msgs::ControlCommand::OFFBOARD_ARM:{
-                ROS_INFO("FSM_EXEC_STATE: Arm & Offboard");
+            case easondrone_msgs::ControlCommand::Arm:{
+                ROS_INFO("FSM_EXEC_STATE: Arm");
 
-                if (mavros_state.mode != "OFFBOARD") {
-                    offb_set_mode.request.custom_mode = "OFFBOARD";
-
-                    if (set_mode_client_.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
-                        ROS_INFO("Offboard enabled");
-                    }
-                }
-
-                if (!mavros_state.armed) {
+                if (!current_state.armed) {
                     arm_cmd.request.value = true;
 
-                    if (arming_client_.call(arm_cmd) && arm_cmd.response.success) {
-                        ROS_INFO("Vehicle Armed");
+                    if (arming_client.call(arm_cmd) && arm_cmd.response.success) {
+                        cout_color("Vehicle Armed", GREEN_COLOR);
                     }
                 }
 
                 break;
             }
 
-                // 【Takeoff】 从摆放初始位置原地起飞至指定高度，偏航角也保持当前角度
-            case easondrone_msgs::ControlCommand::Takeoff:{
-                //当无人机在空中时若受到起飞指令，则发出警告并悬停
-                // if (_DroneState.landed == false){
-                //     Command_Now.Mode = easondrone_msgs::ControlCommand::Hover;
-                //     cout << "[control] The drone is in the air" << endl;
-                // }
+            case easondrone_msgs::ControlCommand::Offboard:{
+                ROS_INFO("FSM_EXEC_STATE: Offboard");
 
+                if (current_state.mode != "OFFBOARD") {
+                    offb_set_mode.request.custom_mode = "OFFBOARD";
+
+                    if (arming_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                        cout_color("Offboard enabled", GREEN_COLOR);
+                    }
+                }
+
+                break;
+            }
+
+            // 【Takeoff】 从摆放初始位置原地起飞至指定高度，偏航角也保持当前角度
+            case easondrone_msgs::ControlCommand::Takeoff:{
                 if (Command_Last.Mode != easondrone_msgs::ControlCommand::Takeoff){
-                    cout << "[control] Takeoff to desired point" << endl;
+                    cout << "[px4ctrl] Takeoff to desired point" << endl;
                     // 设定起飞位置
                     Takeoff_position[0] = odom_pos_[0];
                     Takeoff_position[1] = odom_pos_[1];
@@ -129,36 +153,7 @@ int main(int argc, char **argv){
                 break;
             }
 
-                // 【Hover】 悬停。当前位置悬停
-            case easondrone_msgs::ControlCommand::Hover:{
-                if (Command_Last.Mode != easondrone_msgs::ControlCommand::Hover){
-                    Command_Now.Reference_State.Move_mode       = easondrone_msgs::PositionReference::XYZ_POS;
-                    Command_Now.Reference_State.Move_frame      = easondrone_msgs::PositionReference::ENU_FRAME;
-                    Command_Now.Reference_State.position_ref[0] = odom_pos_[0];
-                    Command_Now.Reference_State.position_ref[1] = odom_pos_[1];
-                    Command_Now.Reference_State.position_ref[2] = odom_pos_[2];
-                    Command_Now.Reference_State.yaw_ref         = odom_yaw_; //rad
-                }
-
-                break;
-            }
-
-                // 【Land】 降落。当前位置原地降落，降落后会自动上锁，且切换为mannual模式
-            case easondrone_msgs::ControlCommand::Land:{
-                ROS_INFO("FSM_EXEC_STATE: LAND");
-
-                if (mavros_state.mode != "AUTO.LAND") {
-                    offb_set_mode.request.custom_mode = "AUTO.LAND";
-
-                    if (set_mode_client_.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
-                        ROS_INFO("AUTO.LAND enabled");
-                    }
-                }
-
-                break;
-            }
-
-                // 【Move】 ENU系移动。只有PID算法中才有追踪速度的选项，其他控制只能追踪位置
+            // 【Move】 ENU系移动。只有PID算法中才有追踪速度的选项，其他控制只能追踪位置
             case easondrone_msgs::ControlCommand::Move:{
                 //对于机体系的指令,需要转换成ENU坐标系执行,且同一ID号内,只执行一次.
                 if(Command_Now.Reference_State.Move_frame != easondrone_msgs::PositionReference::ENU_FRAME){
@@ -168,23 +163,53 @@ int main(int argc, char **argv){
                 break;
             }
 
-                // 【Disarm】 上锁
-            case easondrone_msgs::ControlCommand::Disarm:{
-                ROS_INFO("FSM_EXEC_STATE: DISARM");
+            // 【Hold】 悬停。当前位置悬停
+            case easondrone_msgs::ControlCommand::Hold:{
+                Command_Now.Reference_State.Move_mode       = easondrone_msgs::PositionReference::XYZ_POS;
+                Command_Now.Reference_State.Move_frame      = easondrone_msgs::PositionReference::ENU_FRAME;
+                Command_Now.Reference_State.position_ref[0] = odom_pos_[0];
+                Command_Now.Reference_State.position_ref[1] = odom_pos_[1];
+                Command_Now.Reference_State.position_ref[2] = odom_pos_[2];
+                Command_Now.Reference_State.yaw_ref         = odom_yaw_; //rad
 
-                if (mavros_state.mode == "OFFBOARD") {
-                    offb_set_mode.request.custom_mode = "MANUAL";
+                break;
+            }
 
-                    if (set_mode_client_.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
-                        ROS_INFO("MANUAL enabled");
+            // 【Land】 降落。当前位置原地降落，降落后会自动上锁，且切换为mannual模式
+            case easondrone_msgs::ControlCommand::Land:{
+                ROS_INFO("FSM_EXEC_STATE: Land");
+
+                if (current_state.mode != "AUTO.LAND") {
+                    offb_set_mode.request.custom_mode = "AUTO.LAND";
+
+                    if (arming_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                        cout_color("AUTO.LAND enabled", GREEN_COLOR);
                     }
                 }
 
-                if (mavros_state.armed) {
+                break;
+            }
+
+            case easondrone_msgs::ControlCommand::Manual:{
+                if (current_state.mode == "OFFBOARD") {
+                    offb_set_mode.request.custom_mode = "MANUAL";
+
+                    if (arming_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                        cout_color("MANUAL enabled", GREEN_COLOR);
+                    }
+                }
+                break;
+            }
+
+            // 【Disarm】 上锁
+            case easondrone_msgs::ControlCommand::Disarm:{
+                ROS_INFO("FSM_EXEC_STATE: DISARM");
+
+                if (current_state.armed) {
                     arm_cmd.request.value = false;
 
-                    if (arming_client_.call(arm_cmd) && arm_cmd.response.success) {
-                        ROS_INFO("Vehicle Disarmed");
+                    if (arming_client.call(arm_cmd) && arm_cmd.response.success) {
+                        cout_color("Vehicle Disarmed", GREEN_COLOR);
                     }
                 }
 

@@ -13,14 +13,14 @@
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>　主函数　<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 int main(int argc, char **argv){
-    ros::init(argc, argv, "terminal_control");
+    ros::init(argc, argv, "px4ctrl_terminal");
     ros::NodeHandle nh;
 
     //　【发布】控制指令
     easondrone_ctrl_pub_ = nh.advertise<easondrone_msgs::ControlCommand>
             ("/easondrone/control_command", 10);
 
-    // 初始化命令 - Idle模式 电机怠速旋转 等待来自上层的控制指令
+    // 初始化命令
     Command_to_pub.Mode                                = easondrone_msgs::ControlCommand::Move;
     Command_to_pub.Reference_State.Move_mode           = easondrone_msgs::PositionReference::XYZ_POS;
     Command_to_pub.Reference_State.Move_frame          = easondrone_msgs::PositionReference::ENU_FRAME;

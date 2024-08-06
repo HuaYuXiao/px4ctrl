@@ -3,11 +3,11 @@
  *
  * Author: Qyp
 * Maintainer: Eason Hua
-* Update Time: 2024.08.05
+* Update Time: 2024.08.06
  *
 ***************************************************************************************************************************/
 
-#include "px4_vision_pose.h"
+#include "px4ctrl_vision.h"
 
 
 // 发布无人机状态，具体内容参见 easondrone_msgs::DroneState
@@ -42,11 +42,11 @@ void pub_to_nodes(easondrone_msgs::DroneState State_from_fcu){
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主 函 数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 int main(int argc, char **argv){
-    ros::init(argc, argv, "px4_vision_pose");
+    ros::init(argc, argv, "px4ctrl_vision");
     ros::NodeHandle nh("~");
 
     // 定位数据输入源
-    nh.param<int>("input_source", input_source, 5);
+    nh.param<int>("input_source", input_source, 2);
 
     // 动作捕捉设备中设定的刚体名字
     nh.param<string>("object_name", object_name, "p450");
@@ -104,7 +104,7 @@ int main(int argc, char **argv){
     // 频率
     ros::Rate rate(30);
 
-    cout << "[px4ctrl] estimator initialized" << endl;
+    cout << "[px4ctrl_vision] estimator initialized! " << endl;
 
     //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Main Loop<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     while (ros::ok()){
@@ -120,5 +120,6 @@ int main(int argc, char **argv){
 
         rate.sleep();
     }
+
     return 0;
 }

@@ -21,6 +21,8 @@
 
 #include "control_utils.h"
 #include "Position_Controller/pos_controller_cascade_PID.h"
+#include "cout_utils.h"
+
 
 using namespace std;
 
@@ -34,7 +36,7 @@ float dt;
 
 Eigen::Vector3d Takeoff_position;                              // 起飞位置
 easondrone_msgs::DroneState _DroneState;                          //无人机状态量
-mavros_msgs::State mavros_state;
+mavros_msgs::State current_state;
 
 bool have_odom_;
 Eigen::Vector3d odom_pos_, odom_vel_, odom_acc_; // odometry state
@@ -52,9 +54,9 @@ easondrone_msgs::AttitudeReference _AttitudeReference;           //位置控制�
 
 Eigen::Vector3d throttle_sp;
 
-ros::Subscriber easondrone_ctrl_sub_, station_command_sub, drone_state_sub, mavros_state_sub_, odom_sub_;
-ros::Publisher att_ref_pub, setpoint_raw_attitude_pub_;
-ros::ServiceClient set_mode_client_, arming_client_;
+ros::Subscriber state_sub, easondrone_ctrl_sub_, station_command_sub, drone_state_sub, odom_sub_;
+ros::Publisher local_pos_pub, att_ref_pub, setpoint_raw_attitude_pub_;
+ros::ServiceClient arming_client, set_mode_client;
 
 
 //【Body_to_ENU】 机体系移动。
@@ -147,6 +149,10 @@ void Body_to_ENU(){
 }
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>回调函数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+void state_cb(const mavros_msgs::State::ConstPtr& msg){
+    current_state = *msg;
+}
+
 void easondrone_ctrl_cb_(const easondrone_msgs::ControlCommand::ConstPtr& msg){
     Command_Now = *msg;
 
@@ -158,10 +164,6 @@ void easondrone_ctrl_cb_(const easondrone_msgs::ControlCommand::ConstPtr& msg){
 
 void drone_state_cb(const easondrone_msgs::DroneState::ConstPtr& msg){
     _DroneState = *msg;
-}
-
-void mavros_state_cb(const mavros_msgs::State::ConstPtr &msg){
-    mavros_state = *msg;
 }
 
 // 保存无人机当前里程计信息，包括位置、速度和姿态
