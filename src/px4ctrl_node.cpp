@@ -3,27 +3,21 @@
 *
 * Author: Qyp
 * Maintainer: Eason Hua
-// last updated on 2024.08.05
+// last updated on 2024.08.06
 *
 * Introduction:  PX4 Position Controller 
-*         1. 从应用层节点订阅/easondrone/control_command话题（ControlCommand.msg），接收来自上层的控制指令。
-*         2. 从px4_pos_estimator.cpp节点订阅无人机的状态信息（DroneState.msg）。
-*         3. 调用位置环控制算法，计算加速度控制量，并转换为期望角度。（可选择cascade_PID, PID, UDE, passivity-UDE, NE+UDE位置控制算法）
-*         4. 通过command_to_mavros.h将计算出来的控制指令发送至飞控（通过mavros包发送mavlink消息）
-*         5. PX4固件通过mavlink_receiver.cpp接收该mavlink消息。
+*         1. 从应用层节点订阅/easondrone/control_command话题（ControlCommand.msg），接收来自上层的控制指令
+*         2. 调用位置环控制算法，计算加速度控制量，并转换为期望角度。（可选择cascade_PID, PID, UDE, passivity-UDE, NE+UDE位置控制算法）
+*         3. 通过command_to_mavros.h将计算出来的控制指令发送至飞控（通过mavros包发送mavlink消息）
+*         4. PX4固件通过mavlink_receiver.cpp接收该mavlink消息。
 ***************************************************************************************************************************/
 
-#include "px4ctrl.h"
+#include "px4ctrl_node.h"
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主 函 数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 int main(int argc, char **argv){
-    ros::init(argc, argv, "px4ctrl");
+    ros::init(argc, argv, "px4ctrl_node");
     ros::NodeHandle nh("~");
-
-    // 参数读取
-    nh.param<float>("control/Takeoff_height", Takeoff_height_, 1.5);
-    nh.param<float>("control/Disarm_height", Disarm_height_, 0.15);
-    nh.param<float>("control/Land_speed", Land_speed_, 0.2);
 
     mavros_state_sub_ = nh.subscribe<mavros_msgs::State>
             ("/mavros/state", 10, mavros_state_cb);
@@ -62,12 +56,7 @@ int main(int argc, char **argv){
     // 位置控制器声明 可以设置自定义位置环控制算法
     pos_controller_cascade_PID pos_controller_cascade_pid;
 
-    cout <<">>>>>>>>>>>>>>>>>>>>>>>> px4ctrl Parameter <<<<<<<<<<<<<<<<<<<<<<" <<endl;
-    cout << "Takeoff_height   : "<< Takeoff_height_<<" [m] "<<endl;
-    cout << "Disarm_height    : "<< Disarm_height_ <<" [m] "<<endl;
-    cout << "Land_speed       : "<< Land_speed_ <<" [m/s] "<<endl;
-
-    // 初始化命令- 默认设置：Idle模式 电机怠速旋转 等待来自上层的控制指令
+    // 初始化命令
     Command_Now.Mode                                = easondrone_msgs::ControlCommand::Move;
     Command_Now.Reference_State.Move_mode           = easondrone_msgs::PositionReference::XYZ_POS;
     Command_Now.Reference_State.Move_frame          = easondrone_msgs::PositionReference::ENU_FRAME;
@@ -92,7 +81,7 @@ int main(int argc, char **argv){
         switch (Command_Now.Mode){
             // 怠速旋转，此时可以切入offboard模式，但不会起飞
             case easondrone_msgs::ControlCommand::OFFBOARD_ARM:{
-                ROS_INFO("FSM_EXEC_STATE: OFFBOARD & ARM");
+                ROS_INFO("FSM_EXEC_STATE: Arm & Offboard");
 
                 if (mavros_state.mode != "OFFBOARD") {
                     offb_set_mode.request.custom_mode = "OFFBOARD";
@@ -106,7 +95,7 @@ int main(int argc, char **argv){
                     arm_cmd.request.value = true;
 
                     if (arming_client_.call(arm_cmd) && arm_cmd.response.success) {
-                        ROS_INFO("Vehicle armed");
+                        ROS_INFO("Vehicle Armed");
                     }
                 }
 
@@ -156,25 +145,13 @@ int main(int argc, char **argv){
 
                 // 【Land】 降落。当前位置原地降落，降落后会自动上锁，且切换为mannual模式
             case easondrone_msgs::ControlCommand::Land:{
-                if (Command_Last.Mode != easondrone_msgs::ControlCommand::Land){
-                    Command_Now.Reference_State.Move_mode       = easondrone_msgs::PositionReference::XY_POS_Z_VEL;
-                    Command_Now.Reference_State.Move_frame      = easondrone_msgs::PositionReference::ENU_FRAME;
-                    Command_Now.Reference_State.position_ref[0] = odom_pos_[0];
-                    Command_Now.Reference_State.position_ref[1] = odom_pos_[1];
-                    Command_Now.Reference_State.velocity_ref[2] = - Land_speed_; //Land_speed
-                    Command_Now.Reference_State.yaw_ref         = odom_yaw_; //rad
-                }
+                ROS_INFO("FSM_EXEC_STATE: LAND");
 
-                //如果距离起飞高度小于10厘米，则直接切换为land模式；
-                if(abs(odom_pos_[2] - Takeoff_position[2]) < Disarm_height_){
-                    ROS_INFO("FSM_EXEC_STATE: LAND");
+                if (mavros_state.mode != "AUTO.LAND") {
+                    offb_set_mode.request.custom_mode = "AUTO.LAND";
 
-                    if (mavros_state.mode != "AUTO.LAND") {
-                        offb_set_mode.request.custom_mode = "AUTO.LAND";
-
-                        if (set_mode_client_.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
-                            ROS_INFO("AUTO.LAND enabled");
-                        }
+                    if (set_mode_client_.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                        ROS_INFO("AUTO.LAND enabled");
                     }
                 }
 
@@ -207,7 +184,7 @@ int main(int argc, char **argv){
                     arm_cmd.request.value = false;
 
                     if (arming_client_.call(arm_cmd) && arm_cmd.response.success) {
-                        ROS_INFO("Vehicle armed");
+                        ROS_INFO("Vehicle Disarmed");
                     }
                 }
 

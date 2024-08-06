@@ -1,6 +1,6 @@
 //
 // Created by hyx020222 on 7/9/24.
-// last updated on 2024.07.17
+// last updated on 2024.08.06
 //
 
 #ifndef EASONDRONE_CONTROL_PX4CTRL_H
@@ -26,12 +26,10 @@ using namespace std;
 
 
 #define TRA_WINDOW 1000
+#define Takeoff_height_ 1.5                                       //默认起飞高度
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>变量声明<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 float cur_time;                                             //程序运行时间
-float Takeoff_height_;                                       //默认起飞高度
-float Disarm_height_;                                        //自动上锁高度
-float Land_speed_;                                           //降落速度
 float dt;
 
 Eigen::Vector3d Takeoff_position;                              // 起飞位置

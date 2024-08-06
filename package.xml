@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>px4ctrl</name>
-  <version>3.6.2</version>
+  <version>3.6.3</version>
   <description>
-    A ROS package to estimate and control drone
+    A ROS package as a bridge to estimate and control drone with MAVROS
   </description>
 
   <maintainer email="12010508@mail.sustech.edu.cn">Eason Hua</maintainer>
