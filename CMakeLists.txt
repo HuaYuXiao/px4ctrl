@@ -60,25 +60,25 @@ include_directories(
 ##      声明可执行cpp文件     ##
 ###############################
 
-##px4ctrl.cpp
-add_executable(px4ctrl src/px4ctrl.cpp)
-add_dependencies(px4ctrl ${PROJECT_NAME}_gencpp)
-target_link_libraries(px4ctrl ${catkin_LIBRARIES})
+##px4ctrl_node.cpp
+add_executable(px4ctrl_node src/px4ctrl_node.cpp)
+add_dependencies(px4ctrl_node ${PROJECT_NAME}_gencpp)
+target_link_libraries(px4ctrl_node ${catkin_LIBRARIES})
 
-##px4_pos_estimator.cpp
-add_executable(px4_pos_estimator src/px4_vision_pose.cpp)
-add_dependencies(px4_pos_estimator ${PROJECT_NAME}_gencpp)
-target_link_libraries(px4_pos_estimator ${catkin_LIBRARIES})
+##px4ctrl_vision.cpp
+add_executable(px4ctrl_vision src/px4ctrl_vision.cpp)
+add_dependencies(px4ctrl_vision ${PROJECT_NAME}_gencpp)
+target_link_libraries(px4ctrl_vision ${catkin_LIBRARIES})
 
 add_executable(joy_node src/joy_node.cpp)
 target_link_libraries(joy_node ${catkin_LIBRARIES})
 
-add_executable(terminal_control src/terminal_control.cpp)
-add_dependencies(terminal_control ${PROJECT_NAME}_gencpp)
-target_link_libraries(terminal_control ${catkin_LIBRARIES})
+add_executable(px4ctrl_terminal src/px4ctrl_terminal.cpp)
+add_dependencies(px4ctrl_terminal ${PROJECT_NAME}_gencpp)
+target_link_libraries(px4ctrl_terminal ${catkin_LIBRARIES})
 
 add_executable(direct_goal src/direct_goal.cpp)
-add_dependencies(px4ctrl ${PROJECT_NAME}_gencpp)
+add_dependencies(px4ctrl_node ${PROJECT_NAME}_gencpp)
 target_link_libraries(direct_goal ${catkin_LIBRARIES})
 
 catkin_install_python(PROGRAMS script/multirotor_communication.py script/multirotor_keyboard_control.py

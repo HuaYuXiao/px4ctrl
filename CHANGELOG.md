@@ -5,10 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v3.6.2] - 2024-08-05
+## [v3.6.2] - 2024-08-06
 - [remove feature]: check for geofence
 - [remove feature]: `easondrone_msgs::ControlCommand::Idle`
 - [remove feature]: fake_odom, Optitrack, TFmini
+- update `px4ctrl_terminal` to "cpp + h" format
 
 ## [v3.6.1] - 2024-08-05
 - [new feature]: support `VINS-Fusion`: `/vins_estimator/odometry` to `/mavros/vision_pose/pose`
@@ -35,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - remove `state_from_mavros`
 
 ## v3.4.4:
-- update `px4ctrl` to "cpp + h" format
+- update `px4ctrl_node` to "cpp + h" format
 - [remove feature]: `Drone_odom`
 
 ## v3.4.3: 

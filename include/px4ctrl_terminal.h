@@ -1,12 +1,9 @@
-/***************************************************************************************************************************
-* terminal_control.cpp
-*
-* Author: Qyp
-* Edited by: Eason Hua
-* Update Time: 2024.08.05
-*
-* Introduction:  test function for sending ControlCommand.msg
-***************************************************************************************************************************/
+//
+// Created by hyx020222 on 8/6/24.
+//
+
+#ifndef PX4CTRL_PX4CTRL_TERMINAL_H
+#define PX4CTRL_PX4CTRL_TERMINAL_H
 
 #include <ros/ros.h>
 #include <iostream>
@@ -29,40 +26,51 @@ easondrone_msgs::ControlCommand Command_to_pub;
 ros::Publisher easondrone_ctrl_pub_;
 
 
-//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>　函数声明　<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-void mainloop();
+void generate_com(int Move_mode, float state_desired[4]){
+    //# Move_mode 2-bit value:
+    //# 0 for position, 1 for vel, 1st for xy, 2nd for z.
+    //#                   xy position     xy velocity
+    //# z position       	0b00(0)       0b10(2)
+    //# z velocity		0b01(1)       0b11(3)
 
-void generate_com(int Move_mode, float state_desired[4]);
+    if(Move_mode == easondrone_msgs::PositionReference::XYZ_ACC){
+        cout << "ACC control not support yet." <<endl;
+    }
 
+    if((Move_mode & 0b10) == 0) //xy channel
+    {
+        Command_to_pub.Reference_State.position_ref[0] = state_desired[0];
+        Command_to_pub.Reference_State.position_ref[1] = state_desired[1];
+        Command_to_pub.Reference_State.velocity_ref[0] = 0;
+        Command_to_pub.Reference_State.velocity_ref[1] = 0;
+    }
+    else{
+        Command_to_pub.Reference_State.position_ref[0] = 0;
+        Command_to_pub.Reference_State.position_ref[1] = 0;
+        Command_to_pub.Reference_State.velocity_ref[0] = state_desired[0];
+        Command_to_pub.Reference_State.velocity_ref[1] = state_desired[1];
+    }
 
-//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>　主函数　<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-int main(int argc, char **argv){
-    ros::init(argc, argv, "terminal_control");
-    ros::NodeHandle nh;
+    if((Move_mode & 0b01) == 0) //z channel
+    {
+        Command_to_pub.Reference_State.position_ref[2] = state_desired[2];
+        Command_to_pub.Reference_State.velocity_ref[2] = 0;
+    }
+    else{
+        Command_to_pub.Reference_State.position_ref[2] = 0;
+        Command_to_pub.Reference_State.velocity_ref[2] = state_desired[2];
+    }
 
-    //　【发布】控制指令
-    easondrone_ctrl_pub_ = nh.advertise<easondrone_msgs::ControlCommand>
-            ("/easondrone/control_command", 10);
+    Command_to_pub.Reference_State.acceleration_ref[0] = 0;
+    Command_to_pub.Reference_State.acceleration_ref[1] = 0;
+    Command_to_pub.Reference_State.acceleration_ref[2] = 0;
 
-    // 初始化命令 - Idle模式 电机怠速旋转 等待来自上层的控制指令
-    Command_to_pub.Mode                                = easondrone_msgs::ControlCommand::Move;
-    Command_to_pub.Reference_State.Move_mode           = easondrone_msgs::PositionReference::XYZ_POS;
-    Command_to_pub.Reference_State.Move_frame          = easondrone_msgs::PositionReference::ENU_FRAME;
-
-    //固定的浮点显示
-    cout.setf(ios::fixed);
-    //setprecision(n) 设显示小数精度为n位
-    cout << setprecision(2);
-    //左对齐
-    cout.setf(ios::left);
-    // 强制显示小数点
-    cout.setf(ios::showpoint);
-    // 强制显示符号
-    //cout.setf(ios::showpos);
-
-    mainloop();
-
-    return 0;
+    if(Command_to_pub.Reference_State.Yaw_Rate_Mode == 1){
+        Command_to_pub.Reference_State.yaw_rate_ref = state_desired[3];
+    }
+    else{
+        Command_to_pub.Reference_State.yaw_ref = state_desired[3]/180.0*M_PI;
+    }
 }
 
 void mainloop(){
@@ -142,7 +150,7 @@ void mainloop(){
 
             case easondrone_msgs::ControlCommand::Move:{
                 while (!valid_move_mode) {
-                    cout << "Please choose the Command.Reference_State.Move_mode: 0 POS, 1 XY_POS_Z_VEL, 2 XY_VEL_Z_POS, 3 VEL" << endl;
+                    cout << "Please choose the Move_mode: 0 - POS, 1 - XY_POS_Z_VEL, 2 - XY_VEL_Z_POS, 3 - VEL" << endl;
                     if (cin >> Move_mode) {
                         if (Move_mode == 0 ||
                             Move_mode == 1 ||
@@ -165,7 +173,7 @@ void mainloop(){
                 valid_move_mode = false;
 
                 while (!valid_move_frame) {
-                    cout << "Please choose the Command.Reference_State.Move_frame: 0 for ENU_FRAME, 1 for BODY_FRAME" << endl;
+                    cout << "Please choose the Move_frame: 0 - ENU, 1 - BODY" << endl;
                     if (cin >> Move_frame) {
                         if (Move_frame == 0 || Move_frame == 1) {
                             valid_move_frame = true;
@@ -283,49 +291,4 @@ void mainloop(){
     }
 }
 
-void generate_com(int Move_mode, float state_desired[4]){
-    //# Move_mode 2-bit value:
-    //# 0 for position, 1 for vel, 1st for xy, 2nd for z.
-    //#                   xy position     xy velocity
-    //# z position       	0b00(0)       0b10(2)
-    //# z velocity		0b01(1)       0b11(3)
-
-    if(Move_mode == easondrone_msgs::PositionReference::XYZ_ACC){
-        cout << "ACC control not support yet." <<endl;
-    }
-
-    if((Move_mode & 0b10) == 0) //xy channel
-    {
-        Command_to_pub.Reference_State.position_ref[0] = state_desired[0];
-        Command_to_pub.Reference_State.position_ref[1] = state_desired[1];
-        Command_to_pub.Reference_State.velocity_ref[0] = 0;
-        Command_to_pub.Reference_State.velocity_ref[1] = 0;
-    }
-    else{
-        Command_to_pub.Reference_State.position_ref[0] = 0;
-        Command_to_pub.Reference_State.position_ref[1] = 0;
-        Command_to_pub.Reference_State.velocity_ref[0] = state_desired[0];
-        Command_to_pub.Reference_State.velocity_ref[1] = state_desired[1];
-    }
-
-    if((Move_mode & 0b01) == 0) //z channel
-    {
-        Command_to_pub.Reference_State.position_ref[2] = state_desired[2];
-        Command_to_pub.Reference_State.velocity_ref[2] = 0;
-    }
-    else{
-        Command_to_pub.Reference_State.position_ref[2] = 0;
-        Command_to_pub.Reference_State.velocity_ref[2] = state_desired[2];
-    }
-
-    Command_to_pub.Reference_State.acceleration_ref[0] = 0;
-    Command_to_pub.Reference_State.acceleration_ref[1] = 0;
-    Command_to_pub.Reference_State.acceleration_ref[2] = 0;
-
-    if(Command_to_pub.Reference_State.Yaw_Rate_Mode == 1){
-        Command_to_pub.Reference_State.yaw_rate_ref = state_desired[3];
-    }
-    else{
-        Command_to_pub.Reference_State.yaw_ref = state_desired[3]/180.0*M_PI;
-    }
-}
+#endif //PX4CTRL_PX4CTRL_TERMINAL_H
