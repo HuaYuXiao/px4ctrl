@@ -1,8 +1,6 @@
 <launch>
     <!-- 启动uav_control_main -->
-    <node pkg="px4ctrl" type="px4ctrl_node" name="px4ctrl_node">
-        <rosparam command="load" file="$(find px4ctrl)/config/uav_control_indoor.yaml"/>
-    </node>
+    <node pkg="px4ctrl" type="px4ctrl_node" name="px4ctrl_node"/>
 
     <!-- run the px4_vision_pose.cpp -->
     <node pkg="px4ctrl" type="px4ctrl_vision" name="px4ctrl_vision" output="screen">
@@ -16,9 +14,7 @@
 
     <!-- run the terminal_control.cpp -->
     <node pkg="px4ctrl" type="px4ctrl_terminal" name="px4ctrl_terminal"
-          output="screen" launch-prefix="gnome-terminal --">
-        <rosparam command="load" file="$(find px4ctrl)/config/uav_control_indoor.yaml"/>
-    </node>
+          output="screen" launch-prefix="gnome-terminal --"/>
 
     <node pkg="px4ctrl" type="direct_goal" name="direct_goal"/>
 
