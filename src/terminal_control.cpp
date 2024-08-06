@@ -17,7 +17,6 @@
 #include <mavros_msgs/State.h>
 #include <nav_msgs/Path.h>
 
-#include "KeyboardEvent.h"
 #include <easondrone_msgs/ControlCommand.h>
 
 using namespace std;

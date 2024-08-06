@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v3.6.2] - 2024-08-05
 - [remove feature]: check for geofence
 - [remove feature]: `easondrone_msgs::ControlCommand::Idle`
+- [remove feature]: fake_odom, Optitrack, TFmini
 
 ## [v3.6.1] - 2024-08-05
 - [new feature]: support `VINS-Fusion`: `/vins_estimator/odometry` to `/mavros/vision_pose/pose`
