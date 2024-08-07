@@ -139,11 +139,11 @@ int main(int argc, char **argv){
                         cout_color("Arm response success", YELLOW_COLOR);
                     }
                     else{
-                        cout_color("Vehicle Arm failed", RED_COLOR);
+                        cout_color("Arm rejected!", RED_COLOR);
                     }
                 }
                 else{
-                    cout_color("Vehicle already Armed", GREEN_COLOR);
+                    cout_color("Drone already Armed", GREEN_COLOR);
                 }
 
                 break;
@@ -180,21 +180,27 @@ int main(int argc, char **argv){
             case easondrone_msgs::ControlCommand::Takeoff:{
                 cout << "FSM_EXEC_STATE: Takeoff" << endl;
 
+                if (odom_pos_(2) - 1.5 >= 0.2){
+                    cout_color("Drone already Takeoff", GREEN_COLOR);
+
+                    break;
+                }
+
                 if (current_state.mode != "AUTO.TAKEOFF") {
                     offb_set_mode.request.custom_mode = "AUTO.TAKEOFF";
 
                     pos_setpoint.coordinate_frame = 1;
-                    pos_setpoint.position.x = 0;
-                    pos_setpoint.position.y = 0;
+                    pos_setpoint.position.x = odom_pos_(0);
+                    pos_setpoint.position.y = odom_pos_(1);
                     pos_setpoint.position.z = 1.5;
-                    pos_setpoint.yaw = 0;
+                    pos_setpoint.yaw = odom_yaw_;
 
                     if (set_mode_client.call(offb_set_mode) &&
                         offb_set_mode.response.mode_sent) {
                         cout_color("AUTO.TAKEOFF response sent", YELLOW_COLOR);
                     }
                     else{
-                        cout_color("AUTO.TAKEOFF enable failed", RED_COLOR);
+                        cout_color("AUTO.TAKEOFF rejected by FCU!", RED_COLOR);
                     }
                 }
                 else{
@@ -241,6 +247,12 @@ int main(int argc, char **argv){
             // 【Land】 降落。当前位置原地降落，降落后会自动上锁，且切换为mannual模式
             case easondrone_msgs::ControlCommand::Land:{
                 cout << "FSM_EXEC_STATE: Land" << endl;
+
+                if (odom_pos_(2) <= 0.2){
+                    cout_color("Drone already Land", GREEN_COLOR);
+
+                    break;
+                }
 
                 if (current_state.mode != "AUTO.LAND") {
                     offb_set_mode.request.custom_mode = "AUTO.LAND";
@@ -308,18 +320,12 @@ int main(int argc, char **argv){
                         cout_color("Disarm response success", YELLOW_COLOR);
                     }
                     else{
-                        cout_color("Vehicle Disarm failed", RED_COLOR);
+                        cout_color("Disarm enable rejected", RED_COLOR);
                     }
                 }
                 else{
-                    cout_color("Vehicle already Disarmed", GREEN_COLOR);
+                    cout_color("Drone already Disarmed", GREEN_COLOR);
                 }
-
-                break;
-            }
-
-            default:{
-                cout_color("WARN: unknown cmd!", YELLOW_COLOR);
 
                 break;
             }

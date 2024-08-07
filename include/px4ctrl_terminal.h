@@ -1,6 +1,7 @@
-//
-// Created by hyx020222 on 8/6/24.
-//
+/*
+    Created by hyx020222 on 2024.06.08
+    Last modified on 2024.08.08
+*/
 
 #ifndef PX4CTRL_PX4CTRL_TERMINAL_H
 #define PX4CTRL_PX4CTRL_TERMINAL_H
@@ -18,9 +19,7 @@
 #include <easondrone_msgs/ControlCommand.h>
 #include "cout_utils.h"
 
-
 using namespace std;
-
 
 const std::set<int> valid_modes = {0, 1, 2, 3, 4, 5, 6, 7};
 //即将发布的command
@@ -43,7 +42,6 @@ void mainloop(){
     bool valid_yaw_input = false;
 
     while(ros::ok()){
-
         while (!valid_Control_Mode){
             cout << "--------------------------------" << endl;
             cout << "Enter command to mavros: " << endl;
@@ -225,9 +223,6 @@ void mainloop(){
                 Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
                 Command_to_pub.Reference_State.Move_mode = Move_mode;
                 Command_to_pub.Reference_State.Move_frame = Move_frame;
-                // yaw_rate control
-                // Command_to_pub.Reference_State.Yaw_Rate_Mode = 1;
-//                generate_com(Move_mode, state_desired);
 
                 break;
             }
