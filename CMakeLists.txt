@@ -9,7 +9,6 @@ set(PYTHON_EXECUTABLE "/usr/bin/python3.8")
 find_package(Boost REQUIRED COMPONENTS system)
 #find_package(PythonInterp REQUIRED 3)
 find_package(catkin REQUIRED COMPONENTS
-  message_generation  
   roscpp
   mavros
         message_filters
@@ -23,20 +22,6 @@ find_package(catkin REQUIRED COMPONENTS
         std_msgs
         nav_msgs
         sensor_msgs
-        easondrone_msgs
-)
-
-################################################
-## Declare ROS messages, services and actions ##
-################################################
-
-## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES
-  geometry_msgs 
-  nav_msgs
-  sensor_msgs
-  std_msgs
         easondrone_msgs
 )
 
@@ -55,10 +40,6 @@ include_directories(
         ${catkin_INCLUDE_DIRS}
         include
 )
-
-###############################
-##      声明可执行cpp文件     ##
-###############################
 
 ##px4ctrl_node.cpp
 add_executable(px4ctrl_node src/px4ctrl_node.cpp)

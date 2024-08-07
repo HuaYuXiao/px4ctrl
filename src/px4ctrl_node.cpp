@@ -129,10 +129,10 @@ int main(int argc, char **argv){
                     arm_cmd.request.value = true;
 
                     pos_setpoint.coordinate_frame = 1;
-                    pos_setpoint.position.x = 0;
-                    pos_setpoint.position.y = 0;
-                    pos_setpoint.position.z = 0;
-                    pos_setpoint.yaw = 0;
+                    pos_setpoint.position.x = odom_pos_(0);
+                    pos_setpoint.position.y = odom_pos_(1);
+                    pos_setpoint.position.z = odom_pos_(2);
+                    pos_setpoint.yaw = odom_yaw_;
 
                     if (arming_client.call(arm_cmd) &&
                         arm_cmd.response.success) {
@@ -156,10 +156,10 @@ int main(int argc, char **argv){
                     offb_set_mode.request.custom_mode = "OFFBOARD";
 
                     pos_setpoint.coordinate_frame = 1;
-                    pos_setpoint.position.x = 0;
-                    pos_setpoint.position.y = 0;
-                    pos_setpoint.position.z = 0;
-                    pos_setpoint.yaw = 0;
+                    pos_setpoint.position.x = odom_pos_(0);
+                    pos_setpoint.position.y = odom_pos_(1);
+                    pos_setpoint.position.z = odom_pos_(2);
+                    pos_setpoint.yaw = odom_yaw_;
 
                     if (set_mode_client.call(offb_set_mode) &&
                         offb_set_mode.response.mode_sent) {
@@ -208,11 +208,6 @@ int main(int argc, char **argv){
             case easondrone_msgs::ControlCommand::Move:{
                 cout << "FSM_EXEC_STATE: Move" << endl;
 
-                //对于机体系的指令,需要转换成ENU坐标系执行,且同一ID号内,只执行一次.
-                if(Command_Now.Reference_State.Move_frame != easondrone_msgs::PositionReference::ENU_FRAME){
-                    Body_to_ENU();
-                }
-
                 break;
             }
 
@@ -222,6 +217,12 @@ int main(int argc, char **argv){
 
                 if (current_state.mode != "AUTO.LOITER") {
                     offb_set_mode.request.custom_mode = "AUTO.LOITER";
+
+                    pos_setpoint.coordinate_frame = 1;
+                    pos_setpoint.position.x = odom_pos_(0);
+                    pos_setpoint.position.y = odom_pos_(1);
+                    pos_setpoint.position.z = odom_pos_(2);
+                    pos_setpoint.yaw = odom_yaw_;
 
                     if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
                         cout_color("AUTO.LOITER response sent", YELLOW_COLOR);
@@ -235,8 +236,6 @@ int main(int argc, char **argv){
                 }
 
                 break;
-
-                break;
             }
 
             // 【Land】 降落。当前位置原地降落，降落后会自动上锁，且切换为mannual模式
@@ -247,10 +246,10 @@ int main(int argc, char **argv){
                     offb_set_mode.request.custom_mode = "AUTO.LAND";
 
                     pos_setpoint.coordinate_frame = 1;
-                    pos_setpoint.position.x = 0;
-                    pos_setpoint.position.y = 0;
+                    pos_setpoint.position.x = odom_pos_(0);
+                    pos_setpoint.position.y = odom_pos_(1);
                     pos_setpoint.position.z = 0;
-                    pos_setpoint.yaw = 0;
+                    pos_setpoint.yaw = odom_yaw_;
 
                     if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
                         cout_color("AUTO.LAND response sent", YELLOW_COLOR);
@@ -272,6 +271,12 @@ int main(int argc, char **argv){
                 if (current_state.mode != "MANUAL") {
                     offb_set_mode.request.custom_mode = "MANUAL";
 
+                    pos_setpoint.coordinate_frame = 1;
+                    pos_setpoint.position.x = odom_pos_(0);
+                    pos_setpoint.position.y = odom_pos_(1);
+                    pos_setpoint.position.z = odom_pos_(2);
+                    pos_setpoint.yaw = odom_yaw_;
+
                     if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
                         cout_color("MANUAL response sent", YELLOW_COLOR);
                     }
@@ -292,6 +297,12 @@ int main(int argc, char **argv){
 
                 if (current_state.armed) {
                     arm_cmd.request.value = false;
+
+                    pos_setpoint.coordinate_frame = 1;
+                    pos_setpoint.position.x = odom_pos_(0);
+                    pos_setpoint.position.y = odom_pos_(1);
+                    pos_setpoint.position.z = 0;
+                    pos_setpoint.yaw = odom_yaw_;
 
                     if (arming_client.call(arm_cmd) && arm_cmd.response.success) {
                         cout_color("Disarm response success", YELLOW_COLOR);
