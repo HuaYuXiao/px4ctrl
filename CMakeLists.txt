@@ -81,6 +81,10 @@ add_executable(direct_goal src/direct_goal.cpp)
 add_dependencies(px4ctrl_node ${PROJECT_NAME}_gencpp)
 target_link_libraries(direct_goal ${catkin_LIBRARIES})
 
+add_executable(offb_node src/offb_node.cpp)
+add_dependencies(offb_node ${PROJECT_NAME}_gencpp)
+target_link_libraries(offb_node ${catkin_LIBRARIES})
+
 catkin_install_python(PROGRAMS script/multirotor_communication.py script/multirotor_keyboard_control.py
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 

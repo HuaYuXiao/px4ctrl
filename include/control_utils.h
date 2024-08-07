@@ -3,7 +3,7 @@
 *
 * Author: Qyp
 * Maintainer: Eason Hua
-* Update Time: 2024.07.16
+* Update Time: 2024.08.07
 ***************************************************************************************************************************/
 
 #ifndef CONTORL_UTILS_H
@@ -17,7 +17,6 @@
 
 #include <math_utils.h>
 #include <command_to_mavros.h>
-#include <easondrone_msgs/Message.h>
 #include <easondrone_msgs/ControlCommand.h>
 #include <easondrone_msgs/DroneState.h>
 #include <easondrone_msgs/PositionReference.h>

@@ -1,6 +1,6 @@
 //
 // Created by hyx020222 on 7/9/24.
-// last updated on 2024.08.06
+// last updated on 2024.08.07
 //
 
 #ifndef EASONDRONE_CONTROL_PX4CTRL_H
@@ -44,11 +44,11 @@ Eigen::Quaterniond odom_orient_;
 double odom_yaw_;
 
 //变量声明 - 服务
+geometry_msgs::PoseStamped pose;
 mavros_msgs::SetMode offb_set_mode;
 mavros_msgs::CommandBool arm_cmd;
 
 easondrone_msgs::ControlCommand Command_Now;                      //无人机当前执行命令
-easondrone_msgs::ControlCommand Command_Last;                     //无人机上一条执行命令
 easondrone_msgs::ControlOutput _ControlOutput;
 easondrone_msgs::AttitudeReference _AttitudeReference;           //位置控制器输出，即姿态环参考量
 
@@ -155,11 +155,6 @@ void state_cb(const mavros_msgs::State::ConstPtr& msg){
 
 void easondrone_ctrl_cb_(const easondrone_msgs::ControlCommand::ConstPtr& msg){
     Command_Now = *msg;
-
-    // 无人机一旦接受到Disarm指令，则会屏蔽其他指令
-    if(Command_Last.Mode == easondrone_msgs::ControlCommand::Disarm){
-        Command_Now = Command_Last;
-    }
 }
 
 void drone_state_cb(const easondrone_msgs::DroneState::ConstPtr& msg){
