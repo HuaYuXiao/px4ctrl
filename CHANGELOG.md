@@ -5,11 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v3.6.4(beta] - 2024-08-07
+## [v4.0.0] - 2024-08-07
+- [new feature]: `Offboard` via mavros
 - [remove feature]: ignore all other cmds if `Disarm` received
 
 ## [v3.6.3] - 2024-08-06
-- land with `AUTO.LAND`
+- [new feature]: `AUTO.LAND` via mavros
 - replace `.yaml` with `#define`
 
 ## [v3.6.2] - 2024-08-06

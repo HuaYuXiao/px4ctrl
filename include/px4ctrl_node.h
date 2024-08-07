@@ -45,6 +45,7 @@ double odom_yaw_;
 
 //变量声明 - 服务
 geometry_msgs::PoseStamped pose;
+mavros_msgs::PositionTarget pos_setpoint;
 mavros_msgs::SetMode offb_set_mode;
 mavros_msgs::CommandBool arm_cmd;
 
@@ -55,7 +56,7 @@ easondrone_msgs::AttitudeReference _AttitudeReference;           //位置控制�
 Eigen::Vector3d throttle_sp;
 
 ros::Subscriber state_sub, easondrone_ctrl_sub_, station_command_sub, drone_state_sub, odom_sub_;
-ros::Publisher local_pos_pub, att_ref_pub, setpoint_raw_attitude_pub_;
+ros::Publisher local_pos_pub, setpoint_raw_local_pub, setpoint_raw_global_pub, att_ref_pub, setpoint_raw_attitude_pub_;
 ros::ServiceClient arming_client, set_mode_client;
 
 

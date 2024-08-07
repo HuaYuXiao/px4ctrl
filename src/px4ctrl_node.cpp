@@ -1,18 +1,13 @@
-/***************************************************************************************************************************
-* px4_pos_controller.cpp
-*
-* Author: Qyp
-* Maintainer: Eason Hua
-// last updated on 2024.08.07
-*
-* Introduction:  PX4 Position Controller 
-*         1. 从应用层节点订阅/easondrone/control_command话题（ControlCommand.msg），接收来自上层的控制指令
-*         2. PX4固件通过mavlink_receiver.cpp接收该mavlink消息。
-***************************************************************************************************************************/
+/*
+    px4ctrl_node.cpp
+    Author: Eason Hua
+    last updated on 2024.08.07
 
+    @brief Offboard control example node, written with MAVROS version 0.19.x, PX4 Pro Flight
+    Stack and tested in Gazebo SITL
+*/
 
 #include "px4ctrl_node.h"
-
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主 函 数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 int main(int argc, char **argv){
@@ -32,6 +27,12 @@ int main(int argc, char **argv){
 
     local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>
             ("/mavros/setpoint_position/local", 10);
+    // https://docs.ros.org/en/kinetic/api/mavros_msgs/html/msg/PositionTarget.html
+    setpoint_raw_local_pub = nh.advertise<mavros_msgs::PositionTarget>
+            ("/mavros/setpoint_raw/local", 10);
+    // 【发布】经纬度以及高度位置 坐标系:WGS84坐标系
+    setpoint_raw_global_pub = nh.advertise<mavros_msgs::GlobalPositionTarget>
+            ("/mavros/setpoint_raw/global", 10);
     // 【发布】角度/角速度期望值 坐标系 ENU系
     //  本话题要发送至飞控(通过Mavros功能包 /plugins/setpoint_raw.cpp发送), 对应Mavlink消息为SET_ATTITUDE_TARGET (#82), 对应的飞控中的uORB消息为vehicle_attitude_setpoint.msg（角度） 或vehicle_rates_setpoint.msg（角速度）
     setpoint_raw_attitude_pub_ = nh.advertise<mavros_msgs::AttitudeTarget>
@@ -50,7 +51,9 @@ int main(int argc, char **argv){
     dt = 0.02;
 
     //the setpoint publishing rate MUST be faster than 2Hz
-    ros::Rate rate(50.0);
+    ros::Rate rate(20.0);
+
+    cout_color("Waiting for FCU connection...", YELLOW_COLOR);
 
     // wait for FCU connection
     while(ros::ok() && !current_state.connected){
@@ -58,14 +61,47 @@ int main(int argc, char **argv){
         rate.sleep();
     }
 
-    pose.header.frame_id = "map";
+    cout_color("FCU connected!", GREEN_COLOR);
+
     pose.pose.position.x = 0;
     pose.pose.position.y = 0;
     pose.pose.position.z = 0;
 
-    //send a few setpoints before starting
+    /*
+        uint16 type_mask
+        uint16 IGNORE_PX = 1 # Position ignore flags
+        uint16 IGNORE_PY = 2
+        uint16 IGNORE_PZ = 4
+        uint16 IGNORE_VX = 8 # Velocity vector ignore flags
+        uint16 IGNORE_VY = 16
+        uint16 IGNORE_VZ = 32
+        uint16 IGNORE_AFX = 64 # Acceleration/Force vector ignore flags
+        uint16 IGNORE_AFY = 128
+        uint16 IGNORE_AFZ = 256
+        uint16 FORCE = 512 # Force in af vector flag
+        uint16 IGNORE_YAW = 1024
+        uint16 IGNORE_YAW_RATE = 2048
+     */
+    pos_setpoint.type_mask = 0b100111111000; // 100 111 111 000  xyz + yaw
+    /*
+        uint8 coordinate_frame
+        uint8 FRAME_LOCAL_NED = 1
+        uint8 FRAME_LOCAL_OFFSET_NED = 7
+        uint8 FRAME_BODY_NED = 8
+        uint8 FRAME_BODY_OFFSET_NED = 9
+    */
+    pos_setpoint.coordinate_frame = 1;
+    pos_setpoint.position.x = 0;
+    pos_setpoint.position.y = 0;
+    pos_setpoint.position.z = 0;
+    pos_setpoint.yaw = 0;
+
+    cout_color("Send a few setpoints before starting...", YELLOW_COLOR);
+
+    // send a few setpoints before starting
     for(int i = 100; ros::ok() && i > 0; --i){
         local_pos_pub.publish(pose);
+        setpoint_raw_local_pub.publish(pos_setpoint);
         ros::spinOnce();
         rate.sleep();
     }
@@ -74,38 +110,29 @@ int main(int argc, char **argv){
 
     arm_cmd.request.value = true;
 
-    // 用于与mavros通讯的类，通过mavros发送控制指令至飞控【本程序->mavros->飞控】
-    command_to_mavros _command_to_mavros;
-
-    // 位置控制器声明 可以设置自定义位置环控制算法
-    pos_controller_cascade_PID pos_controller_cascade_pid;
-
     // 初始化命令
-    Command_Now.Mode                                = easondrone_msgs::ControlCommand::Hold;
-    Command_Now.Reference_State.Move_mode           = easondrone_msgs::PositionReference::XYZ_POS;
-    Command_Now.Reference_State.Move_frame          = easondrone_msgs::PositionReference::ENU_FRAME;
+    Command_Now.Mode                       = easondrone_msgs::ControlCommand::Hold;
+    Command_Now.Reference_State.Move_mode  = easondrone_msgs::PositionReference::XYZ_POS;
+    Command_Now.Reference_State.Move_frame = easondrone_msgs::PositionReference::ENU_FRAME;
 
-    // 记录启控时间
-    ros::Time begin_time = ros::Time::now();
-    float last_time = control_utils::get_time_in_sec(begin_time);
-
-    cout << "[px4ctrl_node] controller initialized" << endl;
+    cout << "[px4ctrl_node] initialized!" << endl;
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主  循  环<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     while(ros::ok()){
-        // 当前时间
-        cur_time = control_utils::get_time_in_sec(begin_time);
-        dt = cur_time - last_time;
-        dt = constrain_function2(dt, 0.008, 0.012);
-        last_time = cur_time;
+        cout << "------------------------" << endl;
 
         switch (Command_Now.Mode){
             case easondrone_msgs::ControlCommand::Arm:{
-                cout << "------------------------" << endl;
-                cout_color("FSM_EXEC_STATE: Arm", BLUE_COLOR);
+                cout << "FSM_EXEC_STATE: Arm" << endl;
 
                 if (!current_state.armed) {
                     arm_cmd.request.value = true;
+
+                    pos_setpoint.coordinate_frame = 1;
+                    pos_setpoint.position.x = 0;
+                    pos_setpoint.position.y = 0;
+                    pos_setpoint.position.z = 0;
+                    pos_setpoint.yaw = 0;
 
                     if (arming_client.call(arm_cmd) &&
                         arm_cmd.response.success) {
@@ -123,24 +150,16 @@ int main(int argc, char **argv){
             }
 
             case easondrone_msgs::ControlCommand::Offboard:{
-                // TODO
-                cout << "------------------------" << endl;
-                cout_color("FSM_EXEC_STATE: Offboard", BLUE_COLOR);
+                cout << "FSM_EXEC_STATE: Offboard" << endl;
 
                 if (current_state.mode != "OFFBOARD") {
-                    pose.pose.position.x = 0;
-                    pose.pose.position.y = 0;
-                    pose.pose.position.z = 0;
-
-                    //send a few setpoints before starting
-                    for(int i = 100; ros::ok() && i > 0; --i){
-                        pose.header.stamp = ros::Time::now();
-                        local_pos_pub.publish(pose);
-                        ros::spinOnce();
-                        rate.sleep();
-                    }
-
                     offb_set_mode.request.custom_mode = "OFFBOARD";
+
+                    pos_setpoint.coordinate_frame = 1;
+                    pos_setpoint.position.x = 0;
+                    pos_setpoint.position.y = 0;
+                    pos_setpoint.position.z = 0;
+                    pos_setpoint.yaw = 0;
 
                     if (set_mode_client.call(offb_set_mode) &&
                         offb_set_mode.response.mode_sent) {
@@ -159,22 +178,35 @@ int main(int argc, char **argv){
 
             // 【Takeoff】 从摆放初始位置原地起飞至指定高度，偏航角也保持当前角度
             case easondrone_msgs::ControlCommand::Takeoff:{
-                cout << "------------------------" << endl;
-                cout_color("FSM_EXEC_STATE: Takeoff", BLUE_COLOR);
+                cout << "FSM_EXEC_STATE: Takeoff" << endl;
 
-                pose.pose.position.x = 0;
-                pose.pose.position.y = 0;
-                pose.pose.position.z = 1.5;
+                if (current_state.mode != "AUTO.TAKEOFF") {
+                    offb_set_mode.request.custom_mode = "AUTO.TAKEOFF";
 
-                local_pos_pub.publish(pose);
+                    pos_setpoint.coordinate_frame = 1;
+                    pos_setpoint.position.x = 0;
+                    pos_setpoint.position.y = 0;
+                    pos_setpoint.position.z = 1.5;
+                    pos_setpoint.yaw = 0;
+
+                    if (set_mode_client.call(offb_set_mode) &&
+                        offb_set_mode.response.mode_sent) {
+                        cout_color("AUTO.TAKEOFF response sent", YELLOW_COLOR);
+                    }
+                    else{
+                        cout_color("AUTO.TAKEOFF enable failed", RED_COLOR);
+                    }
+                }
+                else{
+                    cout_color("AUTO.TAKEOFF already enabled", GREEN_COLOR);
+                }
 
                 break;
             }
 
             // 【Move】 ENU系移动。只有PID算法中才有追踪速度的选项，其他控制只能追踪位置
             case easondrone_msgs::ControlCommand::Move:{
-                cout << "------------------------" << endl;
-                cout_color("FSM_EXEC_STATE: Move", BLUE_COLOR);
+                cout << "FSM_EXEC_STATE: Move" << endl;
 
                 //对于机体系的指令,需要转换成ENU坐标系执行,且同一ID号内,只执行一次.
                 if(Command_Now.Reference_State.Move_frame != easondrone_msgs::PositionReference::ENU_FRAME){
@@ -186,14 +218,13 @@ int main(int argc, char **argv){
 
             // 【Hold】 悬停。当前位置悬停
             case easondrone_msgs::ControlCommand::Hold:{
-                cout << "------------------------" << endl;
-                cout_color("FSM_EXEC_STATE: Hold", BLUE_COLOR);
+                cout << "FSM_EXEC_STATE: Hold" << endl;
 
                 if (current_state.mode != "AUTO.LOITER") {
                     offb_set_mode.request.custom_mode = "AUTO.LOITER";
 
                     if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
-                        cout_color("AUTO.LOITER enabled", GREEN_COLOR);
+                        cout_color("AUTO.LOITER response sent", YELLOW_COLOR);
                     }
                     else{
                         cout_color("AUTO.LOITER enable failed", RED_COLOR);
@@ -210,14 +241,19 @@ int main(int argc, char **argv){
 
             // 【Land】 降落。当前位置原地降落，降落后会自动上锁，且切换为mannual模式
             case easondrone_msgs::ControlCommand::Land:{
-                cout << "------------------------" << endl;
-                cout_color("FSM_EXEC_STATE: Land", BLUE_COLOR);
+                cout << "FSM_EXEC_STATE: Land" << endl;
 
                 if (current_state.mode != "AUTO.LAND") {
                     offb_set_mode.request.custom_mode = "AUTO.LAND";
 
+                    pos_setpoint.coordinate_frame = 1;
+                    pos_setpoint.position.x = 0;
+                    pos_setpoint.position.y = 0;
+                    pos_setpoint.position.z = 0;
+                    pos_setpoint.yaw = 0;
+
                     if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
-                        cout_color("AUTO.LAND enabled", GREEN_COLOR);
+                        cout_color("AUTO.LAND response sent", YELLOW_COLOR);
                     }
                     else{
                         cout_color("AUTO.LAND enable failed", RED_COLOR);
@@ -231,14 +267,13 @@ int main(int argc, char **argv){
             }
 
             case easondrone_msgs::ControlCommand::Manual:{
-                cout << "------------------------" << endl;
-                cout_color("FSM_EXEC_STATE: Manual", BLUE_COLOR);
+                cout << "FSM_EXEC_STATE: Manual" << endl;
 
                 if (current_state.mode != "MANUAL") {
                     offb_set_mode.request.custom_mode = "MANUAL";
 
                     if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
-                        cout_color("MANUAL enabled", GREEN_COLOR);
+                        cout_color("MANUAL response sent", YELLOW_COLOR);
                     }
                     else{
                         cout_color("MANUAL enable failed", RED_COLOR);
@@ -253,8 +288,7 @@ int main(int argc, char **argv){
 
             // 【Disarm】 上锁
             case easondrone_msgs::ControlCommand::Disarm:{
-                cout << "------------------------" << endl;
-                cout_color("FSM_EXEC_STATE: Disarm", BLUE_COLOR);
+                cout << "FSM_EXEC_STATE: Disarm" << endl;
 
                 if (current_state.armed) {
                     arm_cmd.request.value = false;
@@ -274,29 +308,13 @@ int main(int argc, char **argv){
             }
 
             default:{
-                cout << "------------------------" << endl;
                 cout_color("WARN: unknown cmd!", YELLOW_COLOR);
 
                 break;
             }
         }
 
-        /* TODO
-        //执行控制
-        _ControlOutput = pos_controller_cascade_pid.pos_controller(_DroneState, Command_Now.Reference_State, dt);
-
-        throttle_sp[0] = _ControlOutput.Throttle[0];
-        throttle_sp[1] = _ControlOutput.Throttle[1];
-        throttle_sp[2] = _ControlOutput.Throttle[2];
-
-        _AttitudeReference = control_utils::ThrottleToAttitude(throttle_sp, Command_Now.Reference_State.yaw_ref);
-
-        //发送解算得到的期望姿态角至PX4
-        _command_to_mavros.send_attitude_setpoint(_AttitudeReference);
-
-        //发布期望姿态
-        att_ref_pub.publish(_AttitudeReference);
-        */
+        setpoint_raw_local_pub.publish(pos_setpoint);
 
         ros::spinOnce();
         rate.sleep();
