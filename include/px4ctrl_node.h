@@ -10,6 +10,7 @@
 #include <Eigen/Eigen>
 #include <sstream>
 #include <string>
+#include <boost/math/special_functions.hpp>
 
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/SetMode.h>
@@ -28,7 +29,8 @@
 
 using namespace std;
 
-#define Takeoff_height_ 1.5                                       //默认起飞高度
+const double POS_ACCEPT = 0.2;
+const double YAW_ACCEPT = 15 / 180.0 * M_PI;
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>变量声明<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 mavros_msgs::State current_state;

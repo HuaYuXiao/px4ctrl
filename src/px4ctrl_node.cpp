@@ -216,16 +216,28 @@ int main(int argc, char **argv){
                     break;
                 }
                 else {
-                    Eigen::Vector3d distance_;
-                    distance_ << ctrl_cmd.poscmd.position.x - odom_pos_(0),
-                            ctrl_cmd.poscmd.position.y - odom_pos_(1),
-                            ctrl_cmd.poscmd.position.z - odom_pos_(2);
+                    Eigen::Vector3d pos_offset;
+                    pos_offset << ctrl_cmd.poscmd.position.x - odom_pos_(0),
+                                  ctrl_cmd.poscmd.position.y - odom_pos_(1),
+                                  ctrl_cmd.poscmd.position.z - odom_pos_(2);
+                    bool pos_ok = (pos_offset.norm() <= POS_ACCEPT);
 
-                    if (distance_.norm() < 0.2) {
+                    // Normalize the difference to the range -pi to pi using boost
+                    float yaw_offset = ctrl_cmd.poscmd.yaw - odom_yaw_;
+                    bool yaw_ok = false;
+                    if (abs(yaw_offset) <= YAW_ACCEPT){
+                        yaw_ok = true;
+                    }
+                    else if(abs(2 * M_PI - yaw_offset) <= YAW_ACCEPT){
+                        yaw_ok = true;
+                    };
+
+                    if (pos_ok && yaw_ok){
                         cout_color("Already reach destination, skip move command!", YELLOW_COLOR);
 
                         break;
-                    } else {
+                    }
+                    else {
                         // TODO: other frames
                         pos_setpoint.coordinate_frame = 1;
                         pos_setpoint.position.x = ctrl_cmd.poscmd.position.x;
