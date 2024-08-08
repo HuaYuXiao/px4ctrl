@@ -3,42 +3,11 @@
  *
  * Author: Qyp
 * Maintainer: Eason Hua
-* Update Time: 2024.08.06
+* Update Time: 2024.08.08
  *
 ***************************************************************************************************************************/
 
 #include "px4ctrl_vision.h"
-
-
-// 发布无人机状态，具体内容参见 easondrone_msgs::DroneState
-void pub_to_nodes(easondrone_msgs::DroneState State_from_fcu){
-    State_from_fcu.header.stamp = ros::Time::now();
-
-    drone_state_pub.publish(State_from_fcu);
-
-    // 发布无人机运动轨迹，用于rviz显示
-    geometry_msgs::PoseStamped drone_pos;
-    drone_pos.header.stamp = ros::Time::now();
-    drone_pos.header.frame_id = "map";
-    drone_pos.pose.position.x = State_from_fcu.position[0];
-    drone_pos.pose.position.y = State_from_fcu.position[1];
-    drone_pos.pose.position.z = State_from_fcu.position[2];
-
-    drone_pos.pose.orientation = State_from_fcu.attitude_q;
-
-    //发布无人机的位姿 和 轨迹 用作rviz中显示
-    posehistory_vector_.insert(posehistory_vector_.begin(), drone_pos);
-    if (posehistory_vector_.size() > TRA_WINDOW){
-        posehistory_vector_.pop_back();
-    }
-
-    nav_msgs::Path drone_trajectory;
-    drone_trajectory.header.stamp = ros::Time::now();
-    drone_trajectory.header.frame_id = "map";
-    drone_trajectory.poses = posehistory_vector_;
-    trajectory_pub.publish(drone_trajectory);
-}
-
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主 函 数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 int main(int argc, char **argv){
@@ -58,6 +27,8 @@ int main(int argc, char **argv){
     nh.param<string>("Gazebo_topic", Gazebo_topic_, "/gazebo/ground_truth/odom");
     nh.param<string>("VIO_topic", VIO_topic_, "/vins_estimator/odometry");
 
+    odom_sub_ = nh.subscribe<nav_msgs::Odometry>
+            ("/mavros/local_position/odom", 10, odometryCallback);
     // VICON
     VICON_sub_ = nh.subscribe<geometry_msgs::TransformStamped>
             ("/vicon/" + subject_name + "/" + segment_name, 1000, VICON_cb);
@@ -85,15 +56,9 @@ int main(int argc, char **argv){
             ("/mavros/vision_pose/pose", 10);
     odom_out_pub_ = nh.advertise<nav_msgs::Odometry>
             ("/mavros/odometry/out", 10);
-    // 【发布】无人机状态量
-    drone_state_pub = nh.advertise<easondrone_msgs::DroneState>
-            ("/easondrone/drone_state", 10);
     // 【发布】无人机移动轨迹，用于RViz显示
     trajectory_pub = nh.advertise<nav_msgs::Path>
             ("/easondrone/drone_trajectory", 10);
-
-    // 用于与mavros通讯的类，通过mavros接收来至飞控的消息【飞控->mavros->本程序】
-    state_from_mavros _state_from_mavros;
 
     vision_pose_.header.stamp = ros::Time::now();
     vision_pose_.header.frame_id = "world";
@@ -114,9 +79,6 @@ int main(int argc, char **argv){
         // 将采集的机载设备的定位信息及偏航角信息发送至飞控
         vision_pose_.header.stamp = ros::Time::now();
         vision_pose_pub_.publish(vision_pose_);
-
-        // 发布无人机状态至其他节点，如px4_pos_controller.cpp节点
-        pub_to_nodes(_state_from_mavros._DroneState);
 
         rate.sleep();
     }

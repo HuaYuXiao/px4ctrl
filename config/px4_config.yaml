@@ -1,20 +1,21 @@
 # Common configuration for PX4 autopilot
 #
 # node:
-startup_px4_usb_quirk: true
+startup_px4_usb_quirk: false
 
 # --- system plugins ---
 
 # sys_status & sys_time connection options
 conn:
-  heartbeat_rate: 1.0    # send hertbeat rate in Hertz
-  timeout: 10.0          # hertbeat timeout in seconds
+  heartbeat_rate: 1.0    # send heartbeat rate in Hertz
+  timeout: 10.0          # heartbeat timeout in seconds
   timesync_rate: 10.0    # TIMESYNC rate in Hertz (feature disabled if 0.0)
   system_time_rate: 1.0  # send system time to FCU rate in Hertz (disabled if 0.0)
 
 # sys_status
 sys:
-  min_voltage: 10.0   # diagnostics min voltage
+  min_voltage: 10.0   # diagnostics min voltage, use a vector i.e. [16.2, 16.0] for multiple batteries, up-to 10 are supported
+  # to achieve the same on a ROS launch file do: <rosparam param="sys/min_voltage">[16.2, 16.0]</rosparam>
   disable_diag: false # disable all sys_status diagnostics, except heartbeat
 
 # sys_time
@@ -66,10 +67,10 @@ imu:
 
 # local_position
 local_position:
-  frame_id: "world"
+  frame_id: "map"
   tf:
-    send: true
-    frame_id: "world"
+    send: false
+    frame_id: "map"
     child_frame_id: "base_link"
     send_fcu: false
 
@@ -123,7 +124,7 @@ setpoint_velocity:
 mission:
   pull_after_gcs: true  # update mission if gcs updates
   use_mission_item_int: true # use the MISSION_ITEM_INT message instead of MISSION_ITEM
-                             # for uploading waypoints to FCU
+  # for uploading waypoints to FCU
 
 # --- mavros extras plugins (same order) ---
 
@@ -156,6 +157,12 @@ distance_sensor:
     subscriber: true
     id: 2
     orientation: PITCH_270
+    horizontal_fov_ratio: 1.0   # horizontal_fov = horizontal_fov_ratio * msg.field_of_view
+    vertical_fov_ratio: 1.0     # vertical_fov = vertical_fov_ratio * msg.field_of_view
+    # custom_orientation:       # Used for orientation == CUSTOM
+    #   roll: 0
+    #   pitch: 270
+    #   yaw: 0
   laser_1_sub:
     subscriber: true
     id: 3
@@ -213,6 +220,14 @@ mocap:
   use_tf: false   # ~mocap/tf
   use_pose: true  # ~mocap/pose
 
+# mount_control
+mount:
+  debounce_s: 4.0
+  err_threshold_deg: 10.0
+  negate_measured_roll: false
+  negate_measured_pitch: false
+  negate_measured_yaw: false
+
 # odom
 odometry:
   fcu:
@@ -258,5 +273,9 @@ wheel_odometry:
     send: false
     frame_id: "odom"
     child_frame_id: "base_link"
+
+# camera
+camera:
+  frame_id: "base_link"
 
 # vim:set ts=2 sw=2 et:

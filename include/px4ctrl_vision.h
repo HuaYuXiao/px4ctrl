@@ -23,11 +23,8 @@
 #include <Eigen/Dense>
 
 #include <nav_msgs/Odometry.h>
+#include <nav_msgs/Path.h>
 #include <geometry_msgs/TransformStamped.h>
-
-#include "state_from_mavros.h"
-#include "math_utils.h"
-#include "control_utils.h"
 
 using namespace std;
 
@@ -47,14 +44,30 @@ std::string frame_id;
 
 geometry_msgs::PoseStamped vision_pose_;
 nav_msgs::Odometry odom_out_;
-easondrone_msgs::DroneState Drone_State;
 std::vector<geometry_msgs::PoseStamped> posehistory_vector_;
 
-//---------------------------------------发布相关变量--------------------------------------------
-ros::Subscriber VICON_sub_, T265_sub_, Gazebo_sub_, optitrack_sub, LIO_sub_, VIO_sub_;
-ros::Publisher vision_pose_pub_, odom_out_pub_, drone_state_pub, trajectory_pub;
+ros::Subscriber odom_sub_ , VICON_sub_, T265_sub_, Gazebo_sub_, optitrack_sub, LIO_sub_, VIO_sub_;
+// 发布相关变量
+ros::Publisher vision_pose_pub_, odom_out_pub_, trajectory_pub;
 
-//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>回调函数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+// 保存无人机当前里程计信息，包括位置、速度和姿态
+void odometryCallback(const nav_msgs::OdometryConstPtr &msg){
+    // 发布无人机的轨迹 用作rviz中显示
+    geometry_msgs::PoseStamped odom_pos_;
+    odom_pos_.pose.position = msg->pose.pose.position;
+    odom_pos_.pose.orientation = msg->pose.pose.orientation;
+    
+    posehistory_vector_.insert(posehistory_vector_.begin(), odom_pos_);
+    if (posehistory_vector_.size() > TRA_WINDOW){
+        posehistory_vector_.pop_back();
+    }
+
+    nav_msgs::Path drone_trajectory;
+    drone_trajectory.header = msg->header;
+    drone_trajectory.poses = posehistory_vector_;
+    trajectory_pub.publish(drone_trajectory);
+}
+
 void VICON_cb(const geometry_msgs::TransformStamped::ConstPtr& msg){
     if (input_source != 6){
         return;
