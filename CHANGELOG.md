@@ -5,8 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v4.0.2] - 2024-08-08
+- [CRUCIAL, new feature]: `Move` with `quadrotor_msgs::PositionCommand`
+- [remove feature]: `Drone_odom`
+- [remove feature]: unused header files
+
+## [v4.0.1] - 2024-08-08
+- [CRUCIAL, new feature]: `AUTO.TAKEOFF` via mavros
+- [CRUCIAL, new feature]: `AUTO.LAND` via mavros
+
+## [v4.0.0] - 2024-08-07
+- [CRUCIAL, new feature]: `Offboard` via mavros
+- [remove feature]: ignore all other cmds if `Disarm` received
+
 ## [v3.6.3] - 2024-08-06
-- land with `AUTO.LAND`
+- [CRUCIAL, new feature]: `AUTO.LAND` via mavros
 - replace `.yaml` with `#define`
 
 ## [v3.6.2] - 2024-08-06
@@ -21,27 +34,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [remove feature]: offset for position and orientation
 
 ## [v3.6.0] - 2024-07-26
-- [new feature]: direct publish `/easondrone/control_command` from `/move_base_simple/goal`
+- [CRUCIAL, new feature]: direct publish `/easondrone/control_command` from `/move_base_simple/goal`
 - [remove support]: cmd from `/easondrone/control_command_station`
 
 ## [v3.5.2] - 2024-07-26
-- [new feature]: support `FAST-LIO2`: `/Odometry` to `/mavros/vision_pose/pose`
+- [CRUCIAL, new feature]: support `FAST-LIO2`: `/Odometry` to `/mavros/vision_pose/pose`
 - [remove feature]: euler angle estimate
-- directly remap `nav_msgs::Odometry` to `/mavros/odometry/out`
+- [not working]: directly remap `nav_msgs::Odometry` to `/mavros/odometry/out`
 
 ## v3.5.1:
 - OFFBOARD & arm with easondrone_msgs::ControlCommand::OFFBOARD_ARM
 - [remove feature]: check for Command_ID
-- [remove feature]: time_from_start
-- launch for joy_node
+- [remove feature]: `time_from_start`
+- [not working]: launch for joy_node
 
 ## v3.5.0:
-- replace `command_to_mavros` with `setpoint_raw_attitude_pub_`, `arming_client_`, `set_mode_client_`
+- [CRUCIAL]: replace `command_to_mavros` with `setpoint_raw_attitude_pub_`, `arming_client_`, `set_mode_client_`
 - remove `state_from_mavros`
 
 ## v3.4.4:
 - update `px4ctrl_node` to "cpp + h" format
-- [remove feature]: `Drone_odom`
 
 ## v3.4.3: 
 - remove: move along with trajectory
@@ -59,7 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - support PID controller with `POS+VEL` loop
 
 ## v3.3.4: 
-- update `rate_hz_` (removed in v3.5.3)
+- (removed in v3.5.3) update `rate_hz_` 
 
 ## v3.3.3:
 - update `get_ref_pose_rviz`
@@ -68,19 +80,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - add support for `launch`
 
 ## v3.3.1: 
-- [new feature]: support move mode `POS_VEL_ACC`
+- [new feature] (removed in v4.0.0): support move mode `POS_VEL_ACC`
 
 ## v3.3.0: 
-- [new feature]: support move mode `XYZ_VEL`
+- [new feature] (removed in v4.0.0): support move mode `XYZ_VEL`
 
 ## v3.2.1: 
 - [new feature]: catch invalid input of terminal control
 
 ## v2.0.0: 
-- [new feature]: control type `NE`, `PID`, `UDE`
+- [new feature] (removed in v4.0.0): control type `NE`, `PID`, `UDE`
 
 ## v1.2.0: 
-- import position offset
+- [new feature]  (removed in v3.6.1) position offset
 
 ## v1.0.0: 
 - [new feature]: `VICON`

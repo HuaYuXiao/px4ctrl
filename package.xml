@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>px4ctrl</name>
-  <version>3.6.3</version>
+  <version>4.0.2</version>
   <description>
     A ROS package as a bridge to estimate and control drone with MAVROS
   </description>
@@ -17,8 +17,7 @@
 
   <depend>std_msgs</depend>
   <depend>message_filters</depend>
-
-  <build_depend>message_generation</build_depend>
+  <depend>quadrotor_msgs</depend>
 
   <exec_depend>message_runtime</exec_depend>
 

@@ -1,29 +1,28 @@
-/***************************************************************************************************************************
-* terminal_control.cpp
-*
-* Author: Qyp
-* Edited by: Eason Hua
-* Update Time: 2024.08.06
-*
-* Introduction:  test function for sending ControlCommand.msg
-***************************************************************************************************************************/
+/*
+    px4ctrl_terminal.cpp
+    Author: Eason Hua
+    Update Time: 2024.08.07
+    Introduction:  sending specific command to mavros via terminal
+*/
 
 #include "px4ctrl_terminal.h"
 
-
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>　主函数　<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 int main(int argc, char **argv){
-    ros::init(argc, argv, "terminal_control");
+    ros::init(argc, argv, "px4ctrl_terminal");
     ros::NodeHandle nh;
 
     //　【发布】控制指令
     easondrone_ctrl_pub_ = nh.advertise<easondrone_msgs::ControlCommand>
             ("/easondrone/control_command", 10);
 
-    // 初始化命令 - Idle模式 电机怠速旋转 等待来自上层的控制指令
-    Command_to_pub.Mode                                = easondrone_msgs::ControlCommand::Move;
-    Command_to_pub.Reference_State.Move_mode           = easondrone_msgs::PositionReference::XYZ_POS;
-    Command_to_pub.Reference_State.Move_frame          = easondrone_msgs::PositionReference::ENU_FRAME;
+    // 初始化命令
+    ctrl_cmd.mode = easondrone_msgs::ControlCommand::Hold;
+    ctrl_cmd.frame = easondrone_msgs::ControlCommand::ENU;
+    ctrl_cmd.poscmd.position.x = 0;
+    ctrl_cmd.poscmd.position.y = 0;
+    ctrl_cmd.poscmd.position.z = 0;
+    ctrl_cmd.poscmd.yaw = 0;
 
     //固定的浮点显示
     cout.setf(ios::fixed);
