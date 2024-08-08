@@ -16,23 +16,27 @@
 
 #include <easondrone_msgs/ControlCommand.h>
 
-easondrone_msgs::ControlCommand ctrl_cmd;                      //无人机当前执行命令
+Eigen::Vector3d odom_pos_;
+
+//无人机当前执行命令
+easondrone_msgs::ControlCommand ctrl_cmd;
 
 ros::Subscriber goal_sub_, odom_sub_;
 ros::Publisher easondrone_ctrl_pub_;
 
 void goal_cb(const geometry_msgs::PoseStamped::ConstPtr& msg){
+    ctrl_cmd.header.stamp = ros::Time::now();
     ctrl_cmd.poscmd.position.x = msg->pose.position.x;
     ctrl_cmd.poscmd.position.y = msg->pose.position.y;
+    ctrl_cmd.poscmd.position.z = odom_pos_(2);
     ctrl_cmd.poscmd.yaw = 2 * atan2(msg->pose.orientation.z, msg->pose.orientation.w);
 
-    ctrl_cmd.header.stamp = ros::Time::now();
     easondrone_ctrl_pub_.publish(ctrl_cmd);
 }
 
 // 保存无人机当前里程计信息，包括位置、速度和姿态
 void odometryCallback(const nav_msgs::OdometryConstPtr &msg){
-    ctrl_cmd.poscmd.position.z = msg->pose.pose.position.z;
+    odom_pos_(2) = msg->pose.pose.position.z;
 }
 
 int main(int argc, char **argv) {
@@ -48,7 +52,7 @@ int main(int argc, char **argv) {
     easondrone_ctrl_pub_ = nh.advertise<easondrone_msgs::ControlCommand>
             ("/easondrone/control_command", 10);
 
-    // 初始化命令
+    ctrl_cmd.mode = easondrone_msgs::ControlCommand::Move;
     ctrl_cmd.frame = easondrone_msgs::ControlCommand::ENU;
 
     ros::spin();

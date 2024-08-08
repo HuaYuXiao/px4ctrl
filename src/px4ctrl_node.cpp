@@ -206,7 +206,7 @@ int main(int argc, char **argv){
                 break;
             }
 
-            // 【Move】 ENU系移动。只有PID算法中才有追踪速度的选项，其他控制只能追踪位置
+            // 【Move】 ENU系移动, 只能追踪位置
             case easondrone_msgs::ControlCommand::Move:{
                 cout << "FSM_EXEC_STATE: Move" << endl;
 
@@ -233,7 +233,7 @@ int main(int argc, char **argv){
                     };
 
                     if (pos_ok && yaw_ok){
-                        cout_color("Already reach destination, skip move command!", YELLOW_COLOR);
+                        cout_color("Already reach destination, skip move command!", GREEN_COLOR);
 
                         break;
                     }
@@ -257,7 +257,7 @@ int main(int argc, char **argv){
                         std::string msg = ss.str();
 
                         // Print the result
-                        cout_color(msg, GREEN_COLOR);
+                        cout_color(msg, YELLOW_COLOR);
                     }
                 }
 
