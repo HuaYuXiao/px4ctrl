@@ -6,8 +6,9 @@
 ![Static Badge](https://img.shields.io/badge/Python-3.8.10-3776AB?logo=python)
 ![Static Badge](https://img.shields.io/badge/Ubuntu-18.04.6-E95420?logo=ubuntu)
 
-A ROS package to estimate and control drone.
+A ROS package to interface drone with PX4 via MAVROS.
 
+![Snipaste_2024-08-08_11-42-16.png](doc%2FSnipaste_2024-08-08_11-42-16.png)
 
 ## Installation
 
@@ -19,16 +20,8 @@ catkin_make install --source Modules/px4ctrl --build Modules/px4ctrl/build
 
 ## Launch
 
-For p450:
-
 ```shell
-roslaunch px4ctrl px4ctrl_p450_indoor.launch
-```
-
-For isis:
-
-```shell
-roslaunch px4ctrl px4ctrl_iris_indoor.launch
+roslaunch px4ctrl px4ctrl.launch
 ```
 
 - Enter t to unlock the aircraft for takeoff.
@@ -42,7 +35,13 @@ roslaunch px4ctrl px4ctrl_iris_indoor.launch
 
 ## Acknowledgement
 
-Thanks to following packages:
+Thanks for following packages:
 
-- [prometheus_control](https://github.com/amov-lab/Prometheus/tree/v1.1/Modules/control)
+- [prometheus_control](https://github.com/amov-lab/Prometheus/Modules/control)
 - [control](https://gitee.com/robin_shaun/XTDrone/control)
+- [px4ctrl](https://github.com/ZJU-FAST-Lab/Fast-Drone-250/src/realflight_modules/px4ctrl)
+
+Important docs:
+
+- [mavros wiki](https://wiki.ros.org/mavros)
+- [px4 user guide](https://docs.px4.io/master/en/)

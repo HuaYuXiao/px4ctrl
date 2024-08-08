@@ -17,42 +17,40 @@
 #include <nav_msgs/Path.h>
 
 #include <easondrone_msgs/ControlCommand.h>
-#include "cout_utils.h"
+#include "px4ctrl_utils.h"
 
 using namespace std;
 
 const std::set<int> valid_modes = {0, 1, 2, 3, 4, 5, 6, 7};
 //即将发布的command
-easondrone_msgs::ControlCommand Command_to_pub;
+easondrone_msgs::ControlCommand ctrl_cmd;
 
 //发布
 ros::Publisher easondrone_ctrl_pub_;
 
 void mainloop(){
-    int Control_Mode = 0;
-    bool valid_Control_Mode = false;
-    int Move_mode = 0;
-    bool valid_move_mode = false;
-    int Move_frame = 0;
-    bool valid_move_frame = false;
-    float state_desired[4];
+    int mode = 0;
+    bool valid_mode = false;
+    int frame = 0;
+    bool valid_frame = false;
     bool valid_x_input = false;
     bool valid_y_input = false;
     bool valid_z_input = false;
     bool valid_yaw_input = false;
 
     while(ros::ok()){
-        while (!valid_Control_Mode){
+        while (!valid_mode){
             cout << "--------------------------------" << endl;
             cout << "Enter command to mavros: " << endl;
             cout << "| 0 Arm  | 1 Offboard | 2 Takeoff | 3  Move  |" << endl;
             cout << "| 4 Hold | 5   Land   | 6 Manual  | 7 Disarm |" << endl;
-            if (cin >> Control_Mode) {
-                if (valid_modes.find(Control_Mode) != valid_modes.end()) {
-                    valid_Control_Mode = true;
+
+            if (cin >> mode) {
+                if (valid_modes.find(mode) != valid_modes.end()) {
+                    valid_mode = true;
                 }
                 else{
-                    string msg = "Invalid input! Please enter a valid command mode! \n";
+                    string msg = "Invalid input! Please enter a valid command mode! ";
                     cout_color(msg, RED_COLOR);
                 }
             }
@@ -62,43 +60,43 @@ void mainloop(){
                 // Discard invalid input
                 cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                string msg = "Invalid input! Please enter an integer. \n";
+                string msg = "Invalid input! Please enter an integer. ";
                 cout_color(msg, RED_COLOR);
             }
         }
-        valid_Control_Mode = false;
+        valid_mode = false;
 
-        switch (Control_Mode){
+        switch (mode){
             case easondrone_msgs::ControlCommand::Arm:{
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Arm;
+                ctrl_cmd.mode = easondrone_msgs::ControlCommand::Arm;
 
                 break;
             }
 
             case easondrone_msgs::ControlCommand::Offboard:{
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Offboard;
+                ctrl_cmd.mode = easondrone_msgs::ControlCommand::Offboard;
 
                 break;
             }
 
             case easondrone_msgs::ControlCommand::Takeoff:{
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Takeoff;
+                ctrl_cmd.mode = easondrone_msgs::ControlCommand::Takeoff;
 
                 break;
             }
 
             case easondrone_msgs::ControlCommand::Move:{
-                while (!valid_move_mode) {
-                    cout << "Please choose Move_mode: 0 POS, 1 XY_POS_Z_VEL, 2 XY_VEL_Z_POS, 3 VEL" << endl;
-                    if (cin >> Move_mode) {
-                        if (Move_mode == 0 ||
-                            Move_mode == 1 ||
-                            Move_mode == 2 ||
-                            Move_mode == 3) {
-                            valid_move_mode = true;
+                ctrl_cmd.mode = easondrone_msgs::ControlCommand::Move;
+                
+                while (!valid_frame) {
+                    cout << "Please choose frame: 0 ENU, 1 NED" << endl;
+                    if (cin >> frame) {
+                        if (frame == 0 || frame == 1) {
+                            valid_frame = true;
+                            ctrl_cmd.frame = frame;
                         }
                         else {
-                            string msg = "Invalid input! Please enter a valid Move_mode. \n";
+                            string msg = "Invalid input! Require 0 or 1 ";
                             cout_color(msg, RED_COLOR);
                         }
                     }
@@ -108,40 +106,15 @@ void mainloop(){
                         // Discard invalid input
                         cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                        string msg = "Invalid input! Please enter an integer. \n";
+                        string msg = "Invalid input! Require integer. ";
                         cout_color(msg, RED_COLOR);
                     }
                 }
-                valid_move_mode = false;
-
-                while (!valid_move_frame) {
-                    cout << "Please choose Move_frame: 0 ENU, 1 Body" << endl;
-                    if (cin >> Move_frame) {
-                        if (Move_frame == 0 || Move_frame == 1) {
-                            valid_move_frame = true;
-                        }
-                        else {
-                            string msg = "Invalid input! Please enter 0 or 1. \n";
-                            cout_color(msg, RED_COLOR);
-                        }
-                    }
-                    else {
-                        // Clear error flags
-                        cin.clear();
-                        // Discard invalid input
-                        cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
-                        string msg = "Invalid input! Please enter an integer. \n";
-                        cout_color(msg, RED_COLOR);
-                    }
-                }
-                valid_move_frame = false;
-
-                cout << "Please input the reference state [x y z yaw]: " << endl;
+                valid_frame = false;
 
                 while (!valid_x_input) {
-                    cout << "setpoint_t[0] --- x [m] : " << endl;
-                    if (cin >> state_desired[0]) {
+                    cout << "Enter position.x (unit: m) : " << endl;
+                    if (cin >> ctrl_cmd.poscmd.position.x) {
                         valid_x_input = true;
                     }
                     else {
@@ -150,15 +123,15 @@ void mainloop(){
                         // Discard invalid input
                         cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                        string msg = "Invalid input! Please enter a number. \n";
+                        string msg = "Invalid input! Require number ";
                         cout_color(msg, RED_COLOR);
                     }
                 }
                 valid_x_input = false;
 
                 while (!valid_y_input) {
-                    cout << "setpoint_t[1] --- y [m] : " << endl;
-                    if (cin >> state_desired[1]) {
+                    cout << "Enter position.y (unit: m) : " << endl;
+                    if (cin >> ctrl_cmd.poscmd.position.y) {
                         valid_y_input = true;
                     }
                     else {
@@ -167,21 +140,20 @@ void mainloop(){
                         // Discard invalid input
                         cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                        string msg = "Invalid input! Please enter a number. \n";
+                        string msg = "Invalid input! Require number. ";
                         cout_color(msg, RED_COLOR);
                     }
                 }
                 valid_y_input = false;
 
                 while (!valid_z_input) {
-                    cout << "setpoint_t[2] --- z [m] : " << endl;
-                    if (cin >> state_desired[2]) {
-                        if (state_desired[2] >= 0.0) {
+                    cout << "Enter position.z (unit: m) : " << endl;
+                    if (cin >> ctrl_cmd.poscmd.position.z) {
+                        if (ctrl_cmd.poscmd.position.z >= 0.0) {
                             valid_z_input = true;
                         }
                         else {
-                            string msg = "Invalid input! Please enter a non-negative value. \n";
-                            cout_color(msg, RED_COLOR);
+                            cout_color("Invalid input! Require non-negative number!", RED_COLOR);
                         }
                     }
                     else {
@@ -190,21 +162,22 @@ void mainloop(){
                         // Discard invalid input
                         cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                        string msg = "Invalid input! Please enter a number. \n";
+                        string msg = "Invalid input! Require number";
                         cout_color(msg, RED_COLOR);
                     }
                 }
                 valid_z_input = false;
 
                 while (!valid_yaw_input) {
-                    cout << "setpoint_t[3] --- yaw [deg] : " << endl;
-                    if (cin >> state_desired[3]) {
+                    cout << "Enter yaw (unit: deg) : " << endl;
+                    if (cin >> ctrl_cmd.poscmd.yaw) {
                         // Check if yaw is within the range
-                        if (state_desired[3] >= -180 && state_desired[3] < 180) {
+                        if (abs(ctrl_cmd.poscmd.yaw) <= 180) {
                             valid_yaw_input = true;
+                            ctrl_cmd.poscmd.yaw = ctrl_cmd.poscmd.yaw / 180.0 * M_PI;
                         }
                         else {
-                            string msg = "Invalid input! Please enter a value between -180 and 180. \n";
+                            string msg = "Invalid input! Require value between (-180, 180) ";
                             cout_color(msg, RED_COLOR);
                         }
                     }
@@ -214,52 +187,43 @@ void mainloop(){
                         // Discard invalid input
                         cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                        string msg = "Invalid input! Please enter a number. \n";
+                        string msg = "Invalid input! Require number";
                         cout_color(msg, RED_COLOR);
                     }
                 }
                 valid_yaw_input = false;
 
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Move;
-                Command_to_pub.Reference_State.Move_mode = Move_mode;
-                Command_to_pub.Reference_State.Move_frame = Move_frame;
-
                 break;
             }
 
             case easondrone_msgs::ControlCommand::Hold:{
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Hold;
+                ctrl_cmd.mode = easondrone_msgs::ControlCommand::Hold;
 
                 break;
             }
 
             case easondrone_msgs::ControlCommand::Land:{
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Land;
+                ctrl_cmd.mode = easondrone_msgs::ControlCommand::Land;
 
                 break;
             }
 
             case easondrone_msgs::ControlCommand::Manual:{
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Manual;
+                ctrl_cmd.mode = easondrone_msgs::ControlCommand::Manual;
 
                 break;
             }
 
             case easondrone_msgs::ControlCommand::Disarm:{
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Disarm;
-
-                break;
-            }
-
-            default:{
-                Command_to_pub.Mode = easondrone_msgs::ControlCommand::Hold;
+                ctrl_cmd.mode = easondrone_msgs::ControlCommand::Disarm;
+                ctrl_cmd.frame = easondrone_msgs::ControlCommand::ENU;
 
                 break;
             }
         }
 
-        Command_to_pub.header.stamp = ros::Time::now();
-        easondrone_ctrl_pub_.publish(Command_to_pub);
+        ctrl_cmd.header.stamp = ros::Time::now();
+        easondrone_ctrl_pub_.publish(ctrl_cmd);
 
         cout_color("Command publish success!", GREEN_COLOR);
     }

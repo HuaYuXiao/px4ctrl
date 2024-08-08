@@ -2,7 +2,7 @@
     px4ctrl_terminal.cpp
     Author: Eason Hua
     Update Time: 2024.08.07
-    Introduction:  test function for sending ControlCommand.msg
+    Introduction:  sending specific command to mavros via terminal
 */
 
 #include "px4ctrl_terminal.h"
@@ -17,9 +17,12 @@ int main(int argc, char **argv){
             ("/easondrone/control_command", 10);
 
     // 初始化命令
-    Command_to_pub.Mode                       = easondrone_msgs::ControlCommand::Hold;
-    Command_to_pub.Reference_State.Move_mode  = easondrone_msgs::PositionReference::XYZ_POS;
-    Command_to_pub.Reference_State.Move_frame = easondrone_msgs::PositionReference::ENU_FRAME;
+    ctrl_cmd.mode = easondrone_msgs::ControlCommand::Hold;
+    ctrl_cmd.frame = easondrone_msgs::ControlCommand::ENU;
+    ctrl_cmd.poscmd.position.x = 0;
+    ctrl_cmd.poscmd.position.y = 0;
+    ctrl_cmd.poscmd.position.z = 0;
+    ctrl_cmd.poscmd.yaw = 0;
 
     //固定的浮点显示
     cout.setf(ios::fixed);

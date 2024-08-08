@@ -21,9 +21,6 @@ int main(int argc, char **argv){
     //【订阅】指令 本话题为任务模块生成的控制指令
     easondrone_ctrl_sub_ = nh.subscribe<easondrone_msgs::ControlCommand>
             ("/easondrone/control_command", 10, easondrone_ctrl_cb_);
-    //【订阅】无人机状态 本话题来自px4_pos_estimator.cpp
-    drone_state_sub = nh.subscribe<easondrone_msgs::DroneState>
-            ("/easondrone/drone_state", 10, drone_state_cb);
 
     local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>
             ("/mavros/setpoint_position/local", 10);
@@ -37,9 +34,6 @@ int main(int argc, char **argv){
     //  本话题要发送至飞控(通过Mavros功能包 /plugins/setpoint_raw.cpp发送), 对应Mavlink消息为SET_ATTITUDE_TARGET (#82), 对应的飞控中的uORB消息为vehicle_attitude_setpoint.msg（角度） 或vehicle_rates_setpoint.msg（角速度）
     setpoint_raw_attitude_pub_ = nh.advertise<mavros_msgs::AttitudeTarget>
             ("/mavros/setpoint_raw/attitude", 10);
-    //【发布】位置控制器的输出量:期望姿态
-    att_ref_pub = nh.advertise<easondrone_msgs::AttitudeReference>
-            ("/easondrone/control/attitude_reference", 10);
 
     // 【服务】解锁/上锁 本服务通过Mavros功能包 /plugins/command.cpp 实现
     arming_client = nh.serviceClient<mavros_msgs::CommandBool>
@@ -47,8 +41,6 @@ int main(int argc, char **argv){
     // 【服务】修改系统模式 本服务通过Mavros功能包 /plugins/command.cpp 实现
     set_mode_client = nh.serviceClient<mavros_msgs::SetMode>
             ("/mavros/set_mode");
-
-    dt = 0.02;
 
     //the setpoint publishing rate MUST be faster than 2Hz
     ros::Rate rate(20.0);
@@ -63,9 +55,9 @@ int main(int argc, char **argv){
 
     cout_color("FCU connected!", GREEN_COLOR);
 
-    pose.pose.position.x = 0;
-    pose.pose.position.y = 0;
-    pose.pose.position.z = 0;
+//    pose.pose.position.x = 0;
+//    pose.pose.position.y = 0;
+//    pose.pose.position.z = 0;
 
     /*
         uint16 type_mask
@@ -91,16 +83,24 @@ int main(int argc, char **argv){
         uint8 FRAME_BODY_OFFSET_NED = 9
     */
     pos_setpoint.coordinate_frame = 1;
-    pos_setpoint.position.x = 0;
-    pos_setpoint.position.y = 0;
-    pos_setpoint.position.z = 0;
-    pos_setpoint.yaw = 0;
+    pos_setpoint.position.x = odom_pos_(0);
+    pos_setpoint.position.y = odom_pos_(1);
+    pos_setpoint.position.z = odom_pos_(2);
+    pos_setpoint.yaw = odom_yaw_;
+
+    // 初始化命令
+    ctrl_cmd.mode = easondrone_msgs::ControlCommand::Hold;
+    ctrl_cmd.frame = easondrone_msgs::ControlCommand::ENU;
+    ctrl_cmd.poscmd.position.x = odom_pos_(0);
+    ctrl_cmd.poscmd.position.y = odom_pos_(0);
+    ctrl_cmd.poscmd.position.z = odom_pos_(0);
+    ctrl_cmd.poscmd.yaw = odom_yaw_;
 
     cout_color("Send a few setpoints before starting...", YELLOW_COLOR);
 
     // send a few setpoints before starting
     for(int i = 100; ros::ok() && i > 0; --i){
-        local_pos_pub.publish(pose);
+//        local_pos_pub.publish(pose);
         setpoint_raw_local_pub.publish(pos_setpoint);
         ros::spinOnce();
         rate.sleep();
@@ -110,18 +110,13 @@ int main(int argc, char **argv){
 
     arm_cmd.request.value = true;
 
-    // 初始化命令
-    Command_Now.Mode                       = easondrone_msgs::ControlCommand::Hold;
-    Command_Now.Reference_State.Move_mode  = easondrone_msgs::PositionReference::XYZ_POS;
-    Command_Now.Reference_State.Move_frame = easondrone_msgs::PositionReference::ENU_FRAME;
-
     cout << "[px4ctrl_node] initialized!" << endl;
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主  循  环<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     while(ros::ok()){
         cout << "------------------------" << endl;
 
-        switch (Command_Now.Mode){
+        switch (ctrl_cmd.mode){
             case easondrone_msgs::ControlCommand::Arm:{
                 cout << "FSM_EXEC_STATE: Arm" << endl;
 
@@ -139,7 +134,7 @@ int main(int argc, char **argv){
                         cout_color("Arm response success", YELLOW_COLOR);
                     }
                     else{
-                        cout_color("Arm rejected!", RED_COLOR);
+                        cout_color("Arm rejected by FCU", RED_COLOR);
                     }
                 }
                 else{
@@ -166,7 +161,7 @@ int main(int argc, char **argv){
                         cout_color("Offboard response sent", YELLOW_COLOR);
                     }
                     else{
-                        cout_color("Offboard enable failed", RED_COLOR);
+                        cout_color("Offboard rejected by FCU", RED_COLOR);
                     }
                 }
                 else{
@@ -180,6 +175,7 @@ int main(int argc, char **argv){
             case easondrone_msgs::ControlCommand::Takeoff:{
                 cout << "FSM_EXEC_STATE: Takeoff" << endl;
 
+                // TODO: drone will fly over for about 1m
                 if (odom_pos_(2) - 1.5 >= 0.2){
                     cout_color("Drone already Takeoff", GREEN_COLOR);
 
@@ -214,6 +210,45 @@ int main(int argc, char **argv){
             case easondrone_msgs::ControlCommand::Move:{
                 cout << "FSM_EXEC_STATE: Move" << endl;
 
+                if (current_state.mode != "OFFBOARD") {
+                    cout_color("Move command rejected, not in OFFBOARD mode", YELLOW_COLOR);
+
+                    break;
+                }
+                else {
+                    Eigen::Vector3d distance_;
+                    distance_ << ctrl_cmd.poscmd.position.x - odom_pos_(0),
+                            ctrl_cmd.poscmd.position.y - odom_pos_(1),
+                            ctrl_cmd.poscmd.position.z - odom_pos_(2);
+
+                    if (distance_.norm() < 0.2) {
+                        cout_color("Already reach destination, skip move command!", YELLOW_COLOR);
+
+                        break;
+                    } else {
+                        // TODO: other frames
+                        pos_setpoint.coordinate_frame = 1;
+                        pos_setpoint.position.x = ctrl_cmd.poscmd.position.x;
+                        pos_setpoint.position.y = ctrl_cmd.poscmd.position.y;
+                        pos_setpoint.position.z = ctrl_cmd.poscmd.position.z;
+                        pos_setpoint.yaw = ctrl_cmd.poscmd.yaw;
+
+                        // Use stringstream to concatenate the strings and float values
+                        std::stringstream ss;
+                        ss << "Moving to: "
+                           << pos_setpoint.position.x << ", "
+                           << pos_setpoint.position.y << ", "
+                           << pos_setpoint.position.z << "; "
+                           << pos_setpoint.yaw;
+
+                        // Convert the stringstream to a string
+                        std::string msg = ss.str();
+
+                        // Print the result
+                        cout_color(msg, GREEN_COLOR);
+                    }
+                }
+
                 break;
             }
 
@@ -234,7 +269,7 @@ int main(int argc, char **argv){
                         cout_color("AUTO.LOITER response sent", YELLOW_COLOR);
                     }
                     else{
-                        cout_color("AUTO.LOITER enable failed", RED_COLOR);
+                        cout_color("AUTO.LOITER rejected by FCU", RED_COLOR);
                     }
                 }
                 else{
@@ -267,7 +302,7 @@ int main(int argc, char **argv){
                         cout_color("AUTO.LAND response sent", YELLOW_COLOR);
                     }
                     else{
-                        cout_color("AUTO.LAND enable failed", RED_COLOR);
+                        cout_color("AUTO.LAND rejected by FCU", RED_COLOR);
                     }
                 }
                 else{
@@ -277,6 +312,7 @@ int main(int argc, char **argv){
                 break;
             }
 
+            // TODO: not tested yet, for real-life use only
             case easondrone_msgs::ControlCommand::Manual:{
                 cout << "FSM_EXEC_STATE: Manual" << endl;
 
@@ -293,7 +329,7 @@ int main(int argc, char **argv){
                         cout_color("MANUAL response sent", YELLOW_COLOR);
                     }
                     else{
-                        cout_color("MANUAL enable failed", RED_COLOR);
+                        cout_color("MANUAL rejected by FCU", RED_COLOR);
                     }
                 }
                 else{
@@ -320,7 +356,7 @@ int main(int argc, char **argv){
                         cout_color("Disarm response success", YELLOW_COLOR);
                     }
                     else{
-                        cout_color("Disarm enable rejected", RED_COLOR);
+                        cout_color("Disarm rejected by FCU", RED_COLOR);
                     }
                 }
                 else{
@@ -331,6 +367,7 @@ int main(int argc, char **argv){
             }
         }
 
+        pos_setpoint.header.stamp = ros::Time::now();
         setpoint_raw_local_pub.publish(pos_setpoint);
 
         ros::spinOnce();
