@@ -1,15 +1,15 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>px4ctrl</name>
-  <version>4.0.2</version>
+  <version>4.0.3</version>
   <description>
     A ROS package as a bridge to estimate and control drone with MAVROS
   </description>
 
   <maintainer email="12010508@mail.sustech.edu.cn">Eason Hua</maintainer>
-  <author email="fatmoonqyp@126.com">Yuhua Qi</author>
 
-  <license>Apache</license>
+  <!-- EDIT: License -->
+  <license>GNU General Public License Version 3</license>
 
   <url type="repository">https://github.com/HuaYuXiao/px4ctrl.git</url>
 
