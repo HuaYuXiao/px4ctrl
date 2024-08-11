@@ -1,6 +1,6 @@
 <launch>
     <!-- 启动uav_control_main -->
-    <node pkg="px4ctrl" type="px4ctrl_node" name="px4ctrl_node" output="screen"/>
+    <node pkg="px4ctrl" type="px4ctrl_control" name="px4ctrl_control" output="screen"/>
 
     <!-- run the px4_vision_pose.cpp -->
     <node pkg="px4ctrl" type="px4ctrl_vision" name="px4ctrl_vision" output="screen">
@@ -16,7 +16,7 @@
     <node pkg="px4ctrl" type="px4ctrl_terminal" name="px4ctrl_terminal"
           output="screen" launch-prefix="gnome-terminal --"/>
 
-    <node pkg="px4ctrl" type="direct_goal" name="direct_goal"/>
+    <node pkg="px4ctrl" type="px4ctrl_navigate.py" name="px4ctrl_navigate"/>
 
     <!-- 启动虚拟摇杆驱动 -->
     <node pkg="px4ctrl" type="joy_node" name="joy_node" output="screen"/>

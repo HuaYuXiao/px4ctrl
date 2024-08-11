@@ -1,5 +1,5 @@
 /*
-    px4ctrl_node.cpp
+    px4ctrl_control.cpp
     Author: Eason Hua
     last updated on 2024.08.07
 
@@ -7,11 +7,11 @@
     Stack and tested in Gazebo SITL
 */
 
-#include "px4ctrl_node.h"
+#include "px4ctrl_control.h"
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主 函 数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 int main(int argc, char **argv){
-    ros::init(argc, argv, "px4ctrl_node");
+    ros::init(argc, argv, "px4ctrl_control");
     ros::NodeHandle nh("~");
 
     state_sub = nh.subscribe<mavros_msgs::State>
@@ -110,7 +110,7 @@ int main(int argc, char **argv){
 
     arm_cmd.request.value = true;
 
-    cout << "[px4ctrl_node] initialized!" << endl;
+    cout << "[px4ctrl_control] initialized!" << endl;
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主  循  环<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     while(ros::ok()){

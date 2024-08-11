@@ -34,33 +34,17 @@ include_directories(
         include
 )
 
-add_executable(px4ctrl_node src/px4ctrl_node.cpp)
-target_link_libraries(px4ctrl_node ${catkin_LIBRARIES})
+add_executable(px4ctrl_control src/px4ctrl_control.cpp)
+target_link_libraries(px4ctrl_control ${catkin_LIBRARIES})
 
 add_executable(px4ctrl_vision src/px4ctrl_vision.cpp)
 target_link_libraries(px4ctrl_vision ${catkin_LIBRARIES})
 
-add_executable(joy_node src/joy_node.cpp)
-target_link_libraries(joy_node ${catkin_LIBRARIES})
-
 add_executable(px4ctrl_terminal src/px4ctrl_terminal.cpp)
 target_link_libraries(px4ctrl_terminal ${catkin_LIBRARIES})
 
-add_executable(direct_goal src/direct_goal.cpp)
-target_link_libraries(direct_goal ${catkin_LIBRARIES})
+add_executable(joy_node src/joy_node.cpp)
+target_link_libraries(joy_node ${catkin_LIBRARIES})
 
-catkin_install_python(PROGRAMS script/multirotor_communication.py script/multirotor_keyboard_control.py
+catkin_install_python(PROGRAMS scripts/px4ctrl_navigate.py
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
-
-install(DIRECTORY include/${PROJECT_NAME}
-  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-  FILES_MATCHING PATTERN "*.h"
-)
-
-install(DIRECTORY launch
-        DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-)
-
-install(DIRECTORY config
-        DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-)
