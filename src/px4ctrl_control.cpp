@@ -1,5 +1,5 @@
 /*
-    px4ctrl_node.cpp
+    px4ctrl_control.cpp
     Author: Eason Hua
     last updated on 2024.08.07
 
@@ -7,12 +7,15 @@
     Stack and tested in Gazebo SITL
 */
 
-#include "px4ctrl_node.h"
+#include "px4ctrl_control.h"
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主 函 数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 int main(int argc, char **argv){
-    ros::init(argc, argv, "px4ctrl_node");
+    ros::init(argc, argv, "px4ctrl_control");
     ros::NodeHandle nh("~");
+
+    gp_origin_timer_ = nh.createTimer
+            (ros::Duration(0.02), gpOriginCallback);
 
     state_sub = nh.subscribe<mavros_msgs::State>
             ("/mavros/state", 10, state_cb);
@@ -22,6 +25,8 @@ int main(int argc, char **argv){
     easondrone_ctrl_sub_ = nh.subscribe<easondrone_msgs::ControlCommand>
             ("/easondrone/control_command", 10, easondrone_ctrl_cb_);
 
+    gp_origin_pub = nh.advertise<geographic_msgs::GeoPointStamped>
+            ("/mavros/global_position/gp_origin", 10);
     local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>
             ("/mavros/setpoint_position/local", 10);
     // https://docs.ros.org/en/kinetic/api/mavros_msgs/html/msg/PositionTarget.html
@@ -54,6 +59,12 @@ int main(int argc, char **argv){
     }
 
     cout_color("FCU connected!", GREEN_COLOR);
+
+    gp_origin.header.stamp = ros::Time::now();
+    gp_origin.header.frame_id = "world";
+    gp_origin.position.latitude = 0;
+    gp_origin.position.longitude = 0;
+    gp_origin.position.altitude = 0;
 
 //    pose.pose.position.x = 0;
 //    pose.pose.position.y = 0;
@@ -110,7 +121,7 @@ int main(int argc, char **argv){
 
     arm_cmd.request.value = true;
 
-    cout << "[px4ctrl_node] initialized!" << endl;
+    cout << "[px4ctrl_control] initialized!" << endl;
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主  循  环<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     while(ros::ok()){
@@ -206,7 +217,7 @@ int main(int argc, char **argv){
                 break;
             }
 
-            // 【Move】 ENU系移动。只有PID算法中才有追踪速度的选项，其他控制只能追踪位置
+            // 【Move】 ENU系移动, 只能追踪位置
             case easondrone_msgs::ControlCommand::Move:{
                 cout << "FSM_EXEC_STATE: Move" << endl;
 
@@ -216,16 +227,28 @@ int main(int argc, char **argv){
                     break;
                 }
                 else {
-                    Eigen::Vector3d distance_;
-                    distance_ << ctrl_cmd.poscmd.position.x - odom_pos_(0),
-                            ctrl_cmd.poscmd.position.y - odom_pos_(1),
-                            ctrl_cmd.poscmd.position.z - odom_pos_(2);
+                    Eigen::Vector3d pos_offset;
+                    pos_offset << ctrl_cmd.poscmd.position.x - odom_pos_(0),
+                                  ctrl_cmd.poscmd.position.y - odom_pos_(1),
+                                  ctrl_cmd.poscmd.position.z - odom_pos_(2);
+                    bool pos_ok = (pos_offset.norm() <= POS_ACCEPT);
 
-                    if (distance_.norm() < 0.2) {
-                        cout_color("Already reach destination, skip move command!", YELLOW_COLOR);
+                    // Normalize the difference to the range -pi to pi using boost
+                    float yaw_offset = ctrl_cmd.poscmd.yaw - odom_yaw_;
+                    bool yaw_ok = false;
+                    if (abs(yaw_offset) <= YAW_ACCEPT){
+                        yaw_ok = true;
+                    }
+                    else if(abs(2 * M_PI - yaw_offset) <= YAW_ACCEPT){
+                        yaw_ok = true;
+                    };
+
+                    if (pos_ok && yaw_ok){
+                        cout_color("Already reach destination, skip move command!", GREEN_COLOR);
 
                         break;
-                    } else {
+                    }
+                    else {
                         // TODO: other frames
                         pos_setpoint.coordinate_frame = 1;
                         pos_setpoint.position.x = ctrl_cmd.poscmd.position.x;
@@ -245,7 +268,7 @@ int main(int argc, char **argv){
                         std::string msg = ss.str();
 
                         // Print the result
-                        cout_color(msg, GREEN_COLOR);
+                        cout_color(msg, YELLOW_COLOR);
                     }
                 }
 

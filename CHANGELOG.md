@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v4.0.3] - 2024-08-11
+- [bug fix]: in `Move` mode, check whether close to destination, for both pos & yaw
+- [new feature] process `quadrotor_msgs::PositionCommand` from path-planner
+- [new feature] (really necessary?) set global origin via `geographic_msgs::GeoPointStamped`
+- replace `Apache` lisence with `GPLv3` lisence
+
 ## [v4.0.2] - 2024-08-08
 - [CRUCIAL, new feature]: `Move` with `quadrotor_msgs::PositionCommand`
 - [remove feature]: `Drone_odom`
@@ -53,7 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - remove `state_from_mavros`
 
 ## v3.4.4:
-- update `px4ctrl_node` to "cpp + h" format
+- update `px4ctrl_control` to "cpp + h" format
 
 ## v3.4.3: 
 - remove: move along with trajectory
