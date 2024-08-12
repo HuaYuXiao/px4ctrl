@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v4.0.3] - 2024-08-11
 - [bug fix]: in `Move` mode, check whether close to destination, for both pos & yaw
 - [new feature] process `quadrotor_msgs::PositionCommand` from path-planner
+- [new feature] (really necessary?) set global origin via `geographic_msgs::GeoPointStamped`
 - replace `Apache` lisence with `GPLv3` lisence
 
 ## [v4.0.2] - 2024-08-08

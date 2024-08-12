@@ -21,6 +21,7 @@
 #include <mavros_msgs/ActuatorControl.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/TwistStamped.h>
+#include <geographic_msgs/GeoPointStamped.h>
 #include <sensor_msgs/Imu.h>
 #include <nav_msgs/Odometry.h>
 
@@ -41,24 +42,23 @@ Eigen::Vector3d odom_pos_, odom_vel_, odom_acc_;
 Eigen::Quaterniond odom_orient_;
 double odom_yaw_;
 
+geographic_msgs::GeoPointStamped gp_origin;
 geometry_msgs::PoseStamped pose;
 mavros_msgs::PositionTarget pos_setpoint;
 mavros_msgs::SetMode offb_set_mode;
 mavros_msgs::CommandBool arm_cmd;
 easondrone_msgs::ControlCommand ctrl_cmd; //无人机当前执行命令
 
+ros::Timer gp_origin_timer_;
 ros::Subscriber state_sub, easondrone_ctrl_sub_, odom_sub_;
-ros::Publisher local_pos_pub, setpoint_raw_local_pub, setpoint_raw_global_pub, setpoint_raw_attitude_pub_;
+ros::Publisher gp_origin_pub, local_pos_pub, setpoint_raw_local_pub, setpoint_raw_global_pub, setpoint_raw_attitude_pub_;
 //变量声明 - 服务
 ros::ServiceClient arming_client, set_mode_client;
 
-//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>回调函数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+/******** callback ********/
 void state_cb(const mavros_msgs::State::ConstPtr& msg){
     current_state = *msg;
-}
-
-void easondrone_ctrl_cb_(const easondrone_msgs::ControlCommand::ConstPtr& msg){
-    ctrl_cmd = *msg;
 }
 
 // 保存无人机当前里程计信息，包括位置、速度和姿态
@@ -81,6 +81,16 @@ void odometryCallback(const nav_msgs::OdometryConstPtr &msg){
     odom_orient_.z() = msg->pose.pose.orientation.z;
 
     odom_yaw_ = quaternion_to_euler(odom_orient_)[2];
+}
+
+void gpOriginCallback(const ros::TimerEvent &e){
+
+
+    gp_origin_pub.publish(gp_origin);
+}
+
+void easondrone_ctrl_cb_(const easondrone_msgs::ControlCommand::ConstPtr& msg){
+    ctrl_cmd = *msg;
 }
 
 #endif //EASONDRONE_CONTROL_PX4CTRL_H

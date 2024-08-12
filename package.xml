@@ -3,13 +3,13 @@
   <name>px4ctrl</name>
   <version>4.0.3</version>
   <description>
-    A ROS package as a bridge to estimate and control drone with MAVROS
+    A ROS package as an interface for drone control with PX4 via MAVROS.
   </description>
 
   <maintainer email="12010508@mail.sustech.edu.cn">Eason Hua</maintainer>
 
   <!-- EDIT: License -->
-  <license>GNU General Public License Version 3</license>
+  <license>GPLv3</license>
 
   <url type="repository">https://github.com/HuaYuXiao/px4ctrl.git</url>
 

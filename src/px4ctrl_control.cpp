@@ -14,6 +14,9 @@ int main(int argc, char **argv){
     ros::init(argc, argv, "px4ctrl_control");
     ros::NodeHandle nh("~");
 
+    gp_origin_timer_ = nh.createTimer
+            (ros::Duration(0.02), gpOriginCallback);
+
     state_sub = nh.subscribe<mavros_msgs::State>
             ("/mavros/state", 10, state_cb);
     odom_sub_ = nh.subscribe<nav_msgs::Odometry>
@@ -22,6 +25,8 @@ int main(int argc, char **argv){
     easondrone_ctrl_sub_ = nh.subscribe<easondrone_msgs::ControlCommand>
             ("/easondrone/control_command", 10, easondrone_ctrl_cb_);
 
+    gp_origin_pub = nh.advertise<geographic_msgs::GeoPointStamped>
+            ("/mavros/global_position/gp_origin", 10);
     local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>
             ("/mavros/setpoint_position/local", 10);
     // https://docs.ros.org/en/kinetic/api/mavros_msgs/html/msg/PositionTarget.html
@@ -54,6 +59,12 @@ int main(int argc, char **argv){
     }
 
     cout_color("FCU connected!", GREEN_COLOR);
+
+    gp_origin.header.stamp = ros::Time::now();
+    gp_origin.header.frame_id = "world";
+    gp_origin.position.latitude = 0;
+    gp_origin.position.longitude = 0;
+    gp_origin.position.altitude = 0;
 
 //    pose.pose.position.x = 0;
 //    pose.pose.position.y = 0;

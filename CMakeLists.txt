@@ -1,22 +1,22 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(px4ctrl)
 
+add_compile_options(-std=c++11)
 add_compile_options(-std=c++14)
-set(PYTHON_EXECUTABLE "/usr/bin/python3.8")
+set(PYTHON_EXECUTABLE "/usr/bin/python3")
 
 find_package(Boost REQUIRED COMPONENTS system)
 #find_package(PythonInterp REQUIRED 3)
 find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  mavros
+        roscpp
+        mavros
         tf
         tf2_ros
         tf2_eigen
         message_filters
-  std_srvs
         tf2_geometry_msgs
         quadrotor_msgs
-  mavros_msgs
+        mavros_msgs
         geometry_msgs
         std_msgs
         nav_msgs
