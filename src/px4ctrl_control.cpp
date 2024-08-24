@@ -51,7 +51,7 @@ int main(int argc, char **argv){
             ("/mavros/set_mode");
 
     //the setpoint publishing rate MUST be faster than 2Hz
-    ros::Rate rate(20.0);
+    ros::Rate rate(50.0);
 
     cout_color("Waiting for FCU connection...", YELLOW_COLOR);
 
@@ -130,266 +130,278 @@ int main(int argc, char **argv){
     while(ros::ok()){
         cout << "------------------------" << endl;
 
-        switch (ctrl_cmd_in_.mode){
-            case easondrone_msgs::ControlCommand::Arm:{
-                cout << "FSM_EXEC_STATE: Arm" << endl;
+        if(!have_odom_){
+            cout_color("Odom lost! Dangerous!", RED_COLOR);
+        }
+        else {
+            switch (ctrl_cmd_in_.mode) {
+                case easondrone_msgs::ControlCommand::Arm: {
+                    cout << "FSM_EXEC_STATE: Arm" << endl;
 
-                if (!current_state.armed) {
-                    arm_cmd.request.value = true;
+                    if (!current_state.armed) {
+                        arm_cmd.request.value = true;
 
-                    pos_setpoint.coordinate_frame = 1;
-                    pos_setpoint.position.x = odom_pos_(0);
-                    pos_setpoint.position.y = odom_pos_(1);
-                    pos_setpoint.position.z = odom_pos_(2);
-                    pos_setpoint.yaw = odom_yaw_;
+                        pos_setpoint.coordinate_frame = 1;
+                        pos_setpoint.position.x = odom_pos_(0);
+                        pos_setpoint.position.y = odom_pos_(1);
+                        pos_setpoint.position.z = odom_pos_(2);
+                        pos_setpoint.yaw = odom_yaw_;
 
-                    if (arming_client.call(arm_cmd) &&
-                        arm_cmd.response.success) {
-                        cout_color("Arm response success", YELLOW_COLOR);
+                        if (arming_client.call(arm_cmd) &&
+                            arm_cmd.response.success) {
+                            cout_color("Arm response success", YELLOW_COLOR);
+                        }
+                        else {
+                            cout_color("Arm rejected by FCU", RED_COLOR);
+                        }
                     }
-                    else{
-                        cout_color("Arm rejected by FCU", RED_COLOR);
+                    else {
+                        cout_color("Drone already Armed", GREEN_COLOR);
                     }
-                }
-                else{
-                    cout_color("Drone already Armed", GREEN_COLOR);
-                }
-
-                break;
-            }
-
-            case easondrone_msgs::ControlCommand::Offboard:{
-                cout << "FSM_EXEC_STATE: Offboard" << endl;
-
-                if (current_state.mode != "OFFBOARD") {
-                    offb_set_mode.request.custom_mode = "OFFBOARD";
-
-                    pos_setpoint.coordinate_frame = 1;
-                    pos_setpoint.position.x = odom_pos_(0);
-                    pos_setpoint.position.y = odom_pos_(1);
-                    pos_setpoint.position.z = odom_pos_(2);
-                    pos_setpoint.yaw = odom_yaw_;
-
-                    if (set_mode_client.call(offb_set_mode) &&
-                        offb_set_mode.response.mode_sent) {
-                        cout_color("Offboard response sent", YELLOW_COLOR);
-                    }
-                    else{
-                        cout_color("Offboard rejected by FCU", RED_COLOR);
-                    }
-                }
-                else{
-                    cout_color("Offboard already enabled", GREEN_COLOR);
-                }
-
-                break;
-            }
-
-            // 【Takeoff】 从摆放初始位置原地起飞至指定高度，偏航角也保持当前角度
-            case easondrone_msgs::ControlCommand::Takeoff:{
-                cout << "FSM_EXEC_STATE: Takeoff" << endl;
-
-                // TODO: drone will fly over for about 1m
-                if (odom_pos_(2) - 1.5 >= 0.2){
-                    cout_color("Drone already Takeoff", GREEN_COLOR);
 
                     break;
                 }
 
-                if (current_state.mode != "AUTO.TAKEOFF") {
-                    offb_set_mode.request.custom_mode = "AUTO.TAKEOFF";
+                case easondrone_msgs::ControlCommand::Offboard: {
+                    cout << "FSM_EXEC_STATE: Offboard" << endl;
 
-                    pos_setpoint.coordinate_frame = 1;
-                    pos_setpoint.position.x = odom_pos_(0);
-                    pos_setpoint.position.y = odom_pos_(1);
-                    pos_setpoint.position.z = 1.5;
-                    pos_setpoint.yaw = odom_yaw_;
+                    if (current_state.mode != "OFFBOARD") {
+                        offb_set_mode.request.custom_mode = "OFFBOARD";
 
-                    if (set_mode_client.call(offb_set_mode) &&
-                        offb_set_mode.response.mode_sent) {
-                        cout_color("AUTO.TAKEOFF response sent", YELLOW_COLOR);
+                        pos_setpoint.coordinate_frame = 1;
+                        pos_setpoint.position.x = odom_pos_(0);
+                        pos_setpoint.position.y = odom_pos_(1);
+                        pos_setpoint.position.z = odom_pos_(2);
+                        pos_setpoint.yaw = odom_yaw_;
+
+                        if (set_mode_client.call(offb_set_mode) &&
+                            offb_set_mode.response.mode_sent) {
+                            cout_color("Offboard response sent", YELLOW_COLOR);
+                        }
+                        else {
+                            cout_color("Offboard rejected by FCU", RED_COLOR);
+                        }
                     }
-                    else{
-                        cout_color("AUTO.TAKEOFF rejected by FCU!", RED_COLOR);
+                    else {
+                        cout_color("Offboard already enabled", GREEN_COLOR);
                     }
-                }
-                else{
-                    cout_color("AUTO.TAKEOFF already enabled", GREEN_COLOR);
-                }
-
-                break;
-            }
-
-            // 【Move】 ENU系移动, 只能追踪位置
-            case easondrone_msgs::ControlCommand::Move:{
-                cout << "FSM_EXEC_STATE: Move" << endl;
-
-                if (current_state.mode != "OFFBOARD") {
-                    cout_color("Move command rejected, not in OFFBOARD mode", YELLOW_COLOR);
 
                     break;
                 }
-                else {
-                    Eigen::Vector3d pos_offset;
-                    pos_offset << ctrl_cmd_in_.poscmd.position.x - odom_pos_(0),
-                                  ctrl_cmd_in_.poscmd.position.y - odom_pos_(1),
-                                  ctrl_cmd_in_.poscmd.position.z - odom_pos_(2);
-                    bool pos_ok = (pos_offset.norm() <= POS_ACCEPT);
 
-                    // Normalize the difference to the range -pi to pi using boost
-                    float yaw_offset = ctrl_cmd_in_.poscmd.yaw - odom_yaw_;
-                    bool yaw_ok = false;
-                    if (abs(yaw_offset) <= YAW_ACCEPT){
-                        yaw_ok = true;
+                    // 【Takeoff】 从摆放初始位置原地起飞至指定高度，偏航角也保持当前角度
+                case easondrone_msgs::ControlCommand::Takeoff: {
+                    cout << "FSM_EXEC_STATE: Takeoff" << endl;
+
+                    // TODO: least height of takeoff is 2.5m
+                    if (odom_pos_(2) - 1.5 >= 0.2) {
+                        cout_color("Drone already Takeoff", GREEN_COLOR);
+
+                        break;
                     }
-                    else if(abs(2 * M_PI - yaw_offset) <= YAW_ACCEPT){
-                        yaw_ok = true;
-                    };
 
-                    if (pos_ok && yaw_ok){
-                        cout_color("Already reach destination, skip move command!", GREEN_COLOR);
+                    if (!current_state.armed) {
+                        cout_color("AUTO.TAKEOFF rejected, not Armed!", RED_COLOR);
 
                         break;
                     }
                     else {
-                        // TODO: other frames
-                        pos_setpoint.coordinate_frame = 1;
-                        pos_setpoint.position.x = ctrl_cmd_in_.poscmd.position.x;
-                        pos_setpoint.position.y = ctrl_cmd_in_.poscmd.position.y;
-                        pos_setpoint.position.z = ctrl_cmd_in_.poscmd.position.z;
-                        pos_setpoint.yaw = ctrl_cmd_in_.poscmd.yaw;
+                        if (current_state.mode != "AUTO.TAKEOFF") {
+                            offb_set_mode.request.custom_mode = "AUTO.TAKEOFF";
 
-                        // Use stringstream to concatenate the strings and float values
-                        std::stringstream ss;
-                        ss << "Moving to: "
-                           << pos_setpoint.position.x << ", "
-                           << pos_setpoint.position.y << ", "
-                           << pos_setpoint.position.z << "; "
-                           << pos_setpoint.yaw;
+                            pos_setpoint.coordinate_frame = 1;
+                            pos_setpoint.position.x = odom_pos_(0);
+                            pos_setpoint.position.y = odom_pos_(1);
+                            pos_setpoint.position.z = 1.5;
+                            pos_setpoint.yaw = odom_yaw_;
 
-                        // Convert the stringstream to a string
-                        std::string msg = ss.str();
-
-                        // Print the result
-                        cout_color(msg, YELLOW_COLOR);
+                            if (set_mode_client.call(offb_set_mode) &&
+                                offb_set_mode.response.mode_sent) {
+                                cout_color("AUTO.TAKEOFF response sent!", YELLOW_COLOR);
+                            }
+                            else {
+                                cout_color("AUTO.TAKEOFF rejected by FCU!", RED_COLOR);
+                            }
+                        }
+                        else {
+                            cout_color("AUTO.TAKEOFF already enabled!", GREEN_COLOR);
+                        }
                     }
-                }
-
-                break;
-            }
-
-            // 【Hold】 悬停。当前位置悬停
-            case easondrone_msgs::ControlCommand::Hold:{
-                cout << "FSM_EXEC_STATE: Hold" << endl;
-
-                if (current_state.mode != "AUTO.LOITER") {
-                    offb_set_mode.request.custom_mode = "AUTO.LOITER";
-
-                    pos_setpoint.coordinate_frame = 1;
-                    pos_setpoint.position.x = odom_pos_(0);
-                    pos_setpoint.position.y = odom_pos_(1);
-                    pos_setpoint.position.z = odom_pos_(2);
-                    pos_setpoint.yaw = odom_yaw_;
-
-                    if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
-                        cout_color("AUTO.LOITER response sent", YELLOW_COLOR);
-                    }
-                    else{
-                        cout_color("AUTO.LOITER rejected by FCU", RED_COLOR);
-                    }
-                }
-                else{
-                    cout_color("AUTO.LOITER already enabled", GREEN_COLOR);
-                }
-
-                break;
-            }
-
-            // 【Land】 降落。当前位置原地降落，降落后会自动上锁，且切换为mannual模式
-            case easondrone_msgs::ControlCommand::Land:{
-                cout << "FSM_EXEC_STATE: Land" << endl;
-
-                if (odom_pos_(2) <= 0.2){
-                    cout_color("Drone already Land", GREEN_COLOR);
 
                     break;
                 }
 
-                if (current_state.mode != "AUTO.LAND") {
-                    offb_set_mode.request.custom_mode = "AUTO.LAND";
+                    // 【Move】 ENU系移动, 只能追踪位置
+                case easondrone_msgs::ControlCommand::Move: {
+                    cout << "FSM_EXEC_STATE: Move" << endl;
 
-                    pos_setpoint.coordinate_frame = 1;
-                    pos_setpoint.position.x = odom_pos_(0);
-                    pos_setpoint.position.y = odom_pos_(1);
-                    pos_setpoint.position.z = 0;
-                    pos_setpoint.yaw = odom_yaw_;
+                    if (current_state.mode != "OFFBOARD") {
+                        cout_color("Move command rejected, not in OFFBOARD mode", RED_COLOR);
 
-                    if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
-                        cout_color("AUTO.LAND response sent", YELLOW_COLOR);
+                        break;
                     }
-                    else{
-                        cout_color("AUTO.LAND rejected by FCU", RED_COLOR);
+                    else {
+                        Eigen::Vector3d pos_offset;
+                        pos_offset << ctrl_cmd_in_.poscmd.position.x - odom_pos_(0),
+                                ctrl_cmd_in_.poscmd.position.y - odom_pos_(1),
+                                ctrl_cmd_in_.poscmd.position.z - odom_pos_(2);
+                        bool pos_ok = (pos_offset.norm() <= POS_ACCEPT);
+
+                        // Normalize the difference to the range -pi to pi using boost
+                        float yaw_offset = ctrl_cmd_in_.poscmd.yaw - odom_yaw_;
+                        bool yaw_ok = false;
+                        if (abs(yaw_offset) <= YAW_ACCEPT) {
+                            yaw_ok = true;
+                        }
+                        else if (abs(2 * M_PI - yaw_offset) <= YAW_ACCEPT) {
+                            yaw_ok = true;
+                        };
+
+                        if (pos_ok && yaw_ok) {
+                            cout_color("Already reach destination, skip move command!", GREEN_COLOR);
+
+                            break;
+                        }
+                        else {
+                            // TODO: other frames
+                            pos_setpoint.coordinate_frame = 1;
+                            pos_setpoint.position.x = ctrl_cmd_in_.poscmd.position.x;
+                            pos_setpoint.position.y = ctrl_cmd_in_.poscmd.position.y;
+                            pos_setpoint.position.z = ctrl_cmd_in_.poscmd.position.z;
+                            pos_setpoint.yaw = ctrl_cmd_in_.poscmd.yaw;
+
+                            // Use stringstream to concatenate the strings and float values
+                            std::stringstream ss;
+                            ss << "Moving to: "
+                               << pos_setpoint.position.x << ", "
+                               << pos_setpoint.position.y << ", "
+                               << pos_setpoint.position.z << "; "
+                               << pos_setpoint.yaw;
+
+                            // Convert the stringstream to a string
+                            std::string msg = ss.str();
+
+                            // Print the result
+                            cout_color(msg, YELLOW_COLOR);
+                        }
                     }
-                }
-                else{
-                    cout_color("AUTO.LAND already enabled", GREEN_COLOR);
-                }
 
-                break;
-            }
-
-            // TODO: not tested yet, for real-life use only
-            case easondrone_msgs::ControlCommand::Manual:{
-                cout << "FSM_EXEC_STATE: Manual" << endl;
-
-                if (current_state.mode != "MANUAL") {
-                    offb_set_mode.request.custom_mode = "MANUAL";
-
-                    pos_setpoint.coordinate_frame = 1;
-                    pos_setpoint.position.x = odom_pos_(0);
-                    pos_setpoint.position.y = odom_pos_(1);
-                    pos_setpoint.position.z = odom_pos_(2);
-                    pos_setpoint.yaw = odom_yaw_;
-
-                    if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
-                        cout_color("MANUAL response sent", YELLOW_COLOR);
-                    }
-                    else{
-                        cout_color("MANUAL rejected by FCU", RED_COLOR);
-                    }
-                }
-                else{
-                    cout_color("MANUAL already enabled", GREEN_COLOR);
-                }
-
-                break;
-            }
-
-            // 【Disarm】 上锁
-            case easondrone_msgs::ControlCommand::Disarm:{
-                cout << "FSM_EXEC_STATE: Disarm" << endl;
-
-                if (current_state.armed) {
-                    arm_cmd.request.value = false;
-
-                    pos_setpoint.coordinate_frame = 1;
-                    pos_setpoint.position.x = odom_pos_(0);
-                    pos_setpoint.position.y = odom_pos_(1);
-                    pos_setpoint.position.z = 0;
-                    pos_setpoint.yaw = odom_yaw_;
-
-                    if (arming_client.call(arm_cmd) && arm_cmd.response.success) {
-                        cout_color("Disarm response success", YELLOW_COLOR);
-                    }
-                    else{
-                        cout_color("Disarm rejected by FCU", RED_COLOR);
-                    }
-                }
-                else{
-                    cout_color("Drone already Disarmed", GREEN_COLOR);
+                    break;
                 }
 
-                break;
+                    // 【Hold】 悬停。当前位置悬停
+                case easondrone_msgs::ControlCommand::Hold: {
+                    cout << "FSM_EXEC_STATE: Hold" << endl;
+
+                    if (current_state.mode != "AUTO.LOITER") {
+                        offb_set_mode.request.custom_mode = "AUTO.LOITER";
+
+                        pos_setpoint.coordinate_frame = 1;
+                        pos_setpoint.position.x = odom_pos_(0);
+                        pos_setpoint.position.y = odom_pos_(1);
+                        pos_setpoint.position.z = odom_pos_(2);
+                        pos_setpoint.yaw = odom_yaw_;
+
+                        if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                            cout_color("AUTO.LOITER response sent", YELLOW_COLOR);
+                        }
+                        else {
+                            cout_color("AUTO.LOITER rejected by FCU", RED_COLOR);
+                        }
+                    }
+                    else {
+                        cout_color("AUTO.LOITER already enabled", GREEN_COLOR);
+                    }
+
+                    break;
+                }
+
+                    // 【Land】 降落。当前位置原地降落，降落后会自动上锁，且切换为mannual模式
+                case easondrone_msgs::ControlCommand::Land: {
+                    cout << "FSM_EXEC_STATE: Land" << endl;
+
+                    if (odom_pos_(2) <= 0.2) {
+                        cout_color("Drone already Land", GREEN_COLOR);
+
+                        break;
+                    }
+
+                    if (current_state.mode != "AUTO.LAND") {
+                        offb_set_mode.request.custom_mode = "AUTO.LAND";
+
+                        pos_setpoint.coordinate_frame = 1;
+                        pos_setpoint.position.x = odom_pos_(0);
+                        pos_setpoint.position.y = odom_pos_(1);
+                        pos_setpoint.position.z = 0;
+                        pos_setpoint.yaw = odom_yaw_;
+
+                        if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                            cout_color("AUTO.LAND response sent", YELLOW_COLOR);
+                        }
+                        else {
+                            cout_color("AUTO.LAND rejected by FCU", RED_COLOR);
+                        }
+                    }
+                    else {
+                        cout_color("AUTO.LAND already enabled", GREEN_COLOR);
+                    }
+
+                    break;
+                }
+
+                    // TODO: not tested yet, for real-life use only
+                case easondrone_msgs::ControlCommand::Manual: {
+                    cout << "FSM_EXEC_STATE: Manual" << endl;
+
+                    if (current_state.mode != "MANUAL") {
+                        offb_set_mode.request.custom_mode = "MANUAL";
+
+                        pos_setpoint.coordinate_frame = 1;
+                        pos_setpoint.position.x = odom_pos_(0);
+                        pos_setpoint.position.y = odom_pos_(1);
+                        pos_setpoint.position.z = odom_pos_(2);
+                        pos_setpoint.yaw = odom_yaw_;
+
+                        if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                            cout_color("MANUAL response sent", YELLOW_COLOR);
+                        }
+                        else {
+                            cout_color("MANUAL rejected by FCU", RED_COLOR);
+                        }
+                    }
+                    else {
+                        cout_color("MANUAL already enabled", GREEN_COLOR);
+                    }
+
+                    break;
+                }
+
+                    // 【Disarm】 上锁
+                case easondrone_msgs::ControlCommand::Disarm: {
+                    cout << "FSM_EXEC_STATE: Disarm" << endl;
+
+                    if (current_state.armed) {
+                        arm_cmd.request.value = false;
+
+                        pos_setpoint.coordinate_frame = 1;
+                        pos_setpoint.position.x = odom_pos_(0);
+                        pos_setpoint.position.y = odom_pos_(1);
+                        pos_setpoint.position.z = 0;
+                        pos_setpoint.yaw = odom_yaw_;
+
+                        if (arming_client.call(arm_cmd) && arm_cmd.response.success) {
+                            cout_color("Disarm response success", YELLOW_COLOR);
+                        }
+                        else {
+                            cout_color("Disarm rejected by FCU", RED_COLOR);
+                        }
+                    }
+                    else {
+                        cout_color("Drone already Disarmed", GREEN_COLOR);
+                    }
+
+                    break;
+                }
             }
         }
 

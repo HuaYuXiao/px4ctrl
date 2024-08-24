@@ -6,16 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## v4.1.0 - 2024.08.24
+- [new feature] check whether `Armed` before `AUTO.TAKEOFF`
+- [new feature] check whether `have_odom_` before executing command
 - reload parameters & functions via `namespace`
 
 ## [v4.0.3] - 2024-08-12
 - [bug fix]: in `Move` mode, check whether close to destination, for both pos & yaw
 - [new feature] process `quadrotor_msgs::PositionCommand` from path-planner
-- [new feature] (really necessary?) set global origin via `geographic_msgs::GeoPointStamped`
+- [new feature] set global origin via `geographic_msgs::GeoPointStamped`
 - replace `Apache` lisence with `GPLv3` lisence
 
 ## [v4.0.2] - 2024-08-08
-- [CRUCIAL, new feature]: `Move` with `quadrotor_msgs::PositionCommand`
+- [CRUCIAL, new feature]: `Move` via `quadrotor_msgs::PositionCommand`
 - [remove feature]: `Drone_odom`
 - [remove feature]: unused header files
 
