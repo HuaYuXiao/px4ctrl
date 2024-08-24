@@ -55,6 +55,15 @@ namespace Utils{
     void cout_color(const string &msg, const string &color) {
         cout << color << msg << RESET_COLOR << endl;
     }
+
+    void clear_cin(const string &msg){
+        // Clear error flags
+        cin.clear();
+        // Discard invalid input
+        cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+        cout_color(msg, RED_COLOR);
+    }
 }
 
 namespace PX4CtrlFSM{
