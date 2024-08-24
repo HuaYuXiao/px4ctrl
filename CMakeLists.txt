@@ -1,14 +1,20 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(px4ctrl)
 
+set(CMAKE_VERBOSE_MAKEFILE "false")
+set(CMAKE_BUILD_TYPE "Release")
 add_compile_options(-std=c++11)
 add_compile_options(-std=c++14)
-set(PYTHON_EXECUTABLE "/usr/bin/python3")
+set(CMAKE_CXX_FLAGS "-std=c++11")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
 
-find_package(Boost REQUIRED COMPONENTS system)
+set(PYTHON_EXECUTABLE "/usr/bin/python3")
 #find_package(PythonInterp REQUIRED 3)
+find_package(Eigen3 REQUIRED)
+find_package(Boost REQUIRED COMPONENTS system)
 find_package(catkin REQUIRED COMPONENTS
         roscpp
+        rospy
         mavros
         tf
         tf2_ros
@@ -24,13 +30,11 @@ find_package(catkin REQUIRED COMPONENTS
         easondrone_msgs
 )
 
-catkin_package(
-  INCLUDE_DIRS include
-  CATKIN_DEPENDS message_runtime
-)
+catkin_package()
 
 include_directories(
         ${catkin_INCLUDE_DIRS}
+        ${EIGEN_INCLUDE_DIRS}
         include
 )
 

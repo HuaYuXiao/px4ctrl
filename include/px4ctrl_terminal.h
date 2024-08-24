@@ -1,29 +1,18 @@
 /*
     Created by hyx020222 on 2024.06.08
-    Last modified on 2024.08.08
+    Last modified on 2024.08.24
 */
 
 #ifndef PX4CTRL_PX4CTRL_TERMINAL_H
 #define PX4CTRL_PX4CTRL_TERMINAL_H
 
-#include <ros/ros.h>
-#include <iostream>
-#include <Eigen/Eigen>
-#include <set>
+#include "px4ctrl_node.h"
 
-#include <mavros_msgs/CommandBool.h>
-#include <mavros_msgs/SetMode.h>
-#include <mavros_msgs/State.h>
-#include <nav_msgs/Path.h>
-
-#include <easondrone_msgs/ControlCommand.h>
-#include "px4ctrl_utils.h"
-
-using namespace std;
+using namespace Utils;
 
 const std::set<int> valid_modes = {0, 1, 2, 3, 4, 5, 6, 7};
 //即将发布的command
-easondrone_msgs::ControlCommand ctrl_cmd;
+easondrone_msgs::ControlCommand ctrl_cmd_out_;
 
 //发布
 ros::Publisher easondrone_ctrl_pub_;
@@ -55,45 +44,40 @@ void mainloop(){
                 }
             }
             else {
-                // Clear error flags
-                cin.clear();
-                // Discard invalid input
-                cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
                 string msg = "Invalid input! Please enter an integer. ";
-                cout_color(msg, RED_COLOR);
+                clear_cin(msg);
             }
         }
         valid_mode = false;
 
         switch (mode){
             case easondrone_msgs::ControlCommand::Arm:{
-                ctrl_cmd.mode = easondrone_msgs::ControlCommand::Arm;
+                ctrl_cmd_out_.mode = easondrone_msgs::ControlCommand::Arm;
 
                 break;
             }
 
             case easondrone_msgs::ControlCommand::Offboard:{
-                ctrl_cmd.mode = easondrone_msgs::ControlCommand::Offboard;
+                ctrl_cmd_out_.mode = easondrone_msgs::ControlCommand::Offboard;
 
                 break;
             }
 
             case easondrone_msgs::ControlCommand::Takeoff:{
-                ctrl_cmd.mode = easondrone_msgs::ControlCommand::Takeoff;
+                ctrl_cmd_out_.mode = easondrone_msgs::ControlCommand::Takeoff;
 
                 break;
             }
 
             case easondrone_msgs::ControlCommand::Move:{
-                ctrl_cmd.mode = easondrone_msgs::ControlCommand::Move;
+                ctrl_cmd_out_.mode = easondrone_msgs::ControlCommand::Move;
                 
                 while (!valid_frame) {
                     cout << "Please choose frame: 0 ENU, 1 NED" << endl;
                     if (cin >> frame) {
                         if (frame == 0 || frame == 1) {
                             valid_frame = true;
-                            ctrl_cmd.frame = frame;
+                            ctrl_cmd_out_.frame = frame;
                         }
                         else {
                             string msg = "Invalid input! Require 0 or 1 ";
@@ -101,55 +85,40 @@ void mainloop(){
                         }
                     }
                     else {
-                        // Clear error flags
-                        cin.clear();
-                        // Discard invalid input
-                        cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
                         string msg = "Invalid input! Require integer. ";
-                        cout_color(msg, RED_COLOR);
+                        clear_cin(msg);
                     }
                 }
                 valid_frame = false;
 
                 while (!valid_x_input) {
                     cout << "Enter position.x (unit: m) : " << endl;
-                    if (cin >> ctrl_cmd.poscmd.position.x) {
+                    if (cin >> ctrl_cmd_out_.poscmd.position.x) {
                         valid_x_input = true;
                     }
                     else {
-                        // Clear error flags
-                        cin.clear();
-                        // Discard invalid input
-                        cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
                         string msg = "Invalid input! Require number ";
-                        cout_color(msg, RED_COLOR);
+                        clear_cin(msg);
                     }
                 }
                 valid_x_input = false;
 
                 while (!valid_y_input) {
                     cout << "Enter position.y (unit: m) : " << endl;
-                    if (cin >> ctrl_cmd.poscmd.position.y) {
+                    if (cin >> ctrl_cmd_out_.poscmd.position.y) {
                         valid_y_input = true;
                     }
                     else {
-                        // Clear error flags
-                        cin.clear();
-                        // Discard invalid input
-                        cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
                         string msg = "Invalid input! Require number. ";
-                        cout_color(msg, RED_COLOR);
+                        clear_cin(msg);
                     }
                 }
                 valid_y_input = false;
 
                 while (!valid_z_input) {
                     cout << "Enter position.z (unit: m) : " << endl;
-                    if (cin >> ctrl_cmd.poscmd.position.z) {
-                        if (ctrl_cmd.poscmd.position.z >= 0.0) {
+                    if (cin >> ctrl_cmd_out_.poscmd.position.z) {
+                        if (ctrl_cmd_out_.poscmd.position.z >= 0.0) {
                             valid_z_input = true;
                         }
                         else {
@@ -157,24 +126,19 @@ void mainloop(){
                         }
                     }
                     else {
-                        // Clear error flags
-                        cin.clear();
-                        // Discard invalid input
-                        cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
                         string msg = "Invalid input! Require number";
-                        cout_color(msg, RED_COLOR);
+                        clear_cin(msg);
                     }
                 }
                 valid_z_input = false;
 
                 while (!valid_yaw_input) {
                     cout << "Enter yaw (unit: deg) : " << endl;
-                    if (cin >> ctrl_cmd.poscmd.yaw) {
+                    if (cin >> ctrl_cmd_out_.poscmd.yaw) {
                         // Check if yaw is within the range
-                        if (abs(ctrl_cmd.poscmd.yaw) <= 180) {
+                        if (abs(ctrl_cmd_out_.poscmd.yaw) <= 180) {
                             valid_yaw_input = true;
-                            ctrl_cmd.poscmd.yaw = ctrl_cmd.poscmd.yaw / 180.0 * M_PI;
+                            ctrl_cmd_out_.poscmd.yaw = ctrl_cmd_out_.poscmd.yaw / 180.0 * M_PI;
                         }
                         else {
                             string msg = "Invalid input! Require value between (-180, 180) ";
@@ -182,13 +146,8 @@ void mainloop(){
                         }
                     }
                     else {
-                        // Clear error flags
-                        cin.clear();
-                        // Discard invalid input
-                        cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
                         string msg = "Invalid input! Require number";
-                        cout_color(msg, RED_COLOR);
+                        clear_cin(msg);
                     }
                 }
                 valid_yaw_input = false;
@@ -197,33 +156,33 @@ void mainloop(){
             }
 
             case easondrone_msgs::ControlCommand::Hold:{
-                ctrl_cmd.mode = easondrone_msgs::ControlCommand::Hold;
+                ctrl_cmd_out_.mode = easondrone_msgs::ControlCommand::Hold;
 
                 break;
             }
 
             case easondrone_msgs::ControlCommand::Land:{
-                ctrl_cmd.mode = easondrone_msgs::ControlCommand::Land;
+                ctrl_cmd_out_.mode = easondrone_msgs::ControlCommand::Land;
 
                 break;
             }
 
             case easondrone_msgs::ControlCommand::Manual:{
-                ctrl_cmd.mode = easondrone_msgs::ControlCommand::Manual;
+                ctrl_cmd_out_.mode = easondrone_msgs::ControlCommand::Manual;
 
                 break;
             }
 
             case easondrone_msgs::ControlCommand::Disarm:{
-                ctrl_cmd.mode = easondrone_msgs::ControlCommand::Disarm;
-                ctrl_cmd.frame = easondrone_msgs::ControlCommand::ENU;
+                ctrl_cmd_out_.mode = easondrone_msgs::ControlCommand::Disarm;
+                ctrl_cmd_out_.frame = easondrone_msgs::ControlCommand::ENU;
 
                 break;
             }
         }
 
-        ctrl_cmd.header.stamp = ros::Time::now();
-        easondrone_ctrl_pub_.publish(ctrl_cmd);
+        ctrl_cmd_out_.header.stamp = ros::Time::now();
+        easondrone_ctrl_pub_.publish(ctrl_cmd_out_);
 
         cout_color("Command publish success!", GREEN_COLOR);
     }

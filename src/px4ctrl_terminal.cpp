@@ -1,7 +1,7 @@
 /*
     px4ctrl_terminal.cpp
     Author: Eason Hua
-    Update Time: 2024.08.07
+    Update Time: 2024.08.24
     Introduction:  sending specific command to mavros via terminal
 */
 
@@ -17,12 +17,12 @@ int main(int argc, char **argv){
             ("/easondrone/control_command", 10);
 
     // 初始化命令
-    ctrl_cmd.mode = easondrone_msgs::ControlCommand::Hold;
-    ctrl_cmd.frame = easondrone_msgs::ControlCommand::ENU;
-    ctrl_cmd.poscmd.position.x = 0;
-    ctrl_cmd.poscmd.position.y = 0;
-    ctrl_cmd.poscmd.position.z = 0;
-    ctrl_cmd.poscmd.yaw = 0;
+    ctrl_cmd_out_.mode = easondrone_msgs::ControlCommand::Hold;
+    ctrl_cmd_out_.frame = easondrone_msgs::ControlCommand::ENU;
+    ctrl_cmd_out_.poscmd.position.x = 0;
+    ctrl_cmd_out_.poscmd.position.y = 0;
+    ctrl_cmd_out_.poscmd.position.z = 0;
+    ctrl_cmd_out_.poscmd.yaw = 0;
 
     //固定的浮点显示
     cout.setf(ios::fixed);
