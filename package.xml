@@ -2,10 +2,7 @@
 <package format="2">
   <name>px4ctrl</name>
   <version>4.1.0</version>
-  <description>
-    A ROS package as an interface for drone control with PX4 via MAVROS.
-  </description>
-
+  <description>A package to control multi-copters using PX4 platform</description>
   <maintainer email="12010508@mail.sustech.edu.cn">Eason Hua</maintainer>
 
   <!-- EDIT: License -->
@@ -19,8 +16,20 @@
   <depend>message_filters</depend>
   <depend>quadrotor_msgs</depend>
 
-  <exec_depend>message_runtime</exec_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>cmake_modules</build_depend>
+  <build_depend>geometry_msgs</build_depend>
 
+  <exec_depend>roscpp</exec_depend>
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>mavros</exec_depend>
+
+  <!-- The export tag contains other, unspecified, tags -->
   <export>
+    <!-- Other tools can request additional information be placed here -->
+
   </export>
 </package>
