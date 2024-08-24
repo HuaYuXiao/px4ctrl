@@ -7,7 +7,10 @@
     Stack and tested in Gazebo SITL
 */
 
-#include "px4ctrl_control.h"
+#include "px4ctrl_node.h"
+#include "px4ctrl_utils.h"
+
+using namespace PX4CtrlFSM;
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主 函 数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 int main(int argc, char **argv){
