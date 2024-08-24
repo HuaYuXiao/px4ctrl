@@ -1,15 +1,14 @@
-/***************************************************************************************************************************
- * px4_vision_pose.cpp
- *
- * Author: Qyp
-* Maintainer: Eason Hua
-* Update Time: 2024.08.08
- *
-***************************************************************************************************************************/
+/*
+ * Maintainer: Eason Hua
+ * Update Time: 2024.08.24
+ * 12010508@mail.sustech.edu.cn
+ */
 
-#include "px4ctrl_vision.h"
+#include "px4ctrl_node.h"
 
-//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主 函 数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+using namespace PX4CtrlFSM;
+
+// 主 函 数
 int main(int argc, char **argv){
     ros::init(argc, argv, "px4ctrl_vision");
     ros::NodeHandle nh("~");
@@ -57,8 +56,8 @@ int main(int argc, char **argv){
     odom_out_pub_ = nh.advertise<nav_msgs::Odometry>
             ("/mavros/odometry/out", 10);
     // 【发布】无人机移动轨迹，用于RViz显示
-    trajectory_pub = nh.advertise<nav_msgs::Path>
-            ("/easondrone/drone_trajectory", 10);
+//    trajectory_pub = nh.advertise<nav_msgs::Path>
+//            ("/easondrone/drone_trajectory", 10);
 
     vision_pose_.header.stamp = ros::Time::now();
     vision_pose_.header.frame_id = "world";
@@ -67,7 +66,7 @@ int main(int argc, char **argv){
     odom_out_.header.frame_id = "world";
 
     // 频率
-    ros::Rate rate(30);
+    ros::Rate rate(50);
 
     cout << "[px4ctrl_vision] estimator initialized! " << endl;
 
