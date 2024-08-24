@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>px4ctrl</name>
-  <version>4.0.3</version>
+  <version>4.1.0</version>
   <description>
     A ROS package as an interface for drone control with PX4 via MAVROS.
   </description>

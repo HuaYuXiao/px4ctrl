@@ -1,16 +1,16 @@
 /*
     px4ctrl_control.cpp
     Author: Eason Hua
-    last updated on 2024.08.07
+    last updated on 2024.08.24
 
     @brief Offboard control example node, written with MAVROS version 0.19.x, PX4 Pro Flight
     Stack and tested in Gazebo SITL
 */
 
 #include "px4ctrl_node.h"
-#include "px4ctrl_utils.h"
 
 using namespace PX4CtrlFSM;
+using namespace Utils;
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主 函 数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 int main(int argc, char **argv){
@@ -30,18 +30,18 @@ int main(int argc, char **argv){
 
     gp_origin_pub = nh.advertise<geographic_msgs::GeoPointStamped>
             ("/mavros/global_position/gp_origin", 10);
-    local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>
-            ("/mavros/setpoint_position/local", 10);
+//    local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>
+//            ("/mavros/setpoint_position/local", 10);
     // https://docs.ros.org/en/kinetic/api/mavros_msgs/html/msg/PositionTarget.html
     setpoint_raw_local_pub = nh.advertise<mavros_msgs::PositionTarget>
             ("/mavros/setpoint_raw/local", 10);
     // 【发布】经纬度以及高度位置 坐标系:WGS84坐标系
-    setpoint_raw_global_pub = nh.advertise<mavros_msgs::GlobalPositionTarget>
-            ("/mavros/setpoint_raw/global", 10);
+//    setpoint_raw_global_pub = nh.advertise<mavros_msgs::GlobalPositionTarget>
+//            ("/mavros/setpoint_raw/global", 10);
     // 【发布】角度/角速度期望值 坐标系 ENU系
     //  本话题要发送至飞控(通过Mavros功能包 /plugins/setpoint_raw.cpp发送), 对应Mavlink消息为SET_ATTITUDE_TARGET (#82), 对应的飞控中的uORB消息为vehicle_attitude_setpoint.msg（角度） 或vehicle_rates_setpoint.msg（角速度）
-    setpoint_raw_attitude_pub_ = nh.advertise<mavros_msgs::AttitudeTarget>
-            ("/mavros/setpoint_raw/attitude", 10);
+//    setpoint_raw_attitude_pub_ = nh.advertise<mavros_msgs::AttitudeTarget>
+//            ("/mavros/setpoint_raw/attitude", 10);
 
     // 【服务】解锁/上锁 本服务通过Mavros功能包 /plugins/command.cpp 实现
     arming_client = nh.serviceClient<mavros_msgs::CommandBool>
@@ -103,12 +103,12 @@ int main(int argc, char **argv){
     pos_setpoint.yaw = odom_yaw_;
 
     // 初始化命令
-    ctrl_cmd.mode = easondrone_msgs::ControlCommand::Hold;
-    ctrl_cmd.frame = easondrone_msgs::ControlCommand::ENU;
-    ctrl_cmd.poscmd.position.x = odom_pos_(0);
-    ctrl_cmd.poscmd.position.y = odom_pos_(0);
-    ctrl_cmd.poscmd.position.z = odom_pos_(0);
-    ctrl_cmd.poscmd.yaw = odom_yaw_;
+    ctrl_cmd_in_.mode = easondrone_msgs::ControlCommand::Hold;
+    ctrl_cmd_in_.frame = easondrone_msgs::ControlCommand::ENU;
+    ctrl_cmd_in_.poscmd.position.x = odom_pos_(0);
+    ctrl_cmd_in_.poscmd.position.y = odom_pos_(0);
+    ctrl_cmd_in_.poscmd.position.z = odom_pos_(0);
+    ctrl_cmd_in_.poscmd.yaw = odom_yaw_;
 
     cout_color("Send a few setpoints before starting...", YELLOW_COLOR);
 
@@ -130,7 +130,7 @@ int main(int argc, char **argv){
     while(ros::ok()){
         cout << "------------------------" << endl;
 
-        switch (ctrl_cmd.mode){
+        switch (ctrl_cmd_in_.mode){
             case easondrone_msgs::ControlCommand::Arm:{
                 cout << "FSM_EXEC_STATE: Arm" << endl;
 
@@ -231,13 +231,13 @@ int main(int argc, char **argv){
                 }
                 else {
                     Eigen::Vector3d pos_offset;
-                    pos_offset << ctrl_cmd.poscmd.position.x - odom_pos_(0),
-                                  ctrl_cmd.poscmd.position.y - odom_pos_(1),
-                                  ctrl_cmd.poscmd.position.z - odom_pos_(2);
+                    pos_offset << ctrl_cmd_in_.poscmd.position.x - odom_pos_(0),
+                                  ctrl_cmd_in_.poscmd.position.y - odom_pos_(1),
+                                  ctrl_cmd_in_.poscmd.position.z - odom_pos_(2);
                     bool pos_ok = (pos_offset.norm() <= POS_ACCEPT);
 
                     // Normalize the difference to the range -pi to pi using boost
-                    float yaw_offset = ctrl_cmd.poscmd.yaw - odom_yaw_;
+                    float yaw_offset = ctrl_cmd_in_.poscmd.yaw - odom_yaw_;
                     bool yaw_ok = false;
                     if (abs(yaw_offset) <= YAW_ACCEPT){
                         yaw_ok = true;
@@ -254,10 +254,10 @@ int main(int argc, char **argv){
                     else {
                         // TODO: other frames
                         pos_setpoint.coordinate_frame = 1;
-                        pos_setpoint.position.x = ctrl_cmd.poscmd.position.x;
-                        pos_setpoint.position.y = ctrl_cmd.poscmd.position.y;
-                        pos_setpoint.position.z = ctrl_cmd.poscmd.position.z;
-                        pos_setpoint.yaw = ctrl_cmd.poscmd.yaw;
+                        pos_setpoint.position.x = ctrl_cmd_in_.poscmd.position.x;
+                        pos_setpoint.position.y = ctrl_cmd_in_.poscmd.position.y;
+                        pos_setpoint.position.z = ctrl_cmd_in_.poscmd.position.z;
+                        pos_setpoint.yaw = ctrl_cmd_in_.poscmd.yaw;
 
                         // Use stringstream to concatenate the strings and float values
                         std::stringstream ss;
