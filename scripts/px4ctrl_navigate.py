@@ -30,7 +30,7 @@ def state_cb(msg):
 
 def goal_cb(msg):
     print('------------------------')
-    rospy.loginfo('Received cmd from /move_base_simple/goal')
+    rospy.loginfo('Received cmd from /planning/direct_goal')
 
     if current_state.mode != 'OFFBOARD':
         rospy.logerr('Not Offboard, reject this request!')
@@ -80,7 +80,7 @@ if __name__ == '__main__':
     state_sub = (rospy.Subscriber
                  ('/mavros/state', State, state_cb))
     goal_sub = (rospy.Subscriber
-                ('/move_base_simple/goal', PoseStamped, goal_cb))
+                ('/planning/direct_goal', PoseStamped, goal_cb))
     planner_sub = (rospy.Subscriber
                    ('/planning/pos_cmd', PositionCommand, planner_cb))
 
