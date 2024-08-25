@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v4.1.1 - 2024.08.25
+- [new feature]: `Return`, `Stabilized`, `Acro`, `Rattitude`, `Altitude`, `Position`
+
 ## v4.1.0 - 2024.08.24
 - [new feature] check whether `Armed` before `AUTO.TAKEOFF`
 - [new feature] check whether `have_odom_` before executing command

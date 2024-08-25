@@ -1,7 +1,8 @@
 /*
     px4ctrl_control.cpp
     Author: Eason Hua
-    last updated on 2024.08.24
+    Email: 12010508@mail.sustech.edu.cn
+    last updated on 2024.08.25
 
     @brief Offboard control example node, written with MAVROS version 0.19.x, PX4 Pro Flight
     Stack and tested in Gazebo SITL
@@ -126,15 +127,16 @@ int main(int argc, char **argv){
 
     cout << "[px4ctrl_control] initialized!" << endl;
 
-//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主  循  环<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    // 主  循  环
     while(ros::ok()){
-        cout << "------------------------" << endl;
+        cout << "--------------------------------" << endl;
 
         if(!have_odom_){
             cout_color("Odom lost! Dangerous!", RED_COLOR);
         }
         else {
             switch (ctrl_cmd_in_.mode) {
+                // 0 Arm
                 case easondrone_msgs::ControlCommand::Arm: {
                     cout << "FSM_EXEC_STATE: Arm" << endl;
 
@@ -152,7 +154,7 @@ int main(int argc, char **argv){
                             cout_color("Arm response success", YELLOW_COLOR);
                         }
                         else {
-                            cout_color("Arm rejected by FCU", RED_COLOR);
+                            cout_color("ARM rejected by PX4!", RED_COLOR);
                         }
                     }
                     else {
@@ -162,34 +164,34 @@ int main(int argc, char **argv){
                     break;
                 }
 
-                case easondrone_msgs::ControlCommand::Offboard: {
-                    cout << "FSM_EXEC_STATE: Offboard" << endl;
+                // 1 Disarm 上锁
+                case easondrone_msgs::ControlCommand::Disarm: {
+                    cout << "FSM_EXEC_STATE: Disarm" << endl;
 
-                    if (current_state.mode != "OFFBOARD") {
-                        offb_set_mode.request.custom_mode = "OFFBOARD";
+                    if (current_state.armed) {
+                        arm_cmd.request.value = false;
 
                         pos_setpoint.coordinate_frame = 1;
                         pos_setpoint.position.x = odom_pos_(0);
                         pos_setpoint.position.y = odom_pos_(1);
-                        pos_setpoint.position.z = odom_pos_(2);
+                        pos_setpoint.position.z = 0;
                         pos_setpoint.yaw = odom_yaw_;
 
-                        if (set_mode_client.call(offb_set_mode) &&
-                            offb_set_mode.response.mode_sent) {
-                            cout_color("Offboard response sent", YELLOW_COLOR);
+                        if (arming_client.call(arm_cmd) && arm_cmd.response.success) {
+                            cout_color("Disarm response success", YELLOW_COLOR);
                         }
                         else {
-                            cout_color("Offboard rejected by FCU", RED_COLOR);
+                            cout_color("DISARM rejected by PX4!", RED_COLOR);
                         }
                     }
                     else {
-                        cout_color("Offboard already enabled", GREEN_COLOR);
+                        cout_color("Drone already Disarmed", GREEN_COLOR);
                     }
 
                     break;
                 }
 
-                    // 【Takeoff】 从摆放初始位置原地起飞至指定高度，偏航角也保持当前角度
+                // 2 Takeoff 从摆放初始位置原地起飞至指定高度，偏航角也保持当前角度
                 case easondrone_msgs::ControlCommand::Takeoff: {
                     cout << "FSM_EXEC_STATE: Takeoff" << endl;
 
@@ -231,7 +233,290 @@ int main(int argc, char **argv){
                     break;
                 }
 
-                    // 【Move】 ENU系移动, 只能追踪位置
+                // 3 Land 降落。当前位置原地降落，降落后会自动上锁，且切换为mannual模式
+                case easondrone_msgs::ControlCommand::Land: {
+                    cout << "FSM_EXEC_STATE: Land" << endl;
+
+                    if (odom_pos_(2) <= POS_ACCEPT) {
+                        cout_color("Drone already Land", GREEN_COLOR);
+
+                        break;
+                    }
+
+                    if (current_state.mode != "AUTO.LAND") {
+                        offb_set_mode.request.custom_mode = "AUTO.LAND";
+
+                        pos_setpoint.coordinate_frame = 1;
+                        pos_setpoint.position.x = odom_pos_(0);
+                        pos_setpoint.position.y = odom_pos_(1);
+                        pos_setpoint.position.z = 0;
+                        pos_setpoint.yaw = odom_yaw_;
+
+                        if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                            cout_color("AUTO.LAND response sent", YELLOW_COLOR);
+                        }
+                        else {
+                            cout_color("AUTO.LAND rejected by FCU", RED_COLOR);
+                        }
+                    }
+                    else {
+                        cout_color("AUTO.LAND already enabled", GREEN_COLOR);
+                    }
+
+                    break;
+                }
+
+                // 4 Return
+                case easondrone_msgs::ControlCommand::Return: {
+                    cout << "FSM_EXEC_STATE: Return" << endl;
+
+                    if (odom_pos_.norm() <= POS_ACCEPT) {
+                        cout_color("Drone already return to home", GREEN_COLOR);
+
+                        break;
+                    }
+
+                    if (current_state.mode != "AUTO.RTL") {
+                        offb_set_mode.request.custom_mode = "AUTO.RTL";
+
+                        pos_setpoint.coordinate_frame = 1;
+                        pos_setpoint.position.x = 0;
+                        pos_setpoint.position.y = 0;
+                        pos_setpoint.position.z = 0;
+                        pos_setpoint.yaw = odom_yaw_;
+
+                        if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                            cout_color("AUTO.RTL response sent", YELLOW_COLOR);
+                        }
+                        else {
+                            cout_color("AUTO.RTL rejected by FCU", RED_COLOR);
+                        }
+                    }
+                    else {
+                        cout_color("AUTO.RTL already enabled", GREEN_COLOR);
+                    }
+
+                    break;
+                }
+
+                // 5 Manual
+                case easondrone_msgs::ControlCommand::Manual: {
+                    cout << "FSM_EXEC_STATE: Manual" << endl;
+
+                    if (current_state.mode != "MANUAL") {
+                        offb_set_mode.request.custom_mode = "MANUAL";
+
+                        pos_setpoint.coordinate_frame = 1;
+                        pos_setpoint.position.x = odom_pos_(0);
+                        pos_setpoint.position.y = odom_pos_(1);
+                        pos_setpoint.position.z = odom_pos_(2);
+                        pos_setpoint.yaw = odom_yaw_;
+
+                        if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                            cout_color("MANUAL response sent", YELLOW_COLOR);
+                        }
+                        else {
+                            cout_color("MANUAL rejected by FCU", RED_COLOR);
+                        }
+                    }
+                    else {
+                        cout_color("MANUAL already enabled", GREEN_COLOR);
+                    }
+
+                    break;
+                }
+
+                // 6 Stabilized
+                case easondrone_msgs::ControlCommand::Stabilized: {
+                    cout << "FSM_EXEC_STATE: Stabilized" << endl;
+
+                    if (current_state.mode != "STABILIZED") {
+                        offb_set_mode.request.custom_mode = "STABILIZED";
+
+                        pos_setpoint.coordinate_frame = 1;
+                        pos_setpoint.position.x = odom_pos_(0);
+                        pos_setpoint.position.y = odom_pos_(1);
+                        pos_setpoint.position.z = odom_pos_(2);
+                        pos_setpoint.yaw = odom_yaw_;
+
+                        if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                            cout_color("STABILIZED response sent", YELLOW_COLOR);
+                        }
+                        else {
+                            cout_color("STABILIZED rejected by FCU", RED_COLOR);
+                        }
+                    }
+                    else {
+                        cout_color("STABILIZED already enabled", GREEN_COLOR);
+                    }
+
+                    break;
+                }
+
+                // 7 Acro
+                case easondrone_msgs::ControlCommand::Acro: {
+                    cout << "FSM_EXEC_STATE: Acro" << endl;
+
+                    if (current_state.mode != "ACRO") {
+                        offb_set_mode.request.custom_mode = "ACRO";
+
+                        pos_setpoint.coordinate_frame = 1;
+                        pos_setpoint.position.x = odom_pos_(0);
+                        pos_setpoint.position.y = odom_pos_(1);
+                        pos_setpoint.position.z = odom_pos_(2);
+                        pos_setpoint.yaw = odom_yaw_;
+
+                        if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                            cout_color("ACRO response sent", YELLOW_COLOR);
+                        }
+                        else {
+                            cout_color("ACRO rejected by FCU", RED_COLOR);
+                        }
+                    }
+                    else {
+                        cout_color("ACRO already enabled", GREEN_COLOR);
+                    }
+
+                    break;
+                }
+
+                //8 Rattitude
+                case easondrone_msgs::ControlCommand::Rattitude: {
+                    cout << "FSM_EXEC_STATE: Rattitude" << endl;
+
+                    if (current_state.mode != "RATTITUDE") {
+                        offb_set_mode.request.custom_mode = "RATTITUDE";
+
+                        pos_setpoint.coordinate_frame = 1;
+                        pos_setpoint.position.x = odom_pos_(0);
+                        pos_setpoint.position.y = odom_pos_(1);
+                        pos_setpoint.position.z = odom_pos_(2);
+                        pos_setpoint.yaw = odom_yaw_;
+
+                        if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                            cout_color("RATTITUDE response sent", YELLOW_COLOR);
+                        }
+                        else {
+                            cout_color("RATTITUDE rejected by FCU", RED_COLOR);
+                        }
+                    }
+                    else {
+                        cout_color("RATTITUDE already enabled", GREEN_COLOR);
+                    }
+
+                    break;
+                }
+
+                // 9 Altitude
+                case easondrone_msgs::ControlCommand::Altitude: {
+                    cout << "FSM_EXEC_STATE: Altitude" << endl;
+
+                    if (current_state.mode != "ALTCTL") {
+                        offb_set_mode.request.custom_mode = "ALTCTL";
+
+                        pos_setpoint.coordinate_frame = 1;
+                        pos_setpoint.position.x = odom_pos_(0);
+                        pos_setpoint.position.y = odom_pos_(1);
+                        pos_setpoint.position.z = odom_pos_(2);
+                        pos_setpoint.yaw = odom_yaw_;
+
+                        if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                            cout_color("ALTCTL response sent", YELLOW_COLOR);
+                        }
+                        else {
+                            cout_color("ALTCTL rejected by FCU", RED_COLOR);
+                        }
+                    }
+                    else {
+                        cout_color("ALTCTL already enabled", GREEN_COLOR);
+                    }
+
+                    break;
+                }
+
+                // 10 Offboard
+                case easondrone_msgs::ControlCommand::Offboard: {
+                    cout << "FSM_EXEC_STATE: Offboard" << endl;
+
+                    if (current_state.mode != "OFFBOARD") {
+                        offb_set_mode.request.custom_mode = "OFFBOARD";
+
+                        pos_setpoint.coordinate_frame = 1;
+                        pos_setpoint.position.x = odom_pos_(0);
+                        pos_setpoint.position.y = odom_pos_(1);
+                        pos_setpoint.position.z = odom_pos_(2);
+                        pos_setpoint.yaw = odom_yaw_;
+
+                        if (set_mode_client.call(offb_set_mode) &&
+                            offb_set_mode.response.mode_sent) {
+                            cout_color("Offboard response sent", YELLOW_COLOR);
+                        }
+                        else {
+                            cout_color("Offboard rejected by FCU", RED_COLOR);
+                        }
+                    }
+                    else {
+                        cout_color("Offboard already enabled", GREEN_COLOR);
+                    }
+
+                    break;
+                }
+
+                // 11 Position
+                case easondrone_msgs::ControlCommand::Position: {
+                    cout << "FSM_EXEC_STATE: Position" << endl;
+
+                    if (current_state.mode != "POSCTL") {
+                        offb_set_mode.request.custom_mode = "POSCTL";
+
+                        pos_setpoint.coordinate_frame = 1;
+                        pos_setpoint.position.x = odom_pos_(0);
+                        pos_setpoint.position.y = odom_pos_(1);
+                        pos_setpoint.position.z = odom_pos_(2);
+                        pos_setpoint.yaw = odom_yaw_;
+
+                        if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                            cout_color("POSCTL response sent", YELLOW_COLOR);
+                        }
+                        else {
+                            cout_color("POSCTL rejected by FCU", RED_COLOR);
+                        }
+                    }
+                    else {
+                        cout_color("POSCTL already enabled", GREEN_COLOR);
+                    }
+
+                    break;
+                }
+
+                // 12 Hold 悬停。当前位置悬停
+                case easondrone_msgs::ControlCommand::Hold: {
+                    cout << "FSM_EXEC_STATE: Hold" << endl;
+
+                    if (current_state.mode != "AUTO.LOITER") {
+                        offb_set_mode.request.custom_mode = "AUTO.LOITER";
+
+                        pos_setpoint.coordinate_frame = 1;
+                        pos_setpoint.position.x = odom_pos_(0);
+                        pos_setpoint.position.y = odom_pos_(1);
+                        pos_setpoint.position.z = odom_pos_(2);
+                        pos_setpoint.yaw = odom_yaw_;
+
+                        if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                            cout_color("AUTO.LOITER response sent", YELLOW_COLOR);
+                        }
+                        else {
+                            cout_color("AUTO.LOITER rejected by FCU", RED_COLOR);
+                        }
+                    }
+                    else {
+                        cout_color("AUTO.LOITER already enabled", GREEN_COLOR);
+                    }
+
+                    break;
+                }
+
+                // 13 Move ENU系移动, 只能追踪位置
                 case easondrone_msgs::ControlCommand::Move: {
                     cout << "FSM_EXEC_STATE: Move" << endl;
 
@@ -284,120 +569,6 @@ int main(int argc, char **argv){
                             // Print the result
                             cout_color(msg, YELLOW_COLOR);
                         }
-                    }
-
-                    break;
-                }
-
-                    // 【Hold】 悬停。当前位置悬停
-                case easondrone_msgs::ControlCommand::Hold: {
-                    cout << "FSM_EXEC_STATE: Hold" << endl;
-
-                    if (current_state.mode != "AUTO.LOITER") {
-                        offb_set_mode.request.custom_mode = "AUTO.LOITER";
-
-                        pos_setpoint.coordinate_frame = 1;
-                        pos_setpoint.position.x = odom_pos_(0);
-                        pos_setpoint.position.y = odom_pos_(1);
-                        pos_setpoint.position.z = odom_pos_(2);
-                        pos_setpoint.yaw = odom_yaw_;
-
-                        if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
-                            cout_color("AUTO.LOITER response sent", YELLOW_COLOR);
-                        }
-                        else {
-                            cout_color("AUTO.LOITER rejected by FCU", RED_COLOR);
-                        }
-                    }
-                    else {
-                        cout_color("AUTO.LOITER already enabled", GREEN_COLOR);
-                    }
-
-                    break;
-                }
-
-                    // 【Land】 降落。当前位置原地降落，降落后会自动上锁，且切换为mannual模式
-                case easondrone_msgs::ControlCommand::Land: {
-                    cout << "FSM_EXEC_STATE: Land" << endl;
-
-                    if (odom_pos_(2) <= 0.2) {
-                        cout_color("Drone already Land", GREEN_COLOR);
-
-                        break;
-                    }
-
-                    if (current_state.mode != "AUTO.LAND") {
-                        offb_set_mode.request.custom_mode = "AUTO.LAND";
-
-                        pos_setpoint.coordinate_frame = 1;
-                        pos_setpoint.position.x = odom_pos_(0);
-                        pos_setpoint.position.y = odom_pos_(1);
-                        pos_setpoint.position.z = 0;
-                        pos_setpoint.yaw = odom_yaw_;
-
-                        if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
-                            cout_color("AUTO.LAND response sent", YELLOW_COLOR);
-                        }
-                        else {
-                            cout_color("AUTO.LAND rejected by FCU", RED_COLOR);
-                        }
-                    }
-                    else {
-                        cout_color("AUTO.LAND already enabled", GREEN_COLOR);
-                    }
-
-                    break;
-                }
-
-                    // TODO: not tested yet, for real-life use only
-                case easondrone_msgs::ControlCommand::Manual: {
-                    cout << "FSM_EXEC_STATE: Manual" << endl;
-
-                    if (current_state.mode != "MANUAL") {
-                        offb_set_mode.request.custom_mode = "MANUAL";
-
-                        pos_setpoint.coordinate_frame = 1;
-                        pos_setpoint.position.x = odom_pos_(0);
-                        pos_setpoint.position.y = odom_pos_(1);
-                        pos_setpoint.position.z = odom_pos_(2);
-                        pos_setpoint.yaw = odom_yaw_;
-
-                        if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
-                            cout_color("MANUAL response sent", YELLOW_COLOR);
-                        }
-                        else {
-                            cout_color("MANUAL rejected by FCU", RED_COLOR);
-                        }
-                    }
-                    else {
-                        cout_color("MANUAL already enabled", GREEN_COLOR);
-                    }
-
-                    break;
-                }
-
-                    // 【Disarm】 上锁
-                case easondrone_msgs::ControlCommand::Disarm: {
-                    cout << "FSM_EXEC_STATE: Disarm" << endl;
-
-                    if (current_state.armed) {
-                        arm_cmd.request.value = false;
-
-                        pos_setpoint.coordinate_frame = 1;
-                        pos_setpoint.position.x = odom_pos_(0);
-                        pos_setpoint.position.y = odom_pos_(1);
-                        pos_setpoint.position.z = 0;
-                        pos_setpoint.yaw = odom_yaw_;
-
-                        if (arming_client.call(arm_cmd) && arm_cmd.response.success) {
-                            cout_color("Disarm response success", YELLOW_COLOR);
-                        }
-                        else {
-                            cout_color("Disarm rejected by FCU", RED_COLOR);
-                        }
-                    }
-                    else {
-                        cout_color("Drone already Disarmed", GREEN_COLOR);
                     }
 
                     break;
