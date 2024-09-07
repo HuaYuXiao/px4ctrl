@@ -2,7 +2,7 @@
     px4ctrl_control.cpp
     Author: Eason Hua
     Email: 12010508@mail.sustech.edu.cn
-    last updated on 2024.08.25
+    last updated on 2024.09.07
 
     @brief Offboard control example node, written with MAVROS version 0.19.x, PX4 Pro Flight
     Stack and tested in Gazebo SITL
@@ -197,7 +197,9 @@ int main(int argc, char **argv){
 
                     // TODO: least height of takeoff is 2.5m
                     if (odom_pos_(2) - 1.5 >= 0.2) {
-                        cout_color("Drone already Takeoff", GREEN_COLOR);
+                        cout_color("Drone already Takeoff! Switch to Hold!", GREEN_COLOR);
+
+                        ctrl_cmd_in_.mode = easondrone_msgs::ControlCommand::Hold;
 
                         break;
                     }
@@ -238,7 +240,9 @@ int main(int argc, char **argv){
                     cout << "FSM_EXEC_STATE: Land" << endl;
 
                     if (odom_pos_(2) <= POS_ACCEPT) {
-                        cout_color("Drone already Land", GREEN_COLOR);
+                        cout_color("Drone already Land! Switch to Disarm!", GREEN_COLOR);
+
+                        ctrl_cmd_in_.mode = easondrone_msgs::ControlCommand::Disarm;
 
                         break;
                     }
