@@ -197,7 +197,9 @@ int main(int argc, char **argv){
 
                     // TODO: least height of takeoff is 2.5m
                     if (odom_pos_(2) - 1.5 >= 0.2) {
-                        cout_color("Drone already Takeoff", GREEN_COLOR);
+                        cout_color("Drone already TAKEOFF, switch to HOLD!", GREEN_COLOR);
+
+                        ctrl_cmd_in_.mode = easondrone_msgs::ControlCommand::Hold;
 
                         break;
                     }
