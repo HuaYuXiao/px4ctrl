@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v4.1.1 - 2024.09.07
 - [new feature]: `Return`, `Stabilized`, `Acro`, `Rattitude`, `Altitude`, `Position`
-- [bug fix] switch to `HOLD` once reach desired `TAKEOFF` height
+- [bug fix] switch to `Hold` once reach desired `Takeoff` height
+- [bug fix] switch to `Disarm` once reach desired `Land` height
 
 ## v4.1.0 - 2024.08.24
 - [new feature] check whether `Armed` before `AUTO.TAKEOFF`
