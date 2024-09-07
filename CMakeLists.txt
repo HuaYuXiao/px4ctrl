@@ -41,8 +41,8 @@ include_directories(
 add_executable(px4ctrl_control src/PX4CtrlFSM.cpp)
 target_link_libraries(px4ctrl_control ${catkin_LIBRARIES})
 
-add_executable(px4ctrl_vision src/px4ctrl_vision.cpp)
-target_link_libraries(px4ctrl_vision ${catkin_LIBRARIES})
+add_executable(ekf2_fusion src/ekf2_fusion.cpp)
+target_link_libraries(ekf2_fusion ${catkin_LIBRARIES})
 
 add_executable(px4ctrl_terminal src/px4ctrl_terminal.cpp)
 target_link_libraries(px4ctrl_terminal ${catkin_LIBRARIES})
