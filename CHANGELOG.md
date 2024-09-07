@@ -6,9 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## v4.1.1 - 2024.09.07
+- [CRUCIAL, bug fix] prevent performing leaked command (skip iteration if current task's done)
 - [new feature]: `Return`, `Stabilized`, `Acro`, `Rattitude`, `Altitude`, `Position`
 - [bug fix] switch to `Hold` once reach desired `Takeoff` height
-- [bug fix] switch to `Disarm` once reach desired `Land` height
 
 ## v4.1.0 - 2024.08.24
 - [new feature] check whether `Armed` before `AUTO.TAKEOFF`

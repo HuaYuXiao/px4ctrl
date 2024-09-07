@@ -38,7 +38,7 @@ include_directories(
         include
 )
 
-add_executable(px4ctrl_control src/px4ctrl_control.cpp)
+add_executable(px4ctrl_control src/PX4CtrlFSM.cpp)
 target_link_libraries(px4ctrl_control ${catkin_LIBRARIES})
 
 add_executable(px4ctrl_vision src/px4ctrl_vision.cpp)
