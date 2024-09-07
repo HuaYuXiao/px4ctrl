@@ -1,15 +1,15 @@
 <launch>
-    <node pkg="px4ctrl" type="px4ctrl_control" name="px4ctrl_control"
-          output="screen" launch-prefix="gnome-terminal --"/>
-
-    <node pkg="px4ctrl" type="px4ctrl_vision" name="px4ctrl_vision" output="screen">
-        <!-- 定位数据输入源: 6 - VICON, 2 - Gazebo, 3 - T265, 5 - LIO, 0 - optitrack, 1 - VIO -->
-        <param name="input_source" value="2"/>
+    <node pkg="px4ctrl" type="ekf2_fusion" name="ekf2_fusion">
+        <!-- 定位数据输入源: 2 Gazebo, 1 VIO, 4 VICON, 3 T265, 5 LIO, 0 OptiTrack -->
+        <param name="EKF2_source" value="2"/>
         <param name="LIO_topic" value="/Odometry"/>
         <param name="Gazebo_topic" value="/gazebo/groundtruth/odom"/>
         <param name="T265_topic" value="/t265/odom/sample"/>
         <param name="VIO_topic" value="/vins_estimator/odometry"/>
     </node>
+
+    <node pkg="px4ctrl" type="px4ctrl_control" name="px4ctrl_control"
+          output="screen" launch-prefix="gnome-terminal --"/>
 
     <node pkg="px4ctrl" type="px4ctrl_terminal" name="px4ctrl_terminal"
           output="screen" launch-prefix="gnome-terminal --"/>
@@ -17,5 +17,5 @@
     <node pkg="px4ctrl" type="px4ctrl_navigate.py" name="px4ctrl_navigate"
           output="screen" launch-prefix="gnome-terminal --"/>
 
-    <node pkg="px4ctrl" type="joy_node" name="joy_node" output="screen"/>
+    <node pkg="px4ctrl" type="joy_node" name="joy_node"/>
 </launch>

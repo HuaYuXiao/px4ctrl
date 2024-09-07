@@ -74,7 +74,7 @@ namespace PX4CtrlFSM{
     double odom_roll_, odom_pitch_, odom_yaw_;
     geometry_msgs::PoseStamped vision_pose_;
 
-    int input_source;
+    int ekf2_source_;
     string LIO_topic_, T265_topic_, Gazebo_topic_, VIO_topic_;
     string object_name;
     std::string subject_name;
@@ -160,7 +160,7 @@ namespace PX4CtrlFSM{
     }
 
     void VICON_cb(const geometry_msgs::TransformStamped::ConstPtr& msg){
-        if (input_source != 6){
+        if (ekf2_source_ != 6){
             return;
         }
 
@@ -174,7 +174,7 @@ namespace PX4CtrlFSM{
     }
 
     void Gazebo_cb(const nav_msgs::Odometry::ConstPtr &msg){
-        if (input_source != 2){
+        if (ekf2_source_ != 2){
             return;
         }
 
@@ -188,7 +188,7 @@ namespace PX4CtrlFSM{
     }
 
     void T265_cb(const nav_msgs::Odometry::ConstPtr &msg){
-        if (input_source != 3){
+        if (ekf2_source_ != 3){
             return;
         }
 
@@ -204,7 +204,7 @@ namespace PX4CtrlFSM{
     }
 
     void optitrack_cb(const geometry_msgs::PoseStamped::ConstPtr &msg){
-        if (input_source != 0){
+        if (ekf2_source_ != 0){
             return;
         }
 
@@ -218,7 +218,7 @@ namespace PX4CtrlFSM{
     }
 
     void LIO_cb(const nav_msgs::Odometry::ConstPtr &msg){
-        if (input_source != 5){
+        if (ekf2_source_ != 5){
             return;
         }
 
@@ -234,7 +234,7 @@ namespace PX4CtrlFSM{
     }
 
     void VIO_cb(const nav_msgs::Odometry::ConstPtr &msg){
-        if (input_source != 1){
+        if (ekf2_source_ != 1){
             return;
         }
 
