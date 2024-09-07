@@ -40,7 +40,6 @@ using namespace std;
 
 #define POS_ACCEPT 0.2
 #define YAW_ACCEPT 15 / 180.0 * M_PI
-#define TRA_WINDOW 1000
 
 namespace Utils{
     const string RESET_COLOR = "\033[0m";
@@ -69,6 +68,7 @@ namespace Utils{
 namespace PX4CtrlFSM{
     mavros_msgs::State current_state;
     // odometry state
+    // TODO: change to odom lost check
     bool have_odom_;
     Eigen::Vector3d odom_pos_, odom_vel_, odom_acc_;
     double odom_roll_, odom_pitch_, odom_yaw_;
@@ -80,6 +80,7 @@ namespace PX4CtrlFSM{
     std::string subject_name;
     std::string segment_name;
 
+    bool task_done_;
     geographic_msgs::GeoPointStamped gp_origin;
     geometry_msgs::PoseStamped pose;
     mavros_msgs::PositionTarget pos_setpoint;
@@ -154,6 +155,8 @@ namespace PX4CtrlFSM{
 
     void easondrone_ctrl_cb_(const easondrone_msgs::ControlCommand::ConstPtr& msg){
         ctrl_cmd_in_ = *msg;
+
+        task_done_ = false;
     }
 
     void VICON_cb(const geometry_msgs::TransformStamped::ConstPtr& msg){

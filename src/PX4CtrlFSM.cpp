@@ -13,9 +13,9 @@
 using namespace PX4CtrlFSM;
 using namespace Utils;
 
-//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>主 函 数<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+// 主函数
 int main(int argc, char **argv){
-    ros::init(argc, argv, "px4ctrl_control");
+    ros::init(argc, argv, "PX4CtrlFSM");
     ros::NodeHandle nh("~");
 
     gp_origin_timer_ = nh.createTimer
@@ -121,24 +121,36 @@ int main(int argc, char **argv){
         rate.sleep();
     }
 
-    offb_set_mode.request.custom_mode = "AUTO.LOITER";
+    task_done_ = false;
+
+    offb_set_mode.request.custom_mode = "POSCTL";
 
     arm_cmd.request.value = true;
 
-    cout << "[px4ctrl_control] initialized!" << endl;
+    cout << "[PX4CtrlFSM] initialized!" << endl;
 
-    // 主  循  环
+    // 主循环
     while(ros::ok()){
         cout << "--------------------------------" << endl;
 
         if(!have_odom_){
-            cout_color("Odom lost! Dangerous!", RED_COLOR);
+            cout_color("Odom lost! Dangerous! Switch to Land temporarily!", RED_COLOR);
+
+            // TODO: do something to avoid crash
+//            ctrl_cmd_in_.mode = easondrone_msgs::ControlCommand::Hold;
+//            pos_setpoint.position.x = odom_pos_(0);
+//            pos_setpoint.position.y = odom_pos_(1);
+//            pos_setpoint.position.z = odom_pos_(2);
+//            pos_setpoint.yaw = odom_yaw_;
+        }
+        else if(task_done_){
+            cout_color("Task done! Skip this iteration!", GREEN_COLOR);
         }
         else {
             switch (ctrl_cmd_in_.mode) {
                 // 0 Arm
                 case easondrone_msgs::ControlCommand::Arm: {
-                    cout << "FSM_EXEC_STATE: Arm" << endl;
+                    cout << "Command received: Arm" << endl;
 
                     if (!current_state.armed) {
                         arm_cmd.request.value = true;
@@ -158,6 +170,8 @@ int main(int argc, char **argv){
                         }
                     }
                     else {
+                        task_done_ = true;
+
                         cout_color("Drone already Armed", GREEN_COLOR);
                     }
 
@@ -166,7 +180,7 @@ int main(int argc, char **argv){
 
                 // 1 Disarm 上锁
                 case easondrone_msgs::ControlCommand::Disarm: {
-                    cout << "FSM_EXEC_STATE: Disarm" << endl;
+                    cout << "Command received: Disarm" << endl;
 
                     if (current_state.armed) {
                         arm_cmd.request.value = false;
@@ -185,6 +199,8 @@ int main(int argc, char **argv){
                         }
                     }
                     else {
+                        task_done_ = true;
+
                         cout_color("Drone already Disarmed", GREEN_COLOR);
                     }
 
@@ -193,13 +209,15 @@ int main(int argc, char **argv){
 
                 // 2 Takeoff 从摆放初始位置原地起飞至指定高度，偏航角也保持当前角度
                 case easondrone_msgs::ControlCommand::Takeoff: {
-                    cout << "FSM_EXEC_STATE: Takeoff" << endl;
+                    cout << "Command received: Takeoff" << endl;
 
                     // TODO: least height of takeoff is 2.5m
                     if (odom_pos_(2) - 1.5 >= 0.2) {
-                        cout_color("Drone already Takeoff! Switch to Hold!", GREEN_COLOR);
+                        task_done_ = true;
 
                         ctrl_cmd_in_.mode = easondrone_msgs::ControlCommand::Hold;
+
+                        cout_color("Drone already Takeoff! Switch to Hold!", GREEN_COLOR);
 
                         break;
                     }
@@ -237,12 +255,12 @@ int main(int argc, char **argv){
 
                 // 3 Land 降落。当前位置原地降落，降落后会自动上锁，且切换为mannual模式
                 case easondrone_msgs::ControlCommand::Land: {
-                    cout << "FSM_EXEC_STATE: Land" << endl;
+                    cout << "Command received: Land" << endl;
 
                     if (odom_pos_(2) <= POS_ACCEPT) {
-                        cout_color("Drone already Land! Switch to Disarm!", GREEN_COLOR);
+                        task_done_ = true;
 
-                        ctrl_cmd_in_.mode = easondrone_msgs::ControlCommand::Disarm;
+                        cout_color("Drone already Land!", GREEN_COLOR);
 
                         break;
                     }
@@ -272,9 +290,11 @@ int main(int argc, char **argv){
 
                 // 4 Return
                 case easondrone_msgs::ControlCommand::Return: {
-                    cout << "FSM_EXEC_STATE: Return" << endl;
+                    cout << "Command received: Return" << endl;
 
                     if (odom_pos_.norm() <= POS_ACCEPT) {
+                        task_done_ = true;
+
                         cout_color("Drone already return to home", GREEN_COLOR);
 
                         break;
@@ -305,7 +325,7 @@ int main(int argc, char **argv){
 
                 // 5 Manual
                 case easondrone_msgs::ControlCommand::Manual: {
-                    cout << "FSM_EXEC_STATE: Manual" << endl;
+                    cout << "Command received: Manual" << endl;
 
                     if (current_state.mode != "MANUAL") {
                         offb_set_mode.request.custom_mode = "MANUAL";
@@ -324,6 +344,8 @@ int main(int argc, char **argv){
                         }
                     }
                     else {
+                        task_done_ = true;
+
                         cout_color("MANUAL already enabled", GREEN_COLOR);
                     }
 
@@ -332,7 +354,7 @@ int main(int argc, char **argv){
 
                 // 6 Stabilized
                 case easondrone_msgs::ControlCommand::Stabilized: {
-                    cout << "FSM_EXEC_STATE: Stabilized" << endl;
+                    cout << "Command received: Stabilized" << endl;
 
                     if (current_state.mode != "STABILIZED") {
                         offb_set_mode.request.custom_mode = "STABILIZED";
@@ -351,6 +373,8 @@ int main(int argc, char **argv){
                         }
                     }
                     else {
+                        task_done_ = true;
+
                         cout_color("STABILIZED already enabled", GREEN_COLOR);
                     }
 
@@ -359,7 +383,7 @@ int main(int argc, char **argv){
 
                 // 7 Acro
                 case easondrone_msgs::ControlCommand::Acro: {
-                    cout << "FSM_EXEC_STATE: Acro" << endl;
+                    cout << "Command received: Acro" << endl;
 
                     if (current_state.mode != "ACRO") {
                         offb_set_mode.request.custom_mode = "ACRO";
@@ -378,6 +402,8 @@ int main(int argc, char **argv){
                         }
                     }
                     else {
+                        task_done_ = true;
+
                         cout_color("ACRO already enabled", GREEN_COLOR);
                     }
 
@@ -386,7 +412,7 @@ int main(int argc, char **argv){
 
                 //8 Rattitude
                 case easondrone_msgs::ControlCommand::Rattitude: {
-                    cout << "FSM_EXEC_STATE: Rattitude" << endl;
+                    cout << "Command received: Rattitude" << endl;
 
                     if (current_state.mode != "RATTITUDE") {
                         offb_set_mode.request.custom_mode = "RATTITUDE";
@@ -405,6 +431,8 @@ int main(int argc, char **argv){
                         }
                     }
                     else {
+                        task_done_ = true;
+
                         cout_color("RATTITUDE already enabled", GREEN_COLOR);
                     }
 
@@ -413,7 +441,7 @@ int main(int argc, char **argv){
 
                 // 9 Altitude
                 case easondrone_msgs::ControlCommand::Altitude: {
-                    cout << "FSM_EXEC_STATE: Altitude" << endl;
+                    cout << "Command received: Altitude" << endl;
 
                     if (current_state.mode != "ALTCTL") {
                         offb_set_mode.request.custom_mode = "ALTCTL";
@@ -432,6 +460,8 @@ int main(int argc, char **argv){
                         }
                     }
                     else {
+                        task_done_ = true;
+
                         cout_color("ALTCTL already enabled", GREEN_COLOR);
                     }
 
@@ -440,7 +470,7 @@ int main(int argc, char **argv){
 
                 // 10 Offboard
                 case easondrone_msgs::ControlCommand::Offboard: {
-                    cout << "FSM_EXEC_STATE: Offboard" << endl;
+                    cout << "Command received: Offboard" << endl;
 
                     if (current_state.mode != "OFFBOARD") {
                         offb_set_mode.request.custom_mode = "OFFBOARD";
@@ -460,6 +490,8 @@ int main(int argc, char **argv){
                         }
                     }
                     else {
+                        task_done_ = true;
+
                         cout_color("Offboard already enabled", GREEN_COLOR);
                     }
 
@@ -468,7 +500,7 @@ int main(int argc, char **argv){
 
                 // 11 Position
                 case easondrone_msgs::ControlCommand::Position: {
-                    cout << "FSM_EXEC_STATE: Position" << endl;
+                    cout << "Command received: Position" << endl;
 
                     if (current_state.mode != "POSCTL") {
                         offb_set_mode.request.custom_mode = "POSCTL";
@@ -487,6 +519,8 @@ int main(int argc, char **argv){
                         }
                     }
                     else {
+                        task_done_ = true;
+
                         cout_color("POSCTL already enabled", GREEN_COLOR);
                     }
 
@@ -495,7 +529,7 @@ int main(int argc, char **argv){
 
                 // 12 Hold 悬停。当前位置悬停
                 case easondrone_msgs::ControlCommand::Hold: {
-                    cout << "FSM_EXEC_STATE: Hold" << endl;
+                    cout << "Command received: Hold" << endl;
 
                     if (current_state.mode != "AUTO.LOITER") {
                         offb_set_mode.request.custom_mode = "AUTO.LOITER";
@@ -514,6 +548,8 @@ int main(int argc, char **argv){
                         }
                     }
                     else {
+                        task_done_ = true;
+
                         cout_color("AUTO.LOITER already enabled", GREEN_COLOR);
                     }
 
@@ -522,7 +558,7 @@ int main(int argc, char **argv){
 
                 // 13 Move ENU系移动, 只能追踪位置
                 case easondrone_msgs::ControlCommand::Move: {
-                    cout << "FSM_EXEC_STATE: Move" << endl;
+                    cout << "Command received: Move" << endl;
 
                     if (current_state.mode != "OFFBOARD") {
                         cout_color("Move command rejected, not in OFFBOARD mode", RED_COLOR);
@@ -539,14 +575,12 @@ int main(int argc, char **argv){
                         // Normalize the difference to the range -pi to pi using boost
                         float yaw_offset = ctrl_cmd_in_.poscmd.yaw - odom_yaw_;
                         bool yaw_ok = false;
-                        if (abs(yaw_offset) <= YAW_ACCEPT) {
-                            yaw_ok = true;
-                        }
-                        else if (abs(2 * M_PI - yaw_offset) <= YAW_ACCEPT) {
-                            yaw_ok = true;
-                        };
+                        if      (abs(yaw_offset)            <= YAW_ACCEPT) yaw_ok = true;
+                        else if (abs(2 * M_PI - yaw_offset) <= YAW_ACCEPT) yaw_ok = true;
 
                         if (pos_ok && yaw_ok) {
+                            task_done_ = true;
+
                             cout_color("Already reach destination, skip move command!", GREEN_COLOR);
 
                             break;
