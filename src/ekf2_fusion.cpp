@@ -4,11 +4,11 @@
  * 12010508@mail.sustech.edu.cn
  */
 
-#include "px4ctrl_node.h"
+#include "px4ctrl_utils.h"
 
 using namespace PX4CtrlFSM;
 
-/****** 主函数 ******/
+/******** 主函数 ********/
 int main(int argc, char **argv){
     ros::init(argc, argv, "ekf2_fusion");
     ros::NodeHandle nh("~");
@@ -21,7 +21,7 @@ int main(int argc, char **argv){
             cout << "[px4ctrl_vision] Using OptiTrack as input source." << endl;
 
             // 动作捕捉设备中设定的刚体名字
-            nh.param<string>("object_name", object_name, "p450");
+            nh.param<string>("object_name", object_name, "iris");
 
             // 【订阅】optitrack估计位置
             optitrack_sub = nh.subscribe<geometry_msgs::PoseStamped>
@@ -69,8 +69,8 @@ int main(int argc, char **argv){
         case 4: {
             cout << "[px4ctrl_vision] Using VICON as input source." << endl;
 
-            nh.param<string>("subject_name", subject_name, "p450");
-            nh.param<string>("segment_name", segment_name, "p450");
+            nh.param<string>("subject_name", subject_name, "iris");
+            nh.param<string>("segment_name", segment_name, "iris");
 
             // VICON
             VICON_sub_ = nh.subscribe<geometry_msgs::TransformStamped>

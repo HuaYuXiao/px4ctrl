@@ -1,21 +1,17 @@
 /*
     Created by hyx020222 on 2024.06.08
-    Last modified on 2024.08.25
+    Last modified on 2024.09.08
 */
 
 #ifndef PX4CTRL_PX4CTRL_TERMINAL_H
 #define PX4CTRL_PX4CTRL_TERMINAL_H
 
-#include "px4ctrl_node.h"
+#include "px4ctrl_utils.h"
 
+using namespace PX4CtrlFSM;
 using namespace Utils;
 
 const std::set<int> valid_modes = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
-//即将发布的command
-easondrone_msgs::ControlCommand ctrl_cmd_out_;
-
-//发布
-ros::Publisher easondrone_ctrl_pub_;
 
 void mainloop(){
     int mode = 0;
