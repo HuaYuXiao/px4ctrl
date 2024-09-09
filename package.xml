@@ -2,7 +2,7 @@
 <package format="2">
   <name>px4ctrl</name>
   <version>4.1.2</version>
-  <description>A package to control multi-copters using PX4 platform</description>
+  <description>A ROS package to control multi-copters using PX4-Autopilot platform</description>
   <maintainer email="12010508@mail.sustech.edu.cn">Eason Hua</maintainer>
 
   <!-- EDIT: License -->

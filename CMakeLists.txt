@@ -47,8 +47,5 @@ target_link_libraries(ekf2_fusion ${catkin_LIBRARIES})
 add_executable(px4ctrl_terminal src/px4ctrl_terminal.cpp)
 target_link_libraries(px4ctrl_terminal ${catkin_LIBRARIES})
 
-add_executable(joy_node src/joy_node.cpp)
-target_link_libraries(joy_node ${catkin_LIBRARIES})
-
 catkin_install_python(PROGRAMS scripts/px4ctrl_navigate.py
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
