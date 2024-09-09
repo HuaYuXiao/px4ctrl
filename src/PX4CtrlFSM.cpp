@@ -2,18 +2,18 @@
     px4ctrl_control.cpp
     Author: Eason Hua
     Email: 12010508@mail.sustech.edu.cn
-    last updated on 2024.09.07
+    last updated on 2024.09.08
 
-    @brief Offboard control example node, written with MAVROS version 0.19.x, PX4 Pro Flight
+    @brief Offboard control example node, written with MAVROS version 0.19.x, PX4-Autopilot version 1.14.3
     Stack and tested in Gazebo SITL
 */
 
-#include "px4ctrl_node.h"
+#include "px4ctrl_utils.h"
 
 using namespace PX4CtrlFSM;
 using namespace Utils;
 
-// 主函数
+/****** 主函数 ******/
 int main(int argc, char **argv){
     ros::init(argc, argv, "PX4CtrlFSM");
     ros::NodeHandle nh("~");
@@ -25,6 +25,8 @@ int main(int argc, char **argv){
             ("/mavros/state", 10, state_cb);
     odom_sub_ = nh.subscribe<nav_msgs::Odometry>
             ("/mavros/local_position/odom", 10, odometryCallback);
+    rc_sub_ = nh.subscribe<mavros_msgs::RCIn>
+            ("/mavros/rc/in", 10, rcCallback);
     //【订阅】指令 本话题为任务模块生成的控制指令
     easondrone_ctrl_sub_ = nh.subscribe<easondrone_msgs::ControlCommand>
             ("/easondrone/control_command", 10, easondrone_ctrl_cb_);
@@ -52,7 +54,7 @@ int main(int argc, char **argv){
             ("/mavros/set_mode");
 
     //the setpoint publishing rate MUST be faster than 2Hz
-    ros::Rate rate(50.0);
+    ros::Rate rate(30.0);
 
     cout_color("Waiting for FCU connection...", YELLOW_COLOR);
 
@@ -121,7 +123,9 @@ int main(int argc, char **argv){
         rate.sleep();
     }
 
-    task_done_ = false;
+    last_rc_stamp_ = ros::Time::now();
+
+    task_done_ = true;
 
     offb_set_mode.request.custom_mode = "POSCTL";
 
@@ -129,7 +133,7 @@ int main(int argc, char **argv){
 
     cout << "[PX4CtrlFSM] initialized!" << endl;
 
-    // 主循环
+    /******** 主循环 ********/
     while(ros::ok()){
         cout << "--------------------------------" << endl;
 
@@ -142,6 +146,9 @@ int main(int argc, char **argv){
 //            pos_setpoint.position.y = odom_pos_(1);
 //            pos_setpoint.position.z = odom_pos_(2);
 //            pos_setpoint.yaw = odom_yaw_;
+        }
+        else if(ros::Time::now() - last_rc_stamp_ < ros::Duration(RC_CTRL)) {
+            cout_color("RC control! Reject command from easondrone_msgs::ControlCommand!", YELLOW_COLOR);
         }
         else if(task_done_){
             cout_color("Task done! Skip this iteration!", GREEN_COLOR);

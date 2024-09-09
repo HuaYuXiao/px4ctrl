@@ -1,0 +1,22 @@
+<launch>
+    <include file="$(find livox_ros_driver2)/launch/msg_MID360.launch"/>
+
+    <include file="$(find fast_lio)/launch/mapping_mid360.launch"/>
+
+    <node pkg="px4ctrl" type="ekf2_fusion" name="ekf2_fusion">
+        <!-- 定位数据输入源: 2 Gazebo, 1 VIO, 4 VICON, 3 T265, 5 LIO, 0 OptiTrack -->
+        <param name="EKF2_source" value="5"/>
+        <param name="LIO_topic" value="/Odometry"/>
+    </node>
+
+    <include file="$(find mavros)/launch/px4.launch"/>
+
+    <node pkg="px4ctrl" type="px4ctrl_control" name="px4ctrl_control"
+          output="screen" launch-prefix="gnome-terminal --"/>
+
+    <node pkg="px4ctrl" type="px4ctrl_terminal" name="px4ctrl_terminal"
+          output="screen" launch-prefix="gnome-terminal --"/>
+
+    <node pkg="px4ctrl" type="px4ctrl_navigate.py" name="px4ctrl_navigate"
+          output="screen" launch-prefix="gnome-terminal --"/>
+</launch>

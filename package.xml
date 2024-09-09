@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>px4ctrl</name>
-  <version>4.1.1</version>
+  <version>4.1.2</version>
   <description>A package to control multi-copters using PX4 platform</description>
   <maintainer email="12010508@mail.sustech.edu.cn">Eason Hua</maintainer>
 

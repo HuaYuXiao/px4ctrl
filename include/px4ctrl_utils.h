@@ -1,6 +1,6 @@
 /*
  * Maintainer: Eason Hua
- * Update Time: 2024.08.24
+ * Update Time: 2024.09.09
  * 12010508@mail.sustech.edu.cn
  */
 
@@ -22,6 +22,7 @@
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
+#include <mavros_msgs/RCIn.h>
 #include <mavros_msgs/AttitudeTarget.h>
 #include <mavros_msgs/PositionTarget.h>
 #include <mavros_msgs/GlobalPositionTarget.h>
@@ -38,6 +39,8 @@
 
 using namespace std;
 
+#define ODOM_LOST 5.0
+#define RC_CTRL 3.0
 #define POS_ACCEPT 0.2
 #define YAW_ACCEPT 15 / 180.0 * M_PI
 
@@ -66,39 +69,49 @@ namespace Utils{
 }
 
 namespace PX4CtrlFSM{
+    ros::Subscriber state_sub;
     mavros_msgs::State current_state;
+
     // odometry state
-    // TODO: change to odom lost check
+    ros::Subscriber odom_sub_;
     bool have_odom_;
+    // TODO: change to odom lost check
+    ros::Time last_odom_stamp_;
     Eigen::Vector3d odom_pos_, odom_vel_, odom_acc_;
     double odom_roll_, odom_pitch_, odom_yaw_;
-    geometry_msgs::PoseStamped vision_pose_;
 
+    ros::Subscriber VICON_sub_, T265_sub_, Gazebo_sub_, optitrack_sub, LIO_sub_, VIO_sub_;
+    geometry_msgs::PoseStamped vision_pose_;
+    nav_msgs::Odometry odom_out_;
     int ekf2_source_;
     string LIO_topic_, T265_topic_, Gazebo_topic_, VIO_topic_;
     string object_name;
     std::string subject_name;
     std::string segment_name;
+    ros::Publisher vision_pose_pub_, odom_out_pub_;
 
-    bool task_done_;
+    ros::Timer gp_origin_timer_;
     geographic_msgs::GeoPointStamped gp_origin;
+    ros::Publisher gp_origin_pub;
+
+    ros::Subscriber rc_sub_;
+    ros::Time last_rc_stamp_;
+
     geometry_msgs::PoseStamped pose;
     mavros_msgs::PositionTarget pos_setpoint;
+    // 发布相关变量
+    ros::Publisher local_pos_pub, setpoint_raw_local_pub, setpoint_raw_global_pub, setpoint_raw_attitude_pub_;
+
     mavros_msgs::SetMode offb_set_mode;
     mavros_msgs::CommandBool arm_cmd;
-    //无人机当前执行命令
-    easondrone_msgs::ControlCommand ctrl_cmd_in_, ctrl_cmd_out_;
-    nav_msgs::Odometry odom_out_;
-    std::vector<geometry_msgs::PoseStamped> posehistory_vector_;
-
-    // 发布相关变量
-    ros::Timer gp_origin_timer_;
-    ros::Subscriber VICON_sub_, T265_sub_, Gazebo_sub_, optitrack_sub, LIO_sub_, VIO_sub_, \
-                    state_sub, easondrone_ctrl_sub_, odom_sub_;
-    ros::Publisher vision_pose_pub_, odom_out_pub_, trajectory_pub, \
-                    gp_origin_pub, local_pos_pub, setpoint_raw_local_pub, setpoint_raw_global_pub, setpoint_raw_attitude_pub_;
     //变量声明 - 服务
     ros::ServiceClient arming_client, set_mode_client;
+
+    ros::Subscriber easondrone_ctrl_sub_;
+    bool task_done_;
+    //无人机当前执行命令
+    easondrone_msgs::ControlCommand ctrl_cmd_in_, ctrl_cmd_out_;
+    ros::Publisher easondrone_ctrl_pub_;
 
     /******** callback ********/
     void state_cb(const mavros_msgs::State::ConstPtr& msg){
@@ -106,8 +119,10 @@ namespace PX4CtrlFSM{
     }
 
     // 保存无人机当前里程计信息，包括位置、速度和姿态
-    void odometryCallback(const nav_msgs::OdometryConstPtr &msg){
+    void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg){
+        // TODO: add odom lost check
         have_odom_ = true;
+        last_odom_stamp_ = ros::Time::now();
 
         odom_pos_ << msg->pose.pose.position.x,
                 msg->pose.pose.position.y,
@@ -129,25 +144,24 @@ namespace PX4CtrlFSM{
         );
 
         tf::Matrix3x3(odom_q_).getRPY(odom_roll_, odom_pitch_, odom_yaw_);
-
-        // 发布无人机的轨迹 用作rviz中显示
-//        geometry_msgs::PoseStamped posestamped_;
-//        posestamped_.pose.position = msg->pose.pose.position;
-//        posestamped_.pose.orientation = msg->pose.pose.orientation;
-//
-//        posehistory_vector_.insert(posehistory_vector_.begin(), posestamped_);
-//        if (posehistory_vector_.size() > TRA_WINDOW){
-//            posehistory_vector_.pop_back();
-//        }
-//
-//        nav_msgs::Path drone_trajectory;
-//        drone_trajectory.header = msg->header;
-//        drone_trajectory.poses = posehistory_vector_;
-//
-//        trajectory_pub.publish(drone_trajectory);
     }
 
-    void gpOriginCallback(const ros::TimerEvent &e){
+    void rcCallback(const mavros_msgs::RCIn::ConstPtr& msg){
+        if (msg->channels[0] != 1500 || // 1050 left,  1950 right
+            msg->channels[1] != 1500 || // 1050 front, 1950 back
+            msg->channels[2] != 1500 || // 1050 down,  1950 upward
+            msg->channels[3] != 1500 || // 1050 CCW,   1950 CW
+            msg->channels[4] != 1050 || // 1050 POS,   1500 ALT,      1950 STA
+            msg->channels[5] != 1500){  // 1500 Ready, 1950 Not Ready
+            last_rc_stamp_ = ros::Time::now();
+            
+            // reject command from easondrone_msgs::ControlCommand
+            task_done_ = true;
+        }
+        // do not set task_done_ to false! because it should be set to false only when easondrone_cmd is received
+    }
+
+    void gpOriginCallback(const ros::TimerEvent& e){
         gp_origin.header.stamp = ros::Time::now();
 
         gp_origin_pub.publish(gp_origin);
@@ -173,7 +187,7 @@ namespace PX4CtrlFSM{
         vision_pose_.pose.orientation.z = msg->transform.rotation.z;
     }
 
-    void Gazebo_cb(const nav_msgs::Odometry::ConstPtr &msg){
+    void Gazebo_cb(const nav_msgs::Odometry::ConstPtr& msg){
         if (ekf2_source_ != 2){
             return;
         }
@@ -187,7 +201,7 @@ namespace PX4CtrlFSM{
         vision_pose_.pose.orientation.w = msg->pose.pose.orientation.w;
     }
 
-    void T265_cb(const nav_msgs::Odometry::ConstPtr &msg){
+    void T265_cb(const nav_msgs::Odometry::ConstPtr& msg){
         if (ekf2_source_ != 3){
             return;
         }
@@ -203,7 +217,7 @@ namespace PX4CtrlFSM{
         vision_pose_.pose.orientation.w = msg->pose.pose.orientation.w;
     }
 
-    void optitrack_cb(const geometry_msgs::PoseStamped::ConstPtr &msg){
+    void optitrack_cb(const geometry_msgs::PoseStamped::ConstPtr& msg){
         if (ekf2_source_ != 0){
             return;
         }
@@ -217,7 +231,7 @@ namespace PX4CtrlFSM{
         vision_pose_.pose.orientation.w = msg->pose.orientation.w;
     }
 
-    void LIO_cb(const nav_msgs::Odometry::ConstPtr &msg){
+    void LIO_cb(const nav_msgs::Odometry::ConstPtr& msg){
         if (ekf2_source_ != 5){
             return;
         }
@@ -233,7 +247,7 @@ namespace PX4CtrlFSM{
         vision_pose_.pose.orientation.w = msg->pose.pose.orientation.w;
     }
 
-    void VIO_cb(const nav_msgs::Odometry::ConstPtr &msg){
+    void VIO_cb(const nav_msgs::Odometry::ConstPtr& msg){
         if (ekf2_source_ != 1){
             return;
         }
