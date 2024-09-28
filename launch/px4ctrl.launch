@@ -16,6 +16,4 @@
 
     <node pkg="px4ctrl" type="px4ctrl_navigate.py" name="px4ctrl_navigate"
           output="screen" launch-prefix="gnome-terminal --"/>
-
-    <node pkg="px4ctrl" type="joy_node" name="joy_node"/>
 </launch>
