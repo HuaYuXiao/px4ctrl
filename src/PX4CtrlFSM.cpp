@@ -1,10 +1,29 @@
 /*
-    px4ctrl_control.cpp
+    Copyright (c) 2025 Eason Hua
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+    
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+    
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+    
     Author: Eason Hua
     Email: 12010508@mail.sustech.edu.cn
-    last updated on 2024.09.08
+    last updated on 2025.02.02
 
-    @brief Offboard control example node, written with MAVROS version 0.19.x, PX4-Autopilot version 1.14.3
+    @brief Offboard control example node, written with MAVROS version 0.19.x, PX4-Autopilot version 1.13.3
     Stack and tested in Gazebo SITL
 */
 
@@ -53,12 +72,26 @@ int main(int argc, char **argv){
     set_mode_client = nh.serviceClient<mavros_msgs::SetMode>
             ("/mavros/set_mode");
 
-    //the setpoint publishing rate MUST be faster than 2Hz
+    /*
+    PX4 has a timeout of 500ms between two Offboard commands. 
+    If this timeout is exceeded, the commander will fall back to 
+    the last mode the vehicle was in before entering Offboard mode. 
+    This is why the publishing rate must be faster than 
+    2 Hz to also account for possible latencies. 
+    This is also the same reason why it is recommended 
+    to enter Offboard mode from Position mode, 
+    this way if the vehicle drops out of Offboard 
+    mode it will stop in its tracks and hover.
+    */
     ros::Rate rate(30.0);
 
     cout_color("Waiting for FCU connection...", YELLOW_COLOR);
 
-    // wait for FCU connection
+    /*
+    Before publishing anything, we wait for the connection 
+    to be established between MAVROS and the autopilot. 
+    This loop should exit as soon as a heartbeat message is received.
+    */
     while(ros::ok() && !current_state.connected){
         ros::spinOnce();
         rate.sleep();
@@ -115,7 +148,11 @@ int main(int argc, char **argv){
 
     cout_color("Send a few setpoints before starting...", YELLOW_COLOR);
 
-    // send a few setpoints before starting
+    /*
+    Before entering Offboard mode, you must have already started streaming setpoints. 
+    Otherwise the mode switch will be rejected. 
+    Here, 100 was chosen as an arbitrary amount.
+    */
     for(int i = 100; ros::ok() && i > 0; --i){
 //        local_pos_pub.publish(pose);
         setpoint_raw_local_pub.publish(pos_setpoint);
