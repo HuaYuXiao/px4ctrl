@@ -632,9 +632,8 @@ int main(int argc, char **argv){
                         else {
                             // TODO: other frames
                             pos_setpoint.coordinate_frame = 1;
-                            pos_setpoint.position.x = ctrl_cmd_in_.poscmd.position.x;
-                            pos_setpoint.position.y = ctrl_cmd_in_.poscmd.position.y;
-                            pos_setpoint.position.z = ctrl_cmd_in_.poscmd.position.z;
+                            pos_setpoint.position = ctrl_cmd_in_.poscmd.position;
+                            pos_setpoint.velocity = ctrl_cmd_in_.poscmd.velocity;
                             pos_setpoint.yaw = ctrl_cmd_in_.poscmd.yaw;
 
                             // Use stringstream to concatenate the strings and float values

@@ -89,7 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [end support]: `message_pub`
 
 ## v3.4.0: 
-- support PID controller with `POS+VEL` loop
+- (bug fix on 2025.02.03) support PID controller with `POS+VEL` loop
 
 ## v3.3.4: 
 - (removed in v3.5.3) update `rate_hz_` 
