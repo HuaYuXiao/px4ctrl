@@ -21,7 +21,7 @@
     
     Author: Eason Hua
     Email: 12010508@mail.sustech.edu.cn
-    last updated on 2025.02.02
+    last updated on 2025.02.04
 
     @brief Offboard control example node, written with MAVROS version 0.19.x, PX4-Autopilot version 1.13.3
     Stack and tested in Gazebo SITL
@@ -124,7 +124,7 @@ int main(int argc, char **argv){
         uint16 IGNORE_YAW = 1024
         uint16 IGNORE_YAW_RATE = 2048
      */
-    pos_setpoint.type_mask = 0b100111111000; // 100 111 111 000  xyz + yaw
+    pos_setpoint.type_mask = 0b100111000000; // xyz_pos + xyz_vel + yaw
     /*
         uint8 coordinate_frame
         uint8 FRAME_LOCAL_NED = 1
@@ -136,6 +136,9 @@ int main(int argc, char **argv){
     pos_setpoint.position.x = odom_pos_(0);
     pos_setpoint.position.y = odom_pos_(1);
     pos_setpoint.position.z = odom_pos_(2);
+    pos_setpoint.velocity.x = 0;
+    pos_setpoint.velocity.y = 0;
+    pos_setpoint.velocity.z = 0;
     pos_setpoint.yaw = odom_yaw_;
 
     // 初始化命令
@@ -144,6 +147,9 @@ int main(int argc, char **argv){
     ctrl_cmd_in_.poscmd.position.x = odom_pos_(0);
     ctrl_cmd_in_.poscmd.position.y = odom_pos_(0);
     ctrl_cmd_in_.poscmd.position.z = odom_pos_(0);
+    ctrl_cmd_in_.poscmd.velocity.x = 0;
+    ctrl_cmd_in_.poscmd.velocity.y = 0;
+    ctrl_cmd_in_.poscmd.velocity.z = 0;
     ctrl_cmd_in_.poscmd.yaw = odom_yaw_;
 
     cout_color("Send a few setpoints before starting...", YELLOW_COLOR);
@@ -175,7 +181,7 @@ int main(int argc, char **argv){
         cout << "--------------------------------" << endl;
 
         if(!have_odom_){
-            cout_color("Odom lost! Dangerous! Switch to Land temporarily!", RED_COLOR);
+            cout_color("Odom lost! Be cautious!", RED_COLOR);
 
             // TODO: do something to avoid crash
 //            ctrl_cmd_in_.mode = easondrone_msgs::ControlCommand::Hold;
@@ -185,7 +191,7 @@ int main(int argc, char **argv){
 //            pos_setpoint.yaw = odom_yaw_;
         }
         else if(ros::Time::now() - last_rc_stamp_ < ros::Duration(RC_CTRL)) {
-            cout_color("RC control! Reject command from easondrone_msgs::ControlCommand!", YELLOW_COLOR);
+            cout_color("RC control! Reject cmd from easondrone!", YELLOW_COLOR);
         }
         else if(task_done_){
             cout_color("Task done! Skip this iteration!", GREEN_COLOR);
