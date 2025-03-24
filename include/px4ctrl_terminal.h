@@ -1,6 +1,25 @@
 /*
-    Created by hyx020222 on 2024.06.08
-    Last modified on 2024.09.08
+MIT License
+
+Copyright (c) 2025 Eason Hua
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #ifndef PX4CTRL_PX4CTRL_TERMINAL_H
@@ -16,7 +35,7 @@ const std::set<int> valid_modes = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}
 void mainloop(){
     int mode = 0;
     bool valid_mode = false;
-    int frame = 0;
+    int coordinate_frame = 0;
     bool valid_frame = false;
     bool valid_x_input = false;
     bool valid_y_input = false;
@@ -58,7 +77,6 @@ void mainloop(){
             // 1 Disarm
             case easondrone_msgs::ControlCommand::Disarm:{
                 ctrl_cmd_out_.mode = easondrone_msgs::ControlCommand::Disarm;
-                ctrl_cmd_out_.frame = easondrone_msgs::ControlCommand::ENU;
 
                 break;
             }
@@ -145,14 +163,19 @@ void mainloop(){
                 ctrl_cmd_out_.mode = easondrone_msgs::ControlCommand::Move;
                 
                 while (!valid_frame) {
-                    cout << "Please choose frame: 0 ENU, 1 NED" << endl;
-                    if (cin >> frame) {
-                        if (frame == 0 || frame == 1) {
+                    cout << "Please choose coordinate_frame:" << endl;
+                    cout << "| 1 FRAME_LOCAL_NED | 7 FRAME_LOCAL_OFFSET_NED |" << endl;
+                    cout << "| 8 FRAME_BODY_NED  | 9 FRAME_BODY_OFFSET_NED  |" << endl;
+                    if (cin >> coordinate_frame) {
+                        if (coordinate_frame == 1 || 
+                            coordinate_frame == 7 ||
+                            coordinate_frame == 8 ||
+                            coordinate_frame == 9) {
                             valid_frame = true;
-                            ctrl_cmd_out_.frame = frame;
+                            ctrl_cmd_out_.coordinate_frame = coordinate_frame;
                         }
                         else {
-                            string msg = "Invalid input! Require 0 or 1 ";
+                            string msg = "Invalid input! Require 1 / 7 / 8 / 9";
                             cout_color(msg, RED_COLOR);
                         }
                     }
@@ -213,7 +236,7 @@ void mainloop(){
                             ctrl_cmd_out_.poscmd.yaw = ctrl_cmd_out_.poscmd.yaw / 180.0 * M_PI;
                         }
                         else {
-                            string msg = "Invalid input! Require value between (-180, 180) ";
+                            string msg = "Invalid input! Require value between [-180.0, 180.0] ";
                             cout_color(msg, RED_COLOR);
                         }
                     }
