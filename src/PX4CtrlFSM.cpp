@@ -1,30 +1,25 @@
 /*
-    Copyright (c) 2025 Eason Hua
+MIT License
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-    
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
-    
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
-    
-    Author: Eason Hua
-    Email: 12010508@mail.sustech.edu.cn
-    last updated on 2025.02.04
+Copyright (c) 2025 Eason Hua
 
-    @brief Offboard control example node, written with MAVROS version 0.19.x, PX4-Autopilot version 1.13.3
-    Stack and tested in Gazebo SITL
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 */
 
 #include "px4ctrl_utils.h"
@@ -124,7 +119,7 @@ int main(int argc, char **argv){
         uint16 IGNORE_YAW = 1024
         uint16 IGNORE_YAW_RATE = 2048
      */
-    pos_setpoint.type_mask = 0b100111000000; // xyz_pos + xyz_vel + yaw
+    pos_setpoint.type_mask = 0b100111111000; // xyz_pos + yaw
     /*
         uint8 coordinate_frame
         uint8 FRAME_LOCAL_NED = 1
@@ -132,25 +127,26 @@ int main(int argc, char **argv){
         uint8 FRAME_BODY_NED = 8
         uint8 FRAME_BODY_OFFSET_NED = 9
     */
-    pos_setpoint.coordinate_frame = 1;
-    pos_setpoint.position.x = odom_pos_(0);
-    pos_setpoint.position.y = odom_pos_(1);
-    pos_setpoint.position.z = odom_pos_(2);
-    pos_setpoint.velocity.x = 0;
-    pos_setpoint.velocity.y = 0;
-    pos_setpoint.velocity.z = 0;
-    pos_setpoint.yaw = odom_yaw_;
+    pos_setpoint.coordinate_frame   = 1;
+    pos_setpoint.position.x         = odom_pos_(0);
+    pos_setpoint.position.y         = odom_pos_(1);
+    pos_setpoint.position.z         = odom_pos_(2);
+    pos_setpoint.velocity.x         = 0;
+    pos_setpoint.velocity.y         = 0;
+    pos_setpoint.velocity.z         = 0;
+    pos_setpoint.yaw                = odom_yaw_;
 
     // 初始化命令
-    ctrl_cmd_in_.mode = easondrone_msgs::ControlCommand::Hold;
-    ctrl_cmd_in_.frame = easondrone_msgs::ControlCommand::ENU;
-    ctrl_cmd_in_.poscmd.position.x = odom_pos_(0);
-    ctrl_cmd_in_.poscmd.position.y = odom_pos_(0);
-    ctrl_cmd_in_.poscmd.position.z = odom_pos_(0);
-    ctrl_cmd_in_.poscmd.velocity.x = 0;
-    ctrl_cmd_in_.poscmd.velocity.y = 0;
-    ctrl_cmd_in_.poscmd.velocity.z = 0;
-    ctrl_cmd_in_.poscmd.yaw = odom_yaw_;
+    ctrl_cmd_in_.mode               = easondrone_msgs::ControlCommand::Hold;
+    ctrl_cmd_in_.setpoint_type      = easondrone_msgs::ControlCommand::SETPOINT_TYPE_POSITION;
+    ctrl_cmd_in_.coordinate_frame   = easondrone_msgs::ControlCommand::FRAME_LOCAL_NED;
+    ctrl_cmd_in_.poscmd.position.x  = odom_pos_(0);
+    ctrl_cmd_in_.poscmd.position.y  = odom_pos_(0);
+    ctrl_cmd_in_.poscmd.position.z  = odom_pos_(0);
+    ctrl_cmd_in_.poscmd.velocity.x  = 0;
+    ctrl_cmd_in_.poscmd.velocity.y  = 0;
+    ctrl_cmd_in_.poscmd.velocity.z  = 0;
+    ctrl_cmd_in_.poscmd.yaw         = odom_yaw_;
 
     cout_color("Send a few setpoints before starting...", YELLOW_COLOR);
 
@@ -205,11 +201,12 @@ int main(int argc, char **argv){
                     if (!current_state.armed) {
                         arm_cmd.request.value = true;
 
-                        pos_setpoint.coordinate_frame = 1;
-                        pos_setpoint.position.x = odom_pos_(0);
-                        pos_setpoint.position.y = odom_pos_(1);
-                        pos_setpoint.position.z = odom_pos_(2);
-                        pos_setpoint.yaw = odom_yaw_;
+                        pos_setpoint.type_mask          = 0b100111111000; // xyz_pos + yaw
+                        pos_setpoint.coordinate_frame   = 1;
+                        pos_setpoint.position.x         = odom_pos_(0);
+                        pos_setpoint.position.y         = odom_pos_(1);
+                        pos_setpoint.position.z         = odom_pos_(2);
+                        pos_setpoint.yaw                = odom_yaw_;
 
                         if (arming_client.call(arm_cmd) &&
                             arm_cmd.response.success) {
@@ -228,18 +225,18 @@ int main(int argc, char **argv){
                     break;
                 }
 
-                // 1 Disarm 上锁
+                // TODO 1 Disarm 上锁
                 case easondrone_msgs::ControlCommand::Disarm: {
                     cout << "Command received: Disarm" << endl;
 
                     if (current_state.armed) {
                         arm_cmd.request.value = false;
 
-                        pos_setpoint.coordinate_frame = 1;
-                        pos_setpoint.position.x = odom_pos_(0);
-                        pos_setpoint.position.y = odom_pos_(1);
-                        pos_setpoint.position.z = 0;
-                        pos_setpoint.yaw = odom_yaw_;
+                        pos_setpoint.coordinate_frame   = 1;
+                        pos_setpoint.position.x         = odom_pos_(0);
+                        pos_setpoint.position.y         = odom_pos_(1);
+                        pos_setpoint.position.z         = 0;
+                        pos_setpoint.yaw                = odom_yaw_;
 
                         if (arming_client.call(arm_cmd) && arm_cmd.response.success) {
                             cout_color("Disarm response success", YELLOW_COLOR);
@@ -281,10 +278,11 @@ int main(int argc, char **argv){
                         if (current_state.mode != "AUTO.TAKEOFF") {
                             offb_set_mode.request.custom_mode = "AUTO.TAKEOFF";
 
+                            pos_setpoint.type_mask = 0b100111111000; // xyz_pos + yaw
                             pos_setpoint.coordinate_frame = 1;
                             pos_setpoint.position.x = odom_pos_(0);
                             pos_setpoint.position.y = odom_pos_(1);
-                            pos_setpoint.position.z = 1.5;
+                            pos_setpoint.position.z = 2.5;
                             pos_setpoint.yaw = odom_yaw_;
 
                             if (set_mode_client.call(offb_set_mode) &&
@@ -318,6 +316,7 @@ int main(int argc, char **argv){
                     if (current_state.mode != "AUTO.LAND") {
                         offb_set_mode.request.custom_mode = "AUTO.LAND";
 
+                        pos_setpoint.type_mask = 0b100111111000; // xyz_pos + yaw
                         pos_setpoint.coordinate_frame = 1;
                         pos_setpoint.position.x = odom_pos_(0);
                         pos_setpoint.position.y = odom_pos_(1);
@@ -353,6 +352,7 @@ int main(int argc, char **argv){
                     if (current_state.mode != "AUTO.RTL") {
                         offb_set_mode.request.custom_mode = "AUTO.RTL";
 
+                        pos_setpoint.type_mask = 0b100111111000; // xyz_pos + yaw
                         pos_setpoint.coordinate_frame = 1;
                         pos_setpoint.position.x = 0;
                         pos_setpoint.position.y = 0;
@@ -380,6 +380,7 @@ int main(int argc, char **argv){
                     if (current_state.mode != "MANUAL") {
                         offb_set_mode.request.custom_mode = "MANUAL";
 
+                        pos_setpoint.type_mask = 0b100111111000; // xyz_pos + yaw
                         pos_setpoint.coordinate_frame = 1;
                         pos_setpoint.position.x = odom_pos_(0);
                         pos_setpoint.position.y = odom_pos_(1);
@@ -409,6 +410,7 @@ int main(int argc, char **argv){
                     if (current_state.mode != "STABILIZED") {
                         offb_set_mode.request.custom_mode = "STABILIZED";
 
+                        pos_setpoint.type_mask = 0b100111111000; // xyz_pos + yaw
                         pos_setpoint.coordinate_frame = 1;
                         pos_setpoint.position.x = odom_pos_(0);
                         pos_setpoint.position.y = odom_pos_(1);
@@ -438,6 +440,7 @@ int main(int argc, char **argv){
                     if (current_state.mode != "ACRO") {
                         offb_set_mode.request.custom_mode = "ACRO";
 
+                        pos_setpoint.type_mask = 0b100111111000; // xyz_pos + yaw
                         pos_setpoint.coordinate_frame = 1;
                         pos_setpoint.position.x = odom_pos_(0);
                         pos_setpoint.position.y = odom_pos_(1);
@@ -467,6 +470,7 @@ int main(int argc, char **argv){
                     if (current_state.mode != "RATTITUDE") {
                         offb_set_mode.request.custom_mode = "RATTITUDE";
 
+                        pos_setpoint.type_mask = 0b100111111000; // xyz_pos + yaw
                         pos_setpoint.coordinate_frame = 1;
                         pos_setpoint.position.x = odom_pos_(0);
                         pos_setpoint.position.y = odom_pos_(1);
@@ -496,6 +500,7 @@ int main(int argc, char **argv){
                     if (current_state.mode != "ALTCTL") {
                         offb_set_mode.request.custom_mode = "ALTCTL";
 
+                        pos_setpoint.type_mask = 0b100111111000; // xyz_pos + yaw
                         pos_setpoint.coordinate_frame = 1;
                         pos_setpoint.position.x = odom_pos_(0);
                         pos_setpoint.position.y = odom_pos_(1);
@@ -525,11 +530,12 @@ int main(int argc, char **argv){
                     if (current_state.mode != "OFFBOARD") {
                         offb_set_mode.request.custom_mode = "OFFBOARD";
 
-                        pos_setpoint.coordinate_frame = 1;
-                        pos_setpoint.position.x = odom_pos_(0);
-                        pos_setpoint.position.y = odom_pos_(1);
-                        pos_setpoint.position.z = odom_pos_(2);
-                        pos_setpoint.yaw = odom_yaw_;
+                        pos_setpoint.type_mask          = 0b100111111000; // xyz_pos + yaw
+                        pos_setpoint.coordinate_frame   = 1;
+                        pos_setpoint.position.x         = odom_pos_(0);
+                        pos_setpoint.position.y         = odom_pos_(1);
+                        pos_setpoint.position.z         = odom_pos_(2);
+                        pos_setpoint.yaw                = odom_yaw_;
 
                         if (set_mode_client.call(offb_set_mode) &&
                             offb_set_mode.response.mode_sent) {
@@ -555,6 +561,7 @@ int main(int argc, char **argv){
                     if (current_state.mode != "POSCTL") {
                         offb_set_mode.request.custom_mode = "POSCTL";
 
+                        pos_setpoint.type_mask = 0b100111111000; // xyz_pos + yaw
                         pos_setpoint.coordinate_frame = 1;
                         pos_setpoint.position.x = odom_pos_(0);
                         pos_setpoint.position.y = odom_pos_(1);
@@ -584,6 +591,7 @@ int main(int argc, char **argv){
                     if (current_state.mode != "AUTO.LOITER") {
                         offb_set_mode.request.custom_mode = "AUTO.LOITER";
 
+                        pos_setpoint.type_mask = 0b100111111000; // xyz_pos + yaw
                         pos_setpoint.coordinate_frame = 1;
                         pos_setpoint.position.x = odom_pos_(0);
                         pos_setpoint.position.y = odom_pos_(1);
@@ -606,7 +614,7 @@ int main(int argc, char **argv){
                     break;
                 }
 
-                // 13 Move ENU系移动, 只能追踪位置
+                // 13 Move 移动
                 case easondrone_msgs::ControlCommand::Move: {
                     cout << "Command received: Move" << endl;
 
@@ -616,45 +624,87 @@ int main(int argc, char **argv){
                         break;
                     }
                     else {
-                        Eigen::Vector3d pos_offset;
-                        pos_offset << ctrl_cmd_in_.poscmd.position.x - odom_pos_(0),
-                                ctrl_cmd_in_.poscmd.position.y - odom_pos_(1),
-                                ctrl_cmd_in_.poscmd.position.z - odom_pos_(2);
-                        bool pos_ok = (pos_offset.norm() <= POS_ACCEPT);
-
-                        // Normalize the difference to the range -pi to pi using boost
-                        float yaw_offset = ctrl_cmd_in_.poscmd.yaw - odom_yaw_;
-                        bool yaw_ok = false;
-                        if      (abs(yaw_offset)            <= YAW_ACCEPT) yaw_ok = true;
-                        else if (abs(2 * M_PI - yaw_offset) <= YAW_ACCEPT) yaw_ok = true;
-
-                        if (pos_ok && yaw_ok) {
-                            task_done_ = true;
-
-                            cout_color("Already reach destination, skip move command!", GREEN_COLOR);
-
-                            break;
+                        if(ctrl_cmd_in_.setpoint_type == easondrone_msgs::ControlCommand::SETPOINT_TYPE_POSITION) {
+                            Eigen::Vector3d pos_offset;
+                            pos_offset << ctrl_cmd_in_.poscmd.position.x - odom_pos_(0),
+                                        ctrl_cmd_in_.poscmd.position.y - odom_pos_(1),
+                                        ctrl_cmd_in_.poscmd.position.z - odom_pos_(2);
+                            bool pos_ok = (pos_offset.norm() <= POS_ACCEPT);
+    
+                            // Normalize the difference to the range -pi to pi using boost
+                            float yaw_offset = ctrl_cmd_in_.poscmd.yaw - odom_yaw_;
+                            bool yaw_ok = false;
+                            if      (abs(yaw_offset)            <= YAW_ACCEPT) yaw_ok = true;
+                            else if (abs(2 * M_PI - yaw_offset) <= YAW_ACCEPT) yaw_ok = true;
+    
+                            if (pos_ok && yaw_ok) {
+                                task_done_ = true;
+    
+                                cout_color("Already reach destination, skip move command!", GREEN_COLOR);
+    
+                                break;
+                            }
+                            else {
+                                pos_setpoint.type_mask        = 0b100111111000; // xyz_pos + yaw
+                                pos_setpoint.coordinate_frame = ctrl_cmd_in_.coordinate_frame;
+                                pos_setpoint.position         = ctrl_cmd_in_.poscmd.position;
+                                pos_setpoint.yaw              = ctrl_cmd_in_.poscmd.yaw;
+    
+                                // Use stringstream to concatenate the strings and float values
+                                std::stringstream ss;
+                                ss << "Moving to: "
+                                   << pos_setpoint.position.x << ", "
+                                   << pos_setpoint.position.y << ", "
+                                   << pos_setpoint.position.z << "; "
+                                   << pos_setpoint.yaw;
+    
+                                // Convert the stringstream to a string
+                                std::string msg = ss.str();
+    
+                                // Print the result
+                                cout_color(msg, YELLOW_COLOR);
+                            }
                         }
-                        else {
-                            // TODO: other frames
-                            pos_setpoint.coordinate_frame = 1;
-                            pos_setpoint.position = ctrl_cmd_in_.poscmd.position;
-                            pos_setpoint.velocity = ctrl_cmd_in_.poscmd.velocity;
-                            pos_setpoint.yaw = ctrl_cmd_in_.poscmd.yaw;
-
-                            // Use stringstream to concatenate the strings and float values
-                            std::stringstream ss;
-                            ss << "Moving to: "
-                               << pos_setpoint.position.x << ", "
-                               << pos_setpoint.position.y << ", "
-                               << pos_setpoint.position.z << "; "
-                               << pos_setpoint.yaw;
-
-                            // Convert the stringstream to a string
-                            std::string msg = ss.str();
-
-                            // Print the result
-                            cout_color(msg, YELLOW_COLOR);
+                        else if(ctrl_cmd_in_.setpoint_type == easondrone_msgs::ControlCommand::SETPOINT_TYPE_VELOCITY){
+                            Eigen::Vector3d vel_offset;
+                            vel_offset << ctrl_cmd_in_.poscmd.velocity.x - odom_vel_(0),
+                                        ctrl_cmd_in_.poscmd.velocity.y - odom_vel_(1),
+                                        ctrl_cmd_in_.poscmd.velocity.z - odom_vel_(2);
+                            bool vel_ok = (vel_offset.norm() <= VEL_ACCEPT);
+    
+                            // Normalize the difference to the range -pi to pi using boost
+                            float yaw_offset = ctrl_cmd_in_.poscmd.yaw - odom_yaw_;
+                            bool yaw_ok = false;
+                            if      (abs(yaw_offset)            <= YAW_ACCEPT) yaw_ok = true;
+                            else if (abs(2 * M_PI - yaw_offset) <= YAW_ACCEPT) yaw_ok = true;
+    
+                            if (vel_ok && yaw_ok) {
+                                task_done_ = true;
+    
+                                cout_color("Already reach destination, skip move command!", GREEN_COLOR);
+    
+                                break;
+                            }
+                            else {
+                                pos_setpoint.type_mask        = 0b100111000111; // xyz_vel + yaw
+                                pos_setpoint.coordinate_frame = ctrl_cmd_in_.coordinate_frame;
+                                pos_setpoint.velocity         = ctrl_cmd_in_.poscmd.velocity;
+                                pos_setpoint.yaw              = ctrl_cmd_in_.poscmd.yaw;
+    
+                                // Use stringstream to concatenate the strings and float values
+                                std::stringstream ss;
+                                ss << "Moving with velocity: "
+                                   << pos_setpoint.velocity.x << ", "
+                                   << pos_setpoint.velocity.y << ", "
+                                   << pos_setpoint.velocity.z << "; "
+                                   << pos_setpoint.yaw;
+    
+                                // Convert the stringstream to a string
+                                std::string msg = ss.str();
+    
+                                // Print the result
+                                cout_color(msg, YELLOW_COLOR);
+                            }
                         }
                     }
 

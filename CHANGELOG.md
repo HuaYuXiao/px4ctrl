@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v4.1.3 - 2025-03-24
 - [bug fix] Offboard control `coordinate_frame`
+- [bug fix] Offboard velocity control `type_mask`
 
 ## v4.1.2 - 2024.09.09
 - [CRUCIAL, bug fix] set priority of RC control to the highest
