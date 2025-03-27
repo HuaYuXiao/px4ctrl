@@ -66,6 +66,8 @@ int main(int argc, char **argv){
     // 【服务】修改系统模式 本服务通过Mavros功能包 /plugins/command.cpp 实现
     set_mode_client = nh.serviceClient<mavros_msgs::SetMode>
             ("/mavros/set_mode");
+    command_client = nh.serviceClient<mavros_msgs::CommandLong>
+            ("/mavros/cmd/command");
 
     /*
     PX4 has a timeout of 500ms between two Offboard commands. 
@@ -139,14 +141,10 @@ int main(int argc, char **argv){
     // 初始化命令
     ctrl_cmd_in_.mode               = easondrone_msgs::ControlCommand::Hold;
     ctrl_cmd_in_.setpoint_type      = easondrone_msgs::ControlCommand::SETPOINT_TYPE_POSITION;
-    ctrl_cmd_in_.coordinate_frame   = easondrone_msgs::ControlCommand::FRAME_LOCAL_NED;
-    ctrl_cmd_in_.poscmd.position.x  = odom_pos_(0);
-    ctrl_cmd_in_.poscmd.position.y  = odom_pos_(0);
-    ctrl_cmd_in_.poscmd.position.z  = odom_pos_(0);
-    ctrl_cmd_in_.poscmd.velocity.x  = 0;
-    ctrl_cmd_in_.poscmd.velocity.y  = 0;
-    ctrl_cmd_in_.poscmd.velocity.z  = 0;
-    ctrl_cmd_in_.poscmd.yaw         = odom_yaw_;
+    ctrl_cmd_in_.coordinate_frame   = pos_setpoint.coordinate_frame;
+    ctrl_cmd_in_.poscmd.position    = pos_setpoint.position;
+    ctrl_cmd_in_.poscmd.velocity    = pos_setpoint.velocity;
+    ctrl_cmd_in_.poscmd.yaw         = pos_setpoint.yaw;
 
     cout_color("Send a few setpoints before starting...", YELLOW_COLOR);
 
@@ -225,7 +223,7 @@ int main(int argc, char **argv){
                     break;
                 }
 
-                // TODO 1 Disarm 上锁
+                // 1 Disarm 上锁
                 case easondrone_msgs::ControlCommand::Disarm: {
                     cout << "Command received: Disarm" << endl;
 
@@ -238,8 +236,19 @@ int main(int argc, char **argv){
                         pos_setpoint.position.z         = 0;
                         pos_setpoint.yaw                = odom_yaw_;
 
-                        if (arming_client.call(arm_cmd) && arm_cmd.response.success) {
-                            cout_color("Disarm response success", YELLOW_COLOR);
+                        command_long.request.broadcast    = false;
+                        command_long.request.command      = 400;   // MAV_CMD_COMPONENT_ARM_DISARM
+                        command_long.request.confirmation = 0;
+                        command_long.request.param1       = 0;     // 0 for disarm
+                        command_long.request.param2       = 21196; // Magic number to force disarm
+                        command_long.request.param3       = 0;
+                        command_long.request.param4       = 0;
+                        command_long.request.param5       = 0;
+                        command_long.request.param6       = 0;
+                        command_long.request.param7       = 0;
+
+                        if (command_client.call(command_long) && command_long.response.success) {
+                            cout_color("DISARM response success", YELLOW_COLOR);
                         }
                         else {
                             cout_color("DISARM rejected by PX4!", RED_COLOR);
@@ -278,12 +287,12 @@ int main(int argc, char **argv){
                         if (current_state.mode != "AUTO.TAKEOFF") {
                             offb_set_mode.request.custom_mode = "AUTO.TAKEOFF";
 
-                            pos_setpoint.type_mask = 0b100111111000; // xyz_pos + yaw
-                            pos_setpoint.coordinate_frame = 1;
-                            pos_setpoint.position.x = odom_pos_(0);
-                            pos_setpoint.position.y = odom_pos_(1);
-                            pos_setpoint.position.z = 2.5;
-                            pos_setpoint.yaw = odom_yaw_;
+                            pos_setpoint.type_mask          = 0b100111111000; // xyz_pos + yaw
+                            pos_setpoint.coordinate_frame   = 1;
+                            pos_setpoint.position.x         = odom_pos_(0);
+                            pos_setpoint.position.y         = odom_pos_(1);
+                            pos_setpoint.position.z         = 2.5;
+                            pos_setpoint.yaw                = odom_yaw_;
 
                             if (set_mode_client.call(offb_set_mode) &&
                                 offb_set_mode.response.mode_sent) {
@@ -316,12 +325,12 @@ int main(int argc, char **argv){
                     if (current_state.mode != "AUTO.LAND") {
                         offb_set_mode.request.custom_mode = "AUTO.LAND";
 
-                        pos_setpoint.type_mask = 0b100111111000; // xyz_pos + yaw
-                        pos_setpoint.coordinate_frame = 1;
-                        pos_setpoint.position.x = odom_pos_(0);
-                        pos_setpoint.position.y = odom_pos_(1);
-                        pos_setpoint.position.z = 0;
-                        pos_setpoint.yaw = odom_yaw_;
+                        pos_setpoint.type_mask          = 0b100111111000; // xyz_pos + yaw
+                        pos_setpoint.coordinate_frame   = 1;
+                        pos_setpoint.position.x         = odom_pos_(0);
+                        pos_setpoint.position.y         = odom_pos_(1);
+                        pos_setpoint.position.z         = 0;
+                        pos_setpoint.yaw                = odom_yaw_;
 
                         if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
                             cout_color("AUTO.LAND response sent", YELLOW_COLOR);
@@ -352,12 +361,12 @@ int main(int argc, char **argv){
                     if (current_state.mode != "AUTO.RTL") {
                         offb_set_mode.request.custom_mode = "AUTO.RTL";
 
-                        pos_setpoint.type_mask = 0b100111111000; // xyz_pos + yaw
-                        pos_setpoint.coordinate_frame = 1;
-                        pos_setpoint.position.x = 0;
-                        pos_setpoint.position.y = 0;
-                        pos_setpoint.position.z = 0;
-                        pos_setpoint.yaw = odom_yaw_;
+                        pos_setpoint.type_mask          = 0b100111111000; // xyz_pos + yaw
+                        pos_setpoint.coordinate_frame   = 1;
+                        pos_setpoint.position.x         = 0;
+                        pos_setpoint.position.y         = 0;
+                        pos_setpoint.position.z         = 0;
+                        pos_setpoint.yaw                = 0;
 
                         if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
                             cout_color("AUTO.RTL response sent", YELLOW_COLOR);
@@ -380,12 +389,12 @@ int main(int argc, char **argv){
                     if (current_state.mode != "MANUAL") {
                         offb_set_mode.request.custom_mode = "MANUAL";
 
-                        pos_setpoint.type_mask = 0b100111111000; // xyz_pos + yaw
-                        pos_setpoint.coordinate_frame = 1;
-                        pos_setpoint.position.x = odom_pos_(0);
-                        pos_setpoint.position.y = odom_pos_(1);
-                        pos_setpoint.position.z = odom_pos_(2);
-                        pos_setpoint.yaw = odom_yaw_;
+                        pos_setpoint.type_mask          = 0b100111111000; // xyz_pos + yaw
+                        pos_setpoint.coordinate_frame   = 1;
+                        pos_setpoint.position.x         = odom_pos_(0);
+                        pos_setpoint.position.y         = odom_pos_(1);
+                        pos_setpoint.position.z         = odom_pos_(2);
+                        pos_setpoint.yaw                = odom_yaw_;
 
                         if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
                             cout_color("MANUAL response sent", YELLOW_COLOR);
@@ -410,12 +419,12 @@ int main(int argc, char **argv){
                     if (current_state.mode != "STABILIZED") {
                         offb_set_mode.request.custom_mode = "STABILIZED";
 
-                        pos_setpoint.type_mask = 0b100111111000; // xyz_pos + yaw
-                        pos_setpoint.coordinate_frame = 1;
-                        pos_setpoint.position.x = odom_pos_(0);
-                        pos_setpoint.position.y = odom_pos_(1);
-                        pos_setpoint.position.z = odom_pos_(2);
-                        pos_setpoint.yaw = odom_yaw_;
+                        pos_setpoint.type_mask          = 0b100111111000; // xyz_pos + yaw
+                        pos_setpoint.coordinate_frame   = 1;
+                        pos_setpoint.position.x         = odom_pos_(0);
+                        pos_setpoint.position.y         = odom_pos_(1);
+                        pos_setpoint.position.z         = odom_pos_(2);
+                        pos_setpoint.yaw                = odom_yaw_;
 
                         if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
                             cout_color("STABILIZED response sent", YELLOW_COLOR);
@@ -440,12 +449,12 @@ int main(int argc, char **argv){
                     if (current_state.mode != "ACRO") {
                         offb_set_mode.request.custom_mode = "ACRO";
 
-                        pos_setpoint.type_mask = 0b100111111000; // xyz_pos + yaw
-                        pos_setpoint.coordinate_frame = 1;
-                        pos_setpoint.position.x = odom_pos_(0);
-                        pos_setpoint.position.y = odom_pos_(1);
-                        pos_setpoint.position.z = odom_pos_(2);
-                        pos_setpoint.yaw = odom_yaw_;
+                        pos_setpoint.type_mask          = 0b100111111000; // xyz_pos + yaw
+                        pos_setpoint.coordinate_frame   = 1;
+                        pos_setpoint.position.x         = odom_pos_(0);
+                        pos_setpoint.position.y         = odom_pos_(1);
+                        pos_setpoint.position.z         = odom_pos_(2);
+                        pos_setpoint.yaw                = odom_yaw_;
 
                         if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
                             cout_color("ACRO response sent", YELLOW_COLOR);
@@ -470,12 +479,12 @@ int main(int argc, char **argv){
                     if (current_state.mode != "RATTITUDE") {
                         offb_set_mode.request.custom_mode = "RATTITUDE";
 
-                        pos_setpoint.type_mask = 0b100111111000; // xyz_pos + yaw
-                        pos_setpoint.coordinate_frame = 1;
-                        pos_setpoint.position.x = odom_pos_(0);
-                        pos_setpoint.position.y = odom_pos_(1);
-                        pos_setpoint.position.z = odom_pos_(2);
-                        pos_setpoint.yaw = odom_yaw_;
+                        pos_setpoint.type_mask          = 0b100111111000; // xyz_pos + yaw
+                        pos_setpoint.coordinate_frame   = 1;
+                        pos_setpoint.position.x         = odom_pos_(0);
+                        pos_setpoint.position.y         = odom_pos_(1);
+                        pos_setpoint.position.z         = odom_pos_(2);
+                        pos_setpoint.yaw                = odom_yaw_;
 
                         if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
                             cout_color("RATTITUDE response sent", YELLOW_COLOR);
@@ -500,12 +509,12 @@ int main(int argc, char **argv){
                     if (current_state.mode != "ALTCTL") {
                         offb_set_mode.request.custom_mode = "ALTCTL";
 
-                        pos_setpoint.type_mask = 0b100111111000; // xyz_pos + yaw
-                        pos_setpoint.coordinate_frame = 1;
-                        pos_setpoint.position.x = odom_pos_(0);
-                        pos_setpoint.position.y = odom_pos_(1);
-                        pos_setpoint.position.z = odom_pos_(2);
-                        pos_setpoint.yaw = odom_yaw_;
+                        pos_setpoint.type_mask          = 0b100111111000; // xyz_pos + yaw
+                        pos_setpoint.coordinate_frame   = 1;
+                        pos_setpoint.position.x         = odom_pos_(0);
+                        pos_setpoint.position.y         = odom_pos_(1);
+                        pos_setpoint.position.z         = odom_pos_(2);
+                        pos_setpoint.yaw                = odom_yaw_;
 
                         if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
                             cout_color("ALTCTL response sent", YELLOW_COLOR);
@@ -561,12 +570,12 @@ int main(int argc, char **argv){
                     if (current_state.mode != "POSCTL") {
                         offb_set_mode.request.custom_mode = "POSCTL";
 
-                        pos_setpoint.type_mask = 0b100111111000; // xyz_pos + yaw
-                        pos_setpoint.coordinate_frame = 1;
-                        pos_setpoint.position.x = odom_pos_(0);
-                        pos_setpoint.position.y = odom_pos_(1);
-                        pos_setpoint.position.z = odom_pos_(2);
-                        pos_setpoint.yaw = odom_yaw_;
+                        pos_setpoint.type_mask          = 0b100111111000; // xyz_pos + yaw
+                        pos_setpoint.coordinate_frame   = 1;
+                        pos_setpoint.position.x         = odom_pos_(0);
+                        pos_setpoint.position.y         = odom_pos_(1);
+                        pos_setpoint.position.z         = odom_pos_(2);
+                        pos_setpoint.yaw                = odom_yaw_;
 
                         if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
                             cout_color("POSCTL response sent", YELLOW_COLOR);
@@ -591,12 +600,12 @@ int main(int argc, char **argv){
                     if (current_state.mode != "AUTO.LOITER") {
                         offb_set_mode.request.custom_mode = "AUTO.LOITER";
 
-                        pos_setpoint.type_mask = 0b100111111000; // xyz_pos + yaw
-                        pos_setpoint.coordinate_frame = 1;
-                        pos_setpoint.position.x = odom_pos_(0);
-                        pos_setpoint.position.y = odom_pos_(1);
-                        pos_setpoint.position.z = odom_pos_(2);
-                        pos_setpoint.yaw = odom_yaw_;
+                        pos_setpoint.type_mask          = 0b100111111000; // xyz_pos + yaw
+                        pos_setpoint.coordinate_frame   = 1;
+                        pos_setpoint.position.x         = odom_pos_(0);
+                        pos_setpoint.position.y         = odom_pos_(1);
+                        pos_setpoint.position.z         = odom_pos_(2);
+                        pos_setpoint.yaw                = odom_yaw_;
 
                         if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
                             cout_color("AUTO.LOITER response sent", YELLOW_COLOR);

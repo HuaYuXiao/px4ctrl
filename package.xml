@@ -1,12 +1,11 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>px4ctrl</name>
-  <version>4.1.2</version>
+  <version>4.1.4</version>
   <description>A ROS package to control multi-copters using PX4-Autopilot platform</description>
   <maintainer email="12010508@mail.sustech.edu.cn">Eason Hua</maintainer>
 
-  <!-- EDIT: License -->
-  <license>GPLv3</license>
+  <license>MIT</license>
 
   <url type="repository">https://github.com/HuaYuXiao/px4ctrl.git</url>
 

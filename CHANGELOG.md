@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v4.1.4 - 2025-03-27
+- [new feature] `Disarm` via `/mavros/cmd/command`
+- [bug fix] `Offboard` setpoint for `AUTO.LAND`
+
 ## v4.1.3 - 2025-03-24
 - [bug fix] Offboard control `coordinate_frame`
 - [bug fix] Offboard velocity control `type_mask`
@@ -15,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v4.1.1 - 2024.09.07
 - [CRUCIAL, bug fix] prevent performing leaked command (skip iteration if current task's done)
-- [new feature]: `Return`, `Stabilized`, `Acro`, `Rattitude`, `Altitude`, `Position`
+- [new feature] `Return`, `Stabilized`, `Acro`, `Rattitude`, `Altitude`, `Position`
 - [bug fix] switch to `Hold` once reach desired `Takeoff` height
 - [bug fix] prevent unnecessary subscriber when using EKF2 fusion
 
@@ -24,45 +28,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [new feature] check whether `have_odom_` before executing command
 - reload parameters & functions via `namespace`
 
-## [v4.0.3] - 2024-08-12
-- [bug fix]: in `Move` mode, check whether close to destination, for both pos & yaw
+## v4.0.3 - 2024-08-12
+- [bug fix] in `Move` mode, check whether close to destination, for both pos & yaw
 - [new feature] process `quadrotor_msgs::PositionCommand` from path-planner
 - [new feature] set global origin via `geographic_msgs::GeoPointStamped`
 - replace `Apache` lisence with `GPLv3` lisence
 
-## [v4.0.2] - 2024-08-08
+## v4.0.2 - 2024-08-08
 - [CRUCIAL, new feature]: `Move` via `quadrotor_msgs::PositionCommand`
 - [deprecated] `Drone_odom`
 - [deprecated] unused header files
 
-## [v4.0.1] - 2024-08-08
+## v4.0.1 - 2024-08-08
 - [CRUCIAL, new feature]: `AUTO.TAKEOFF` via mavros
 - [CRUCIAL, new feature]: `AUTO.LAND` via mavros
 
-## [v4.0.0] - 2024-08-07
+## v4.0.0 - 2024-08-07
 - [CRUCIAL, new feature]: `Offboard` via mavros
 - [deprecated] ignore all other cmds if `Disarm` received
 
-## [v3.6.3] - 2024-08-06
+## v3.6.3 - 2024-08-06
 - [CRUCIAL, new feature]: `AUTO.LAND` via mavros
 - replace `.yaml` with `#define`
 
-## [v3.6.2] - 2024-08-06
+## v3.6.2 - 2024-08-06
 - [deprecated] check for geofence
 - [deprecated] `easondrone_msgs::ControlCommand::Idle`
 - [deprecated] fake_odom, Optitrack, TFmini
 - update `px4ctrl_terminal` to "cpp + h" format
 
-## [v3.6.1] - 2024-08-05
+## v3.6.1 - 2024-08-05
 - [new feature]: support `VINS-Fusion`: `/vins_estimator/odometry` to `/mavros/vision_pose/pose`
 - [deprecated] `cartographer`, `outdoor`
 - [deprecated] offset for position and orientation
 
-## [v3.6.0] - 2024-07-26
+## v3.6.0 - 2024-07-26
 - [CRUCIAL, new feature]: direct publish `/easondrone/control_command` from `/move_base_simple/goal`
 - [deprecated] cmd from `/easondrone/control_command_station`
 
-## [v3.5.2] - 2024-07-26
+## v3.5.2 - 2024-07-26
 - [CRUCIAL, new feature]: support `FAST-LIO2`: `/Odometry` to `/mavros/vision_pose/pose`
 - [deprecated] euler angle estimate
 - [not working] directly remap `nav_msgs::Odometry` to `/mavros/odometry/out`

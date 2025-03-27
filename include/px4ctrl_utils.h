@@ -39,6 +39,7 @@ SOFTWARE.
 
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/SetMode.h>
+#include <mavros_msgs/CommandLong.h>
 #include <mavros_msgs/State.h>
 #include <mavros_msgs/RCIn.h>
 #include <mavros_msgs/AttitudeTarget.h>
@@ -123,8 +124,9 @@ namespace PX4CtrlFSM{
 
     mavros_msgs::SetMode offb_set_mode;
     mavros_msgs::CommandBool arm_cmd;
+    mavros_msgs::CommandLong command_long;
     //变量声明 - 服务
-    ros::ServiceClient arming_client, set_mode_client;
+    ros::ServiceClient arming_client, set_mode_client, command_client;
 
     ros::Subscriber easondrone_ctrl_sub_;
     bool task_done_;
